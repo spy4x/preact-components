@@ -166,7 +166,7 @@ describe("EnhancedForm with a controlled status", () => {
 
     expect(html).toContain('name="email"')
     expect(html).not.toMatch(/<fieldset[^>]*\sdisabled/)
-    expect(html).toMatch(/<p role="status"[^>]*>Something went wrong. Please try again.<\/p>/)
+    expect(html).toMatch(/<p role="status"[^>]*>Something went wrong. Try again.<\/p>/)
   })
 
   it("draws the failure text in the danger colour, with a stable class hook", () => {

@@ -1,6 +1,7 @@
 import { cn } from "@spy4x/preact-cn"
 import type { JSX } from "preact"
 import { Button } from "./button.tsx"
+import { translate, useT } from "./i18n.tsx"
 
 export interface OnOffButtonsProps {
   /** `undefined` renders both halves unselected. */
@@ -40,15 +41,25 @@ const selectedFill =
  * a `role="group"` named by `label`. With `value` undefined both halves read "not pressed".
  */
 export function OnOffButtons(
-  { value, amount, onSwitch, onLabel = "ON", offLabel = "OFF", label, class: className }:
-    OnOffButtonsProps,
+  {
+    value,
+    amount,
+    onSwitch,
+    onLabel: onLabelProp,
+    offLabel: offLabelProp,
+    label,
+    class: className,
+  }: OnOffButtonsProps,
 ): JSX.Element {
+  const translator = useT()
+  const onLabel = onLabelProp ?? translate(translator, "OnOffButtons.onLabel", "ON")
+  const offLabel = offLabelProp ?? translate(translator, "OnOffButtons.offLabel", "OFF")
   return (
     <div role="group" aria-label={label ?? `${onLabel} / ${offLabel}`} class={cn(group, className)}>
       <Button
         aria-pressed={value === true ? "true" : "false"}
         variant={value === true ? "primary" : "outline"}
-        class={cn("flex-col rounded-r-none", value === true && selectedFill)}
+        class={cn("flex-col rounded-e-none", value === true && selectedFill)}
         onClick={() =>
           onSwitch(true)}
       >
@@ -58,7 +69,7 @@ export function OnOffButtons(
       <Button
         aria-pressed={value === false ? "true" : "false"}
         variant={value === false ? "primary" : "outline"}
-        class={cn("-ml-px flex-col rounded-l-none", value === false && selectedFill)}
+        class={cn("-ms-px flex-col rounded-s-none", value === false && selectedFill)}
         onClick={() =>
           onSwitch(false)}
       >

@@ -58,6 +58,22 @@ describe("AccountMenu", () => {
     expect(html).toMatch(/<form method="post" action="\/sign-out" role="none">/)
   })
 
+  it("announces an item's keyshortcuts and shows the first at its right", () => {
+    const html = render(
+      <AccountMenu
+        user={user}
+        items={[
+          { label: "Profile", href: "/profile" },
+          { label: "Keyboard shortcuts", onClick: () => undefined, keyshortcuts: ["?"] },
+        ]}
+      />,
+    )
+    expect(html).toMatch(
+      /<button[^>]*aria-keyshortcuts="\?"[^>]*>Keyboard shortcuts<span aria-hidden="true" data-hotkey-hint[^>]*><kbd[^>]*>\?<\/kbd>/,
+    )
+    expect(html.match(/aria-keyshortcuts/g)?.length).toBe(1)
+  })
+
   // Before hydration `DropdownItem` is a plain button, where the choice is `aria-current`; the
   // hydrated `menuitemradio` with `aria-checked` is proven in `pages/e2e/system.spec.ts`.
   it("marks only the current theme in a group named by its heading", () => {
@@ -69,6 +85,44 @@ describe("AccountMenu", () => {
     expect(item("dark")).toContain('aria-current="true"')
     expect(item("light")).not.toContain("aria-current")
     expect(item("system")).not.toContain("aria-current")
+  })
+
+  it("puts the Language item after the caller's items and before the theme, naming the language in use in itself", () => {
+    const html = render(
+      <AccountMenu
+        user={user}
+        items={[{ label: "Profile", href: "/profile" }]}
+        language={{ languages: ["en", "ru"], current: "ru", onSelect: () => undefined }}
+        onThemeChange={() => undefined}
+      />,
+    )
+    const profile = html.indexOf(">Profile<")
+    const item = html.indexOf('data-e2e="account-menu-language"')
+    const theme = html.indexOf('data-e2e="account-menu-theme"')
+    expect(item).toBeGreaterThan(profile)
+    expect(theme).toBeGreaterThan(item)
+    const row = html.slice(item, html.indexOf("</button>", item))
+    expect(row).toContain("<span>Language</span>")
+    expect(row).toContain(
+      `<span class="notranslate ms-auto ps-4 text-muted" lang="ru" dir="ltr">Русский</span>`,
+    )
+    // The dialog is closed until the item is chosen.
+    expect(html).not.toContain("<dialog")
+  })
+
+  it("names the device language on the Language item while the language is automatic", () => {
+    const html = render(
+      <AccountMenu
+        user={user}
+        language={{ languages: ["en", "ar"], current: null, automatic: "ar" }}
+      />,
+    )
+    expect(html).toContain(`lang="ar" dir="rtl">العربية</span>`)
+  })
+
+  it("draws no Language item without language", () => {
+    const html = render(<AccountMenu user={user} />)
+    expect(html).not.toContain('data-e2e="account-menu-language"')
   })
 
   it("draws no theme choice and no sign out when their props are left out", () => {
@@ -117,6 +171,35 @@ describe("AccountMenu", () => {
     expect(row).toContain(">ada@example.com<")
     expect(row).toContain(">Admin<")
     expect(render(<AccountMenu user={user} />)).not.toContain("account-menu-header")
+  })
+
+  it("makes the header row the first item, a link to headerHref named by its text", () => {
+    const html = render(
+      <AccountMenu
+        user={user}
+        tag="Admin"
+        headerHref="/profile"
+        items={[{ label: "Settings", href: "/settings" }]}
+      />,
+    )
+    const opening = html.match(/<[a-z]+[^>]*data-e2e="account-menu-header"[^>]*>/)?.[0] ?? ""
+    expect(opening.startsWith("<a ")).toBe(true)
+    expect(opening).toContain('href="/profile"')
+    expect(opening).not.toContain("aria-hidden")
+    const start = html.indexOf('data-e2e="account-menu-header"')
+    const row = html.slice(start, html.indexOf("</a>", start))
+    expect(row).toContain(">Ada Lovelace<")
+    expect(row).toContain(">ada@example.com<")
+    expect(row).toContain(">Admin<")
+    expect(start).toBeLessThan(html.indexOf(">Settings<"))
+  })
+
+  it("draws the linked header even without the header prop, and only one header with it", () => {
+    expect(render(<AccountMenu user={user} headerHref="/profile" />))
+      .toMatch(/<a [^>]*data-e2e="account-menu-header"/)
+    const both = render(<AccountMenu user={user} header headerHref="/profile" />)
+    expect(both.match(/data-e2e="account-menu-header"/g)?.length).toBe(1)
+    expect(both).not.toMatch(/<div[^>]*aria-hidden="true"[^>]*data-e2e="account-menu-header"/)
   })
 
   it("merges the caller's trigger and panel classes over its own", () => {

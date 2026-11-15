@@ -123,8 +123,8 @@ const DEFAULT_STORAGE_KEY = "theme"
  * The attribute a server renders on `<html>` so a page is dark on a dark system before any script
  * runs, and when none runs at all: `@spy4x/preact-theme`'s tokens and `dark` variant apply under
  * it while the system asks for dark. {@link themeBootstrapScript} removes it as its first
- * statement, and an attached {@link createThemeStore} on every apply, so from then on the stored or
- * chosen theme decides alone.
+ * statement, and {@link createThemeStore}'s `attach()` before it applies a theme, whatever `apply`
+ * it was given, so from then on the stored or chosen theme decides alone.
  */
 export const THEME_AUTO_ATTRIBUTE = "data-theme-auto"
 
@@ -136,13 +136,11 @@ function isThemePreference(value: unknown): value is ThemePreference {
 /**
  * Toggle the `dark` class on the document root and set its `color-scheme` to match, when there is a
  * document. The class flips the tokens; `color-scheme` is what the browser paints its own canvas,
- * scrollbars and native controls from, before and after the stylesheet loads. The
- * {@link THEME_AUTO_ATTRIBUTE} marker goes, so a chosen light theme stays light on a dark system.
+ * scrollbars and native controls from, before and after the stylesheet loads.
  */
 function applyToDocument(theme: Theme): void {
   const root = globalThis.document?.documentElement
   if (!root) return
-  root.removeAttribute(THEME_AUTO_ATTRIBUTE)
   const dark = theme === ThemeValue.DARK
   root.classList.toggle("dark", dark)
   root.style.colorScheme = dark ? ThemeValue.DARK : ThemeValue.LIGHT
@@ -276,6 +274,9 @@ export function createThemeStore(ports: ThemePorts = {}): ThemeStore {
     const watched = mediaQuery()
     system.value = watched?.matches ? ThemeValue.DARK : ThemeValue.LIGHT
     watched?.addEventListener?.("change", onSystemChange)
+    // The server's auto-dark marker goes before the first apply, so a chosen light theme stays
+    // light on a dark system with a custom `apply` too.
+    globalThis.document?.documentElement?.removeAttribute(THEME_AUTO_ATTRIBUTE)
     const stopEffect = effect(() => apply(actual.value))
     detach = () => {
       watched?.removeEventListener?.("change", onSystemChange)
@@ -322,7 +323,7 @@ export function createThemeStore(ports: ThemePorts = {}): ThemeStore {
  *
  * @example
  * ```ts
- * const stop = syncThemeWithSettings(theme, settings, `theme`)
+ * const stop = syncThemeWithSettings(theme, settings, "theme")
  * ```
  */
 export function syncThemeWithSettings<K extends string, T extends Record<K, `${ThemePreference}`>>(
@@ -347,7 +348,7 @@ export function syncThemeWithSettings<K extends string, T extends Record<K, `${T
     settings.save(patch).then(
       (outcome) => {
         // A conflict needs nothing here: the record that won reaches the effect below.
-        if (sentIn === session) unsynced = !outcome.ok && outcome.reason === `failed`
+        if (sentIn === session) unsynced = !outcome.ok && outcome.reason === "failed"
       },
       () => {
         if (sentIn === session) unsynced = true
@@ -463,12 +464,11 @@ export function themeBootstrapScript(options: ThemeBootstrapOptions = {}): strin
     `var d=p==="dark"||(p==="system"&&typeof matchMedia==="function"&&matchMedia(${query}).matches);` +
     `${set}}catch(e){}})()`
   if (options.followSystem !== true) return paint
-  // Older Safari has only `addListener` on a media query list.
   return paint +
     `;(function(){try{var m=matchMedia(${query});` +
     `var f=function(){try{var s=null;try{s=localStorage.getItem(${key})}catch(e){}` +
     `var p=s==="light"||s==="dark"||s==="system"?s:${fallback};` +
     `if(p==="system"){var d=m.matches;${set}}}catch(e){}};` +
-    `if(m.addEventListener)m.addEventListener("change",f);else if(m.addListener)m.addListener(f)` +
+    `m.addEventListener("change",f)` +
     `}catch(e){}})()`
 }

@@ -77,6 +77,24 @@ describe("AppShell", () => {
     expect(html).not.toMatch(/bg-selected[^"]*">Admin</)
   })
 
+  it("links the account header to headerHref in the rail's menu and in the phone sheet", () => {
+    const html = shell({ account: { user, headerHref: "/profile/account" } })
+    expect(html).toMatch(/<a [^>]*href="\/profile\/account"[^>]*data-e2e="account-menu-header"/)
+    expect(html).toMatch(
+      /<a [^>]*href="\/profile\/account"[^>]*data-e2e="app-shell-sheet-account-header"/,
+    )
+    const plain = shell()
+    expect(plain).toMatch(/<div [^>]*data-e2e="app-shell-sheet-account-header"/)
+    expect(plain).not.toContain('href="/profile/account"')
+  })
+
+  it("ends the phone sheet's linked name row with a chevron, and only a linked one", () => {
+    const chevron = 'd="m9 18 6-6-6-6"'
+    const linked = shell({ account: { user, headerHref: "/profile/account" } })
+    expect(region(linked, "app-shell-sheet-account-header", "a")).toContain(chevron)
+    expect(region(shell(), "app-shell-sheet-account-header", "div")).not.toContain(chevron)
+  })
+
   it("keeps one live region outside the rail, present and empty with no connection", () => {
     const quiet = shell()
     expect(quiet.match(/data-e2e="shell-ws-status"/g)).toHaveLength(1)
@@ -142,6 +160,46 @@ describe("AppShell", () => {
       /<input type="radio"(?![^>]* checked)[^>]*data-e2e="app-shell-theme-dark"/,
     )
     expect(sheet).toMatch(/<button type="submit"[^>]*data-rail-close[^>]*>Sign out</)
+  })
+
+  it("passes account.language to the rail's menu and draws the same Language row in the sheet", () => {
+    const language = { languages: ["en", "ar"], current: "ar", onSelect: () => {} }
+    const html = shell({ account: { user, items: [{ label: "Profile" }], language } })
+    const name =
+      `<span class="notranslate ms-auto ps-4 text-muted" lang="ar" dir="rtl">العربية</span>`
+    expect(html).toMatch(
+      new RegExp(`data-e2e="account-menu-language"[^>]*>(?:(?!</button>).)*Language</span>${name}`),
+    )
+    const sheet = whole(html, "app-shell-sheet-account", "dialog")
+    expect(sheet).toMatch(
+      new RegExp(
+        `<button type="button"[^>]*data-rail-close[^>]*data-e2e="app-shell-sheet-language">(?:(?!</button>).)*<span>Language</span>${name}</button>`,
+      ),
+    )
+    expect(sheet.indexOf("app-shell-sheet-language")).toBeGreaterThan(sheet.indexOf(">Profile<"))
+  })
+
+  it("draws no Language row without account.language", () => {
+    const html = shell()
+    expect(html).not.toContain("account-menu-language")
+    expect(html).not.toContain("app-shell-sheet-language")
+  })
+
+  it("announces an account item's keyshortcuts in the sheet and hints the first on a fine pointer", () => {
+    const html = shell({
+      account: {
+        user,
+        items: [
+          { label: "Profile", href: "/profile" },
+          { label: "Keyboard shortcuts", onClick: () => {}, keyshortcuts: ["?"] },
+        ],
+      },
+    })
+    const sheet = whole(html, "app-shell-sheet-account", "dialog")
+    expect(sheet).toMatch(
+      /<button type="button"[^>]*aria-keyshortcuts="\?"[^>]*>Keyboard shortcuts<span aria-hidden="true" data-account-key-hint class="ms-auto hidden pointer-fine:inline-flex"><kbd[^>]*>\?<\/kbd>/,
+    )
+    expect(sheet).toMatch(/<a href="\/profile"(?![^>]*aria-keyshortcuts)[^>]*>Profile<\/a>/)
   })
 
   it("draws a plain placeholder and no menu while the person is unknown", () => {

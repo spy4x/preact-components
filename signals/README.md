@@ -435,8 +435,10 @@ steps as a signal of `{ id, done }` (the checklist's own steps fit) and a `dismi
 - `progress`: `{ done, total }`.
 - `dismiss()` and `reset()`: write `true` or `false` through the port and change `visible`.
 
-The port's `read()` is synchronous: an app that keeps the flag on the server loads it before it
-creates the store. Its `write()` may be either:
+The port's `read()` is synchronous: an app that keeps the flag on the server loads it before the
+store first needs it. The store calls it once, on first use rather than when it is created, so a
+store created at module level reads nothing on a server until a render asks for `visible`. Its
+`write()` may be either:
 
 - **Synchronous**, such as `localStorage`. The write runs first and `visible` changes after it, so a
   write that throws leaves `visible` as it was, and the error reaches the caller of `dismiss()`.
@@ -471,7 +473,7 @@ info bar), so `install()` can open the browser's dialog later from a button. Its
 person installs through Share, then Add to Home Screen, `installed` when the app already runs
 standalone or `appinstalled` fired, and `unavailable` otherwise. `visible` is `true` for `prompt`
 and `ios` until `dismiss()` stores the flag through `dismissed`, the same `{ read, write }` port
-`createOnboardingState` takes; left out, the flag lives in memory. Call `watch()` early in the
+`createOnboardingState` takes, read once on first use; left out, the flag lives in memory. Call `watch()` early in the
 client entry point: the event can fire before the app renders. `isIosDevice(navigator)` and
 `isStandalone(navigator, matchMedia)` are the two checks it starts from. `InstallPrompt` in
 `@spy4x/preact-system` draws it.
@@ -889,3 +891,20 @@ whether somebody else changed the row through the feed while that request was ou
 and its own header says what it does not cover, how many of its cases reach each of those shapes,
 and how to reproduce a failure from the number it prints. It is not a description of the store: read
 the named tests for that.
+
+## Translations
+
+Nothing here renders, so the stores take the app's translator as an option instead of reading
+`I18nContext`. `createToastStore({ translator })` titles each kind from `Toast.info`,
+`Toast.success`, `Toast.error` and `Toast.warning` in this package's catalog,
+`@spy4x/preact-signals/i18n/<language>`, in `ar`, `de`, `en`, `es`, `pt-BR` and `ru`. Each language
+subpath, `./i18n/de` and the rest, has one `default` export: that language's catalog. An app whose
+language can change after the store is made passes a function instead,
+`translator: () => current`, and each toast takes the language in use when it is shown.
+
+`buildModelStore({ model: "note", translator })` takes each toast from the app's own catalog, one
+full message per model and event: `note.created`, `note.createFailed` and the rest of
+`ModelStoreMessages`' fields, with `{issue}` in `note.malformedUpdate` and `{detail}` in
+`note.malformedResponse`. A translation is then a whole sentence, never "{model}" glued into one. An
+event the app's catalog lacks keeps its English default, and `messages` still wins over the catalog.
+Without a translator both stores say exactly what they always have.

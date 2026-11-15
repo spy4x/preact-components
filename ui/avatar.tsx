@@ -1,8 +1,10 @@
 import { IconUser } from "@spy4x/preact-icons"
 import { cn } from "@spy4x/preact-cn"
 import type { JSX } from "preact"
-import { useState } from "preact/hooks"
+import { useSignal } from "@preact/signals"
+import { useEffect, useRef } from "preact/hooks"
 import { initials } from "@spy4x/platform/universal/text"
+import { translate, useT } from "./i18n.tsx"
 
 /** Which of the three faces an {@link Avatar} renders. */
 export type AvatarFace = "image" | "initials" | "icon"
@@ -39,11 +41,9 @@ export function avatarFace({ src, failed = false, name }: AvatarFaceInput): Avat
 /**
  * Carry an avatar's "this image failed" flag across a change of `src`.
  *
- * An avatar with a broken URL keeps its initials face forever because `failed` is only ever set —
- * so a caller that swaps the bad URL for a good one, or re-uses one component instance for a new
- * user, is stuck on the fallback. A failure is a fact about one URL, so it has to be dropped when
- * that URL changes. This is the pure half of that rule, so the browser-only React-shaped half —
- * the render-time state comparison that applies it inside {@link Avatar} — stays out of the tests.
+ * A failure is a fact about one URL, so it is dropped when the URL changes: a caller that swaps a
+ * bad URL for a good one, or re-uses one component instance for a new user, gets the image back.
+ * {@link Avatar} keeps the URL that failed and passes it as `previous`.
  *
  * Absent, `null` and `""` are one and the same value here: `src` is an optional prop, and
  * `undefined → null` is not a change of URL, so it must not clear a real failure.
@@ -108,10 +108,15 @@ export function groupSplit(total: number, max: number): GroupSplit {
  *
  * @param label The caller's description of the group. Blank falls back to `"Avatars"`.
  * @param total Total members, the ones behind the chip included.
+ * @param fallback The description a blank `label` falls back to, in the reader's language.
  * @returns `"<label> (<total>)"`.
  */
-export function groupLabel(label: string | null | undefined, total: number): string {
-  const description = typeof label === "string" && label.trim() ? label.trim() : "Avatars"
+export function groupLabel(
+  label: string | null | undefined,
+  total: number,
+  fallback: string = "Avatars",
+): string {
+  const description = typeof label === "string" && label.trim() ? label.trim() : fallback
 
   return `${description} (${total})`
 }
@@ -129,7 +134,7 @@ const boxClasses: Record<AvatarSize, string> = {
 }
 
 const textClasses: Record<AvatarSize, string> = {
-  xs: "text-[0.625rem]",
+  xs: "text-xs",
   sm: "text-xs",
   md: "text-sm",
   lg: "text-base",
@@ -180,31 +185,26 @@ export interface AvatarProps {
  * cannot be named by its own content, so the label lives on the box, which the initials and the
  * glyph share.
  *
- * Server-renderable, and props-and-ports only: the first render is the image face, the `error`
- * listener that switches to the initials is attached in the browser, and the state that flips is
- * local to this component. That state does not outlive its `src` — a failure belongs to one URL, so
- * {@link failedAfterSrcChange} clears it when the URL changes, and a caller can swap a dead URL for
- * a live one or re-use the instance for a different member. The application half of it is the
- * render-time comparison of the previous `src` against the current one, not an effect: rendering
- * the new image in the same pass beats letting one frame of the old failure show through.
- *
- * The browser-only halves are not covered by the colocated tests — they render markup with
- * `preact-render-to-string` and this repository has no DOM harness. {@link avatarFace} and
- * {@link failedAfterSrcChange} are the testable halves of the two decisions; the `error` event and
- * the reset that follows a `src` change are not verified here, only disclosed.
+ * Server-renderable, and props-and-ports only: the first render is the image face, and the browser
+ * switches to the initials on the image's `error` event, or on mount when a server-rendered image
+ * had already failed before the bundle ran. The failure is stored as the URL that failed, so
+ * {@link failedAfterSrcChange} drops it in the same render that changes `src`: a caller can swap a
+ * dead URL for a live one or re-use the instance for a different member.
  */
 export function Avatar(
   { name, src, alt, size = "md", class: className }: AvatarProps,
 ): JSX.Element {
-  const [failed, setFailed] = useState(false)
-  const [watching, setWatching] = useState(src)
+  // The URL that failed to load, so a failure belongs to that URL alone.
+  const failedSrc = useSignal<string | null>(null)
+  const imageRef = useRef<HTMLImageElement>(null)
+  const failed = failedAfterSrcChange(failedSrc.value, src, failedSrc.value !== null)
 
-  if ((watching ?? "") !== (src ?? "")) {
-    const carried = failedAfterSrcChange(watching, src, failed)
-
-    setWatching(src)
-    if (carried !== failed) setFailed(carried)
-  }
+  // A server-rendered image can fail before the bundle attaches `onError`; the browser has then
+  // finished with it and drawn nothing.
+  useEffect(() => {
+    const image = imageRef.current
+    if (image?.complete && image.naturalWidth === 0) failedSrc.value = src ?? ""
+  }, [src])
 
   const face = avatarFace({ src, failed, name })
   const text = initials(name)
@@ -215,10 +215,11 @@ export function Avatar(
     return (
       <span class={box}>
         <img
+          ref={imageRef}
           src={src ?? undefined}
           alt={label}
           class="size-full object-cover"
-          onError={() => setFailed(true)}
+          onError={() => failedSrc.value = src ?? ""}
         />
       </span>
     )
@@ -279,11 +280,16 @@ export function AvatarGroup(
   { items, max = 4, label, size = "md", class: className }: AvatarGroupProps,
 ): JSX.Element {
   const { visible, overflow } = groupSplit(items.length, max)
+  const translator = useT()
 
   return (
     <div
       role="group"
-      aria-label={groupLabel(label, items.length)}
+      aria-label={groupLabel(
+        label,
+        items.length,
+        translate(translator, "AvatarGroup.label", "Avatars"),
+      )}
       class={cn("-space-x-2 flex flex-wrap items-center", className)}
     >
       {items.slice(0, visible).map((item, index) => (

@@ -24,7 +24,7 @@ export interface OnboardingStepFact {
  * the store. `write()` may be synchronous or return a promise; see {@link OnboardingState.dismiss}.
  */
 export interface OnboardingDismissedPort {
-  /** The stored flag. Called once, when the store is created. */
+  /** The stored flag. Called once, the first time the store needs it, and not when it is created. */
   read(): boolean
   /**
    * Store the flag. Called by `dismiss()` and `reset()`. A throw, or a rejected promise, means the
@@ -102,7 +102,12 @@ export interface OnboardingState {
  */
 export function createOnboardingState(options: OnboardingStateOptions): OnboardingState {
   const { steps, dismissed: port } = options
-  const dismissed = signal(port.read())
+  // The port is read on first use, not here, so a store created at module level on a server reads
+  // no storage until something asks for the flag.
+  let stored: boolean | undefined
+  /** The flag of the newest standing call, or `undefined` for the stored flag. */
+  const changed = signal<boolean | undefined>(undefined)
+  const dismissed = computed(() => changed.value ?? (stored ??= port.read()))
   const next = computed(() => steps.value.find((step) => !step.done)?.id ?? null)
   const progress = computed(() => ({
     done: steps.value.filter((step) => step.done).length,
@@ -110,13 +115,14 @@ export function createOnboardingState(options: OnboardingStateOptions): Onboardi
   }))
 
   /**
-   * The newest saved flag, then each later call whose write is still pending, in call order.
-   * `visible` follows the last entry. A failed write leaves the list, and a saved one drops every
-   * entry before it, so once all writes settle the list holds only the newest saved flag.
+   * The newest saved call, then each later call whose write is still pending, in call order; empty
+   * stands for the stored flag. `visible` follows the last entry. A failed write leaves the list,
+   * and a saved one drops every entry before it, so once all writes settle the list holds only the
+   * newest saved call, or nothing when none was saved.
    */
-  let standing: { value: boolean }[] = [{ value: dismissed.value }]
+  let standing: { value: boolean }[] = []
   const show = () => {
-    dismissed.value = standing[standing.length - 1].value
+    changed.value = standing.at(-1)?.value
   }
 
   function setDismissed(value: boolean): void | Promise<void> {

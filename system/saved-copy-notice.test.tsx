@@ -17,14 +17,14 @@ describe("SavedCopyNotice", () => {
     const html = render(<SavedCopyNotice savedAt={SAVED_AT} />)
 
     expect(words(html)).toBe(
-      "Saved copy The server is out of reach. This copy was saved on this device: 12/10/2026 14:05.",
+      "Saved copy Can't reach the server. You're seeing the copy saved on this device at 12/10/2026 14:05.",
     )
   })
 
   it("gives the date for a copy saved today, since the words outlast the day", () => {
     const html = render(<SavedCopyNotice savedAt={Date.now()} />)
 
-    expect(words(html)).toMatch(/saved on this device: \d\d\/\d\d\/\d{4} \d\d:\d\d\.$/)
+    expect(words(html)).toMatch(/saved on this device at \d\d\/\d\d\/\d{4} \d\d:\d\d\.$/)
   })
 
   it("takes the time as epoch milliseconds too", () => {
@@ -64,7 +64,7 @@ describe("SavedCopyNotice", () => {
   it("drops the first line when the title is empty", () => {
     const html = render(<SavedCopyNotice savedAt={SAVED_AT} labels={{ title: "" }} />)
 
-    expect(words(html)).toMatch(/^The server is out of reach\./)
+    expect(words(html)).toMatch(/^Can.t reach the server\./)
     expect(html).not.toContain("font-medium")
   })
 

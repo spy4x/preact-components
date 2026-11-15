@@ -44,9 +44,9 @@ minor; a fix alone bumps the patch. The whole set takes the largest bump any of 
 ## Steps
 
 1. In one pull request, bump `"version"` to the same new version in every package's `deno.json`
-   — `charts`, `cn`, `crud`, `icons`, `map`, `signals`, `system`, `theme`, `ui` and `ui-guide` —
-   and merge it. `pages/` has no `name` and is never published. This command lists the versions
-   the packages declare, and must print exactly one line:
+   — `charts`, `cn`, `crud`, `icons`, `map`, `server`, `signals`, `system`, `theme`, `ui` and
+   `ui-guide` — and merge it. `pages/` has no `name` and is never published. This command lists
+   the versions the packages declare, and must print exactly one line:
 
    ```bash
    grep -h '"version"' */deno.json | sort -u
@@ -64,7 +64,7 @@ minor; a fix alone bumps the patch. The whole set takes the largest bump any of 
    this repository — [`pre-publish-checks.md`](./pre-publish-checks.md) says how. The script
    narrows the candidates; it does not decide. Read every match it prints: fix each one that names
    a private application, and publish only when every match left is a word that merely shares a
-   name, such as `GB` as a file-size unit in `ui/file-input.tsx`:
+   name, such as a unit or an abbreviation:
 
    ```bash
    deno task private-names /path/to/names.txt

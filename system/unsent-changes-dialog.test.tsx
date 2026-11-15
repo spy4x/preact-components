@@ -39,12 +39,14 @@ function footerButtons(markup: string): string[] {
 }
 
 describe("UnsentChangesDialog", () => {
-  it("asks with the count and says the changes stay on this browser", () => {
+  it("asks with the count and says the changes stay in this browser", () => {
     const markup = html({ unsent: 3 })
 
     expect(markup).toContain("You have 3 unsent changes")
     expect(markup).toContain("They haven't reached the server yet.")
-    expect(markup).toContain("they stay on this browser and are sent only when you sign in here")
+    expect(markup).toContain(
+      "they stay in this browser and are sent the next time you sign in here",
+    )
     expect(markup).not.toContain("need your choice")
   })
 

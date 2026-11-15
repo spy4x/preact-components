@@ -1,6 +1,7 @@
 import { cn } from "@spy4x/preact-cn"
 import type { ComponentChildren, JSX } from "preact"
 import { useFormat } from "./format.tsx"
+import { useLabels } from "./i18n.tsx"
 
 /** The person who wrote a page, named in {@link PageHero}'s meta line. */
 export interface PageHeroAuthor {
@@ -19,7 +20,10 @@ export interface PageHeroLabels {
 }
 
 /** The English words {@link PageHero} shows when the caller passes none. */
-export const PAGE_HERO_LABELS: PageHeroLabels = { by: "By", updated: "Updated" }
+export const PAGE_HERO_LABELS: PageHeroLabels = {
+  by: "By",
+  updated: "Updated",
+}
 
 const CALENDAR_DAY = /^\d{4}-\d{2}-\d{2}$/
 
@@ -54,6 +58,11 @@ export interface PageHeroProps {
    * does not exist (`2026-02-30`), throws.
    */
   updated?: string
+  /**
+   * A short caveat under the meta line, in the same quiet text, such as "Work in progress" or a
+   * disclosure. The meta line and the note read as one block, `gap-1` apart.
+   */
+  note?: ComponentChildren
   /** The meta line's words; see {@link PAGE_HERO_LABELS}. */
   labels?: Partial<PageHeroLabels>
   /** Utilities merged over the band's own, such as a background. */
@@ -71,6 +80,7 @@ export interface PageHeroProps {
  *
  * `author` and `updated` add one quiet line under the buttons (`text-sm`, muted), which wraps on a
  * phone: the byline and the "Updated" date a reader and a search engine look for on an article.
+ * `note` adds a caveat right under that line, in the same block.
  *
  * The band is a `<div>`, not a `<header>`: a page that places it outside `<main>` would otherwise
  * gain a second banner landmark beside its site header.
@@ -79,13 +89,14 @@ export interface PageHeroProps {
  * @returns The band.
  */
 export function PageHero(
-  { eyebrow, title, lead, children, author, updated, labels, class: className }: PageHeroProps,
+  { eyebrow, title, lead, children, author, updated, note, labels, class: className }:
+    PageHeroProps,
 ): JSX.Element {
   const format = useFormat()
   if (updated !== undefined && !isCalendarDay(updated)) {
     throw new Error(`PageHero: updated must be a calendar day, YYYY-MM-DD, got "${updated}"`)
   }
-  const words = { ...PAGE_HERO_LABELS, ...labels }
+  const words = useLabels("PageHero", PAGE_HERO_LABELS, labels)
   return (
     <div class={cn("border-b border-subtle", className)} data-e2e="page-hero">
       <div class="mx-auto flex w-full max-w-6xl flex-col gap-4 px-4 py-12 sm:px-6 lg:px-8 lg:py-16">
@@ -95,28 +106,40 @@ export function PageHero(
         </h1>
         {lead && <p class="max-w-2xl text-lg text-muted text-pretty lg:text-xl">{lead}</p>}
         {children}
-        {(author || updated) && (
-          <p class="flex flex-wrap gap-x-4 gap-y-1 text-sm text-muted" data-e2e="page-hero-meta">
-            {author && (
-              <span>
-                {words.by} {author.href
-                  ? (
-                    <a
-                      class={AUTHOR_LINK}
-                      href={author.href}
-                    >
-                      {author.name}
-                    </a>
-                  )
-                  : <span class="font-medium text-foreground">{author.name}</span>}
-              </span>
+        {(author || updated || note) && (
+          <div class="flex flex-col gap-1">
+            {(author || updated) && (
+              <p
+                class="flex flex-wrap gap-x-4 gap-y-1 text-sm text-muted"
+                data-e2e="page-hero-meta"
+              >
+                {author && (
+                  <span>
+                    {words.by} {author.href
+                      ? (
+                        <a
+                          class={AUTHOR_LINK}
+                          href={author.href}
+                        >
+                          {author.name}
+                        </a>
+                      )
+                      : <span class="font-medium text-foreground">{author.name}</span>}
+                  </span>
+                )}
+                {updated && (
+                  <span>
+                    {words.updated} <time dateTime={updated}>{format.utc().date(updated)}</time>
+                  </span>
+                )}
+              </p>
             )}
-            {updated && (
-              <span>
-                {words.updated} <time dateTime={updated}>{format.utc().date(updated)}</time>
-              </span>
+            {note && (
+              <p class="max-w-2xl text-sm text-muted text-pretty" data-e2e="page-hero-note">
+                {note}
+              </p>
             )}
-          </p>
+          </div>
         )}
       </div>
     </div>

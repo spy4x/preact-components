@@ -101,7 +101,7 @@ describe("LineChart", () => {
       "M1000.0,0.0 L1000.0,0.0",
     ])
     expect(html).toMatch(/<path d="M333.3,500.0 L1000.0,0.0"[^>]*stroke-dasharray="2 3"/)
-    expect(html).toContain("Dashed grey segments bridge missing values.")
+    expect(html).toContain("Dashed grey lines mark gaps in the data.")
   })
 
   it("treats a zero as missing when asked to ignore zeroes", () => {
@@ -188,7 +188,47 @@ describe("LineChart", () => {
 
     expect(html).toMatch(/<path d="[^"]+"[^>]*stroke-dasharray="6 4"/)
     expect(count(html, 'stroke-dasharray="6 4"')).toBe(1)
-    expect(html).toContain("inline-block w-3 border-t-2 border-dashed")
+    expect(html).toContain("inline-block w-6 border-t-2 border-dashed")
+  })
+
+  it("draws a dashed series' legend swatch 24 px wide so its dash shows, a solid one 12 px", () => {
+    const series: LineSeries[] = [twoPoints[0], {
+      ...twoPoints[0],
+      name: "Last year",
+      dashed: true,
+    }]
+    const swatches = [
+      ...render(<LineChart series={series} />).matchAll(
+        /<span class="(inline-block [^"]*border-t-2[^"]*)"/g,
+      ),
+    ].map(([, classes]) => classes)
+
+    expect(swatches).toEqual([
+      "inline-block w-3 border-t-2",
+      "inline-block w-6 border-t-2 border-dashed",
+    ])
+  })
+
+  it("draws a point marked hollow as an unfilled ring in the series colour, with the same tooltip", () => {
+    const series: LineSeries[] = [{
+      name: "Runs",
+      color: "teal",
+      points: [{ x: "Jan", y: 0 }, { x: "Feb", y: 10, hollow: true }],
+    }]
+    const html = render(<LineChart series={series} />)
+    const dots = [
+      ...html.matchAll(/<span class="([^"]*)" style="([^"]*)" title="([^"]*)"([^>]*)>/g),
+    ]
+      .map(([, classes, style, title, rest]) => ({ classes, style, title, rest }))
+
+    expect(dots.map((dot) => dot.title)).toEqual(["Runs Jan: 0", "Runs Feb: 10"])
+    expect(dots[0].style).toContain("background:teal")
+    expect(dots[0].classes).not.toContain("border-2")
+    expect(dots[0].rest).not.toContain("data-chart-hollow")
+    expect(dots[1].style).toContain("border-color:teal")
+    expect(dots[1].style).toContain("background:none")
+    expect(dots[1].classes).toContain("border-2")
+    expect(dots[1].rest).toContain("data-chart-hollow")
   })
 
   it("draws the reference line inside the Y domain even above every value", () => {
@@ -312,5 +352,53 @@ describe("LineChart", () => {
 
     expect(html).toMatch(/^<div class="[^"]*\bgap-4\b/)
     expect(html).not.toMatch(/^<div class="[^"]*\bgap-2\b/)
+  })
+
+  it("prints every point in a hidden table, one column per series, with a dash for a gap", () => {
+    const html = render(
+      <LineChart
+        ariaLabel="Notes each day"
+        xLabel="Day"
+        series={[
+          { name: "This period", points: [{ x: "Mon", y: 3 }, { x: "Tue", y: null }] },
+          { name: "Previous", dashed: true, points: [{ x: "Mon", y: 1 }, { x: "Tue", y: 2 }] },
+        ]}
+      />,
+    )
+    expect(html).toContain(
+      '<div class="sr-only" data-chart-table><table><caption>Notes each day</caption>',
+    )
+    expect(html).toContain(
+      '<th scope="col">Day</th><th scope="col">This period</th><th scope="col">Previous</th>',
+    )
+    expect(html).toContain('<tr><th scope="row">Mon</th><td>3</td><td>1</td></tr>')
+    expect(html).toContain('<tr><th scope="row">Tue</th><td>–</td><td>2</td></tr>')
+  })
+
+  it("prints the hidden table's values through yFormat", () => {
+    const html = render(
+      <LineChart
+        yFormat={(value) => `${value} km`}
+        series={[{ name: "Run", points: [{ x: "Mon", y: 3 }] }]}
+      />,
+    )
+    expect(html).toContain('<tr><th scope="row">Mon</th><td>3 km</td></tr>')
+  })
+
+  it("prints a zero as missing in the hidden table when the chart ignores zeroes", () => {
+    const html = render(
+      <LineChart
+        ignoreZeroes
+        series={[{ name: "Reading", points: [{ x: "Mon", y: 0 }, { x: "Tue", y: 4 }] }]}
+      />,
+    )
+    expect(html).toContain('<tr><th scope="row">Mon</th><td>–</td></tr>')
+  })
+
+  it("leaves the hidden table out when asked to", () => {
+    const html = render(
+      <LineChart dataTable={false} series={[{ name: "A", points: [{ x: "a", y: 1 }] }]} />,
+    )
+    expect(html).not.toContain("<table")
   })
 })

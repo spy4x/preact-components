@@ -1,13 +1,10 @@
 # Pre-publish checks
 
 A JSR version cannot be changed or deleted once it is published — a name that should not have gone
-out stays out there forever. [Issue #237](https://github.com/spy4x/preact-components/issues/237)
-removed every private application name, path and file list from the files each package publishes
-(the icon package's README kept one file list until
-[issue #112](https://github.com/spy4x/preact-components/issues/112) removed it), and this page is
-#237's second box: a check re-run before every release tag is pushed, rather than
-a one-time cleanup that could silently regress. It is step 3 of the release steps in
-[`publishing.md`](./publishing.md).
+out stays out there forever. This check runs before every release tag is pushed, so a private
+application name that slipped into a published file is caught before it ships. Known mentions not
+yet removed are tracked in [#859](https://github.com/spy4x/preact-components/issues/859). It is
+step 3 of the release steps in [`publishing.md`](./publishing.md).
 
 ## What it checks
 
@@ -27,9 +24,10 @@ deno task private-names /path/to/names.txt
 ```
 
 The script never embeds a name anywhere in this repository. The names file itself is not tracked
-here either — keep it in a file you keep outside the repository, one name per line, and point the
-task at it. A short name can still match an unrelated word that happens to share it — the script
-narrows candidates, it does not replace reading each match.
+here either: it is `private-names.txt` in the owner's private memory repository (global agent
+rules, "Memory"), one name per line. Pass its path to the task. A short name can still match an
+unrelated word that happens to share it — the script narrows candidates, it does not replace
+reading each match.
 
 ## When to run it
 

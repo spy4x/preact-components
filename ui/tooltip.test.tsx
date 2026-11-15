@@ -114,9 +114,11 @@ describe("Tooltip", () => {
     // the pointer arrives. The padding belongs to the surface, so the two boxes touch.
     const bridges: Record<TooltipPlacement, string> = {
       top: "pb-2",
-      right: "pl-2",
+      end: "ps-2",
       bottom: "pt-2",
-      left: "pr-2",
+      start: "pe-2",
+      right: "ps-2",
+      left: "pe-2",
     }
     for (const [placement, bridge] of Object.entries(bridges)) {
       const html = render(
@@ -125,7 +127,7 @@ describe("Tooltip", () => {
       const surface = tooltipSurface(html)
 
       expect(surface, `${placement} bridges the gap with ${bridge}`).toContain(bridge)
-      expect(surface.match(/class="([^"]*)"/)?.[1]).not.toMatch(/\bm[btlr]-\d/)
+      expect(surface.match(/class="([^"]*)"/)?.[1]).not.toMatch(/\bm[btlrse]-\d/)
     }
   })
 
@@ -178,17 +180,25 @@ describe("Tooltip", () => {
   it("anchors above the trigger by default", () => {
     const html = render(<Tooltip label="Retry" content="Retries">x</Tooltip>)
 
-    expect(html).toContain("bottom-full left-1/2")
-    expect(html).toContain("-translate-x-1/2")
+    expect(html).toContain(
+      "bottom-full start-1/2 -translate-x-1/2 [&amp;:dir(rtl)]:translate-x-1/2",
+    )
   })
 
-  it("anchors to each requested side", () => {
-    expect(render(<Tooltip label="a" content="c" placement="right">x</Tooltip>))
-      .toContain("top-1/2 left-full -translate-y-1/2 pl-2")
+  it("anchors to each requested side, by the line's start and end", () => {
+    const end = "top-1/2 start-full -translate-y-1/2 ps-2"
+    const start = "top-1/2 end-full -translate-y-1/2 pe-2"
+    expect(render(<Tooltip label="a" content="c" placement="end">x</Tooltip>)).toContain(end)
     expect(render(<Tooltip label="a" content="c" placement="bottom">x</Tooltip>))
-      .toContain("top-full left-1/2 -translate-x-1/2 pt-2")
+      .toContain("top-full start-1/2 -translate-x-1/2 [&amp;:dir(rtl)]:translate-x-1/2 pt-2")
+    expect(render(<Tooltip label="a" content="c" placement="start">x</Tooltip>)).toContain(start)
+  })
+
+  it("treats right and left as the old names of end and start", () => {
+    expect(render(<Tooltip label="a" content="c" placement="right">x</Tooltip>))
+      .toContain("top-1/2 start-full -translate-y-1/2 ps-2")
     expect(render(<Tooltip label="a" content="c" placement="left">x</Tooltip>))
-      .toContain("top-1/2 right-full -translate-y-1/2 pr-2")
+      .toContain("top-1/2 end-full -translate-y-1/2 pe-2")
   })
 
   it("positions the wrapper so the surface has an anchor", () => {

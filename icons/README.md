@@ -1,6 +1,7 @@
 # `@spy4x/preact-icons`
 
-Merged icon set. 124 glyphs, one named export per glyph, no runtime dependencies beyond Preact.
+Merged icon set. 126 exports: 125 glyphs, one named export each, plus `IconLoading`, an alias of
+`IconSpinner`. No runtime dependencies beyond Preact.
 
 ```tsx
 import { IconSearch, IconTrashBin } from "@spy4x/preact-icons"
@@ -8,6 +9,33 @@ import { IconSearch, IconTrashBin } from "@spy4x/preact-icons"
 <IconSearch />
 <IconTrashBin class="size-4 text-red-500" />
 ```
+
+## Registry: icons by id
+
+`@spy4x/preact-icons/registry` is for an app that stores which icon a person chose, such as a
+category's. A separate entry, so an app without a picker never loads these glyphs.
+
+- `ICONS` maps an id to `{ Icon, name, aliases }`: the component, an English name after what is
+  drawn ("Lightning bolt") and lower-case English aliases for what it is used for
+  ("electricity"). An app stores the id. A released id never changes or disappears.
+- `IconName` is the union of the ids; `CATEGORY_ICONS` lists the 42 ids of the category set, in
+  the order a picker shows them (grouped by meaning: home and bills, food, getting around,
+  shopping, health and family, leisure, money and work, other).
+- Every registry glyph is Lucide at stroke 2 (`lucide-static@1.47.0`), so a grid of them is one
+  family. Three are the main entry's own Lucide glyphs (`IconWallet`, `IconSprout`, `IconBank`); the other 39 are
+  drawn in `lucide.tsx` and reached only through `ICONS`, because several share a name with a glyph
+  of another family here (`IconCreditCard` is Heroicons v1's). The main entry did not change.
+- `IconPicker` in `@spy4x/preact-ui` shows them as a searchable grid, named in nine languages.
+
+```tsx
+import { ICONS, type IconName } from "@spy4x/preact-icons/registry"
+
+const { Icon, name } = ICONS[category.icon as IconName]
+<Icon aria-label={name} />
+```
+
+`registry.test.ts` holds every `CATEGORY_ICONS` id to `ICONS`, every glyph to stroke 2 and no
+mirror, and every drawing in `lucide.tsx` to a JSDoc naming `lucide-static@1.47.0`.
 
 ## Contract
 
@@ -53,6 +81,27 @@ export interface IconProps {
   ```
 - The icons are server-renderable: nothing touches `document` or `window`.
 
+## Right to left
+
+The glyphs that point along the reading direction flip left to right when the page, or the nearest
+ancestor, is `dir="rtl"`. An app passes nothing: the glyph carries
+`[&:dir(rtl)]:[transform:scaleX(-1)]` whatever `class` it gets. `:dir(rtl)` reads the nearest
+`dir`, so a glyph inside a `dir="ltr"` block of an Arabic page (a code sample, an English quote)
+stays as drawn; Tailwind's `rtl:` variant would flip it.
+
+- **Mirror:** `IconChevronLeft`, `IconChevronRight`, `IconArrowLeft`, `IconArrowRight`,
+  `IconArrowUturnLeft`, `IconArrowUturnRight` (undo and redo), `IconLogout`, `IconList`,
+  `IconExternal`, `IconExternalLink` and `IconArrowUpRight`.
+- **Never mirror:** every other glyph, among them the check, the x-mark, search, the globe, play,
+  the up and down arrows, refresh, the clock and the brand marks.
+
+So `IconChevronLeft` means "back" in both directions: on an Arabic page it points right. The flip is
+a `transform`, not Tailwind's `-scale-x-100`, so a caller's `scale-*` (a hover grow) keeps it. A
+caller's `rotate-*` turns the flipped drawing: a disclosure chevron that turns `rotate-90` when open
+needs `[&:dir(rtl)]:-rotate-90` too, or it points up on a right-to-left page.
+
+A new glyph goes in one of the two lists in `+index.test.ts`, or the suite fails.
+
 ## Style families
 
 Every glyph is a published pack's own drawing, copied exactly (see "Provenance" below), but the
@@ -61,12 +110,12 @@ surface; mixing them is visible at small sizes.
 
 | Family                         | Count | Notes                                                                                                                                                                        |
 | ------------------------------ | ----- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Heroicons (v1 or v2)           | 73    | v1 outlines are `stroke-2`, v2 outlines `stroke-1.5` (6 are rendered at `stroke-2` and 1, `IconMinus`, at `stroke 1.8`); pack and version are on each glyph's own JSDoc line |
+| Heroicons (v1 or v2)           | 74    | v1 outlines are `stroke-2`, v2 outlines `stroke-1.5` (7 are rendered at `stroke-2` and 1, `IconMinus`, at `stroke 1.8`); pack and version are on each glyph's own JSDoc line |
 | Feather and/or Lucide outlines | 27    | round caps and joins; 18 are rendered at `stroke-2`, 8 at `stroke 1.75` and 1 at `stroke 2.5`; which pack is on each glyph's own JSDoc line                                  |
 | Brand marks (trademarked)      | 6     | GitHub, Telegram, Upwork, Twitter (drawn as X's current mark) and YouTube are filled marks from Simple Icons; LinkedIn is Feather's outline — see "Provenance"               |
 | Ported                         | 18    | glyphs from the ported set, bucketed here by source; all 18 are pack drawings too — see the split below                                                                      |
 
-The table is a partition of all 124 glyphs: every row above is disjoint from every other, the
+The table is a partition of all 125 glyphs: every row above is disjoint from every other, the
 Ported row's 18 included.
 
 The Ported row is a family, not a single weight, and the split below is by rendering: 16 `stroke-2`
@@ -86,9 +135,9 @@ drawn from — so the exact family of any one glyph is one grep away:
 grep -B1 'export function IconSearch' +index.tsx
 ```
 
-One known wart, kept rather than redrawn: `IconLoading` (Lucide's eight-spoke `loader`) and
-`IconSpinner` (Lucide's `loader-circle` arc) are both spinners. They are different drawings, so both
-survived the body dedupe.
+There is one spinner, `IconSpinner` (Lucide's `loader-circle` arc). `IconLoading` is the same
+component under the name older apps import; it drew Lucide's eight-spoke `loader` until the library
+settled on one spinner, which `Button` and `LoadingSpinner` draw too.
 
 ## Provenance
 
@@ -100,7 +149,8 @@ Heroicons; a few may have come from an image search, with no known licence. The 
 must come from a FOSS pack, so every glyph that matched no pack exactly was replaced by a pack's own
 drawing, under the same export name and props.
 
-`provenance.ts`, in this package's own source repository, compares every exported glyph's geometry
+`provenance.ts`, in this package's own source repository, compares every exported glyph's geometry,
+and the registry's 39 drawings in `lucide.tsx`,
 against the published Heroicons v1, Heroicons v2, Feather, Lucide and Simple Icons packs,
 normalising path and shape data so formatting differences (spacing, number precision, attribute
 order) do not hide a real match. Its own JSDoc explains the normalisation and its limits in full. It
@@ -114,13 +164,14 @@ git clone https://github.com/spy4x/preact-components && cd preact-components
 deno task --cwd icons provenance
 ```
 
-Of the 124 glyphs, **all 124 match a pack's glyph exactly**: Heroicons v1 (`heroicons@1.0.6`),
+Of the 125 glyphs, **all 125 match a pack's glyph exactly**: Heroicons v1 (`heroicons@1.0.6`),
 Heroicons v2 (`heroicons@2.2.0`), Feather (`feather-icons@4.29.2`), Lucide (`lucide-static@1.47.0`)
-or Simple Icons (`simple-icons@16.33.0`). Each glyph's JSDoc line names its pack, and for the 32
+or Simple Icons (`simple-icons@16.33.0`). Each glyph's JSDoc line names its pack, and for the 31
 replaced in #233 also the upstream file name and version.
-[`THIRD_PARTY_NOTICES.md`](./THIRD_PARTY_NOTICES.md) carries the licence text for all five packs.
+[`THIRD_PARTY_NOTICES.md`](./THIRD_PARTY_NOTICES.md) carries the licence text for all five packs. The registry's 39 drawings in `lucide.tsx` all match Lucide
+exactly too.
 
-Five glyphs were added after the merge, straight from a pack rather than from a source app:
+Seven glyphs were added after the merge, straight from a pack rather than from a source app:
 `IconViewColumns` is Heroicons v2's `view-columns` (24, outline), for a board view toggle
 ([issue #381](https://github.com/spy4x/preact-components/issues/381)); `IconCopy` is Feather's
 `copy` and `IconPen` Feather's `edit-2`, a plain pen
@@ -129,7 +180,13 @@ so they sit next to `IconStar`, Feather's `star`, at the same `stroke-2` weight.
 Heroicons v2's `exclamation-circle` (24, outline), the glyph of `Notice`'s danger tone
 ([issue #552](https://github.com/spy4x/preact-components/issues/552)), drawn at `stroke-1.5` like
 `IconInformationCircle` beside it. `IconSprout` is Lucide's `sprout`, the glyph a brand mark tile
-(`BrandMark` in `@spy4x/preact-ui`) can hold (spy4x/template#444).
+(`BrandMark` in `@spy4x/preact-ui`) can hold (spy4x/template#444). `IconAdjustmentsHorizontal` is
+Heroicons v2's `adjustments-horizontal` (24, outline), drawn at `stroke-2`, the mark of an
+interactive figure (`Explorable` in `@spy4x/preact-ui`,
+[issue #958](https://github.com/spy4x/preact-components/issues/958)). `IconBank` is Lucide's
+`landmark`, a bank building for money accounts
+([issue #1207](https://github.com/spy4x/preact-components/issues/1207)); the registry's `landmark`
+id draws it too.
 
 ### Brand marks
 
@@ -168,7 +225,6 @@ matched no pack ("none") or matched one only nearly ("near": same shape, differe
 | `IconImage`        | none   | Heroicons v1 `photograph`                        |
 | `IconLens`         | none   | Heroicons v1 `zoom-in`                           |
 | `IconLinkedIn`     | none   | Feather `linkedin`                               |
-| `IconLoading`      | none   | Lucide `loader`                                  |
 | `IconMoon`         | near   | Heroicons v2 `moon`                              |
 | `IconPackage`      | none   | Heroicons v1 `cube`                              |
 | `IconQuote`        | none   | Lucide `quote`                                   |
@@ -198,7 +254,7 @@ the ported set.
 
 `+index.test.ts` calls each export directly and inspects the returned vnode — no DOM, no renderer,
 no extra dependency. It asserts that every export renders, that no two exports ship the same
-glyph, that the export count matches the total documented above, that a `class` prop replaces the
+glyph except a listed alias, that the export count matches the total documented above, that a `class` prop replaces the
 default size rather than adding to it, that the animated icons stay animated, and that every icon
 is hidden from screen readers without a name and a labelled image with `aria-label` or `title`.
 

@@ -10,8 +10,10 @@
 import { cn } from "@spy4x/preact-cn"
 import { IconDownload, IconShare } from "@spy4x/preact-icons"
 import { Button } from "@spy4x/preact-ui/button"
+import { useFocusFallback } from "@spy4x/preact-ui/use-focus-after-removal"
 import type { JSX } from "preact"
-import { useLayoutEffect, useRef, useState } from "preact/hooks"
+import { useRef, useState } from "preact/hooks"
+import { useLabels } from "@spy4x/preact-ui/i18n"
 
 /** Every word {@link InstallPrompt} shows, each with an English default. */
 export interface InstallPromptLabels {
@@ -42,7 +44,7 @@ export const DEFAULT_INSTALL_PROMPT_LABELS: InstallPromptLabels = {
   iosAfter: "then Add to Home Screen.",
   install: "Install",
   dismiss: "Not now",
-  failed: "That did not work. Try again.",
+  failed: "That didn't work. Try again.",
 }
 
 export interface InstallPromptProps {
@@ -81,38 +83,13 @@ export interface InstallPromptProps {
 export function InstallPrompt(
   { mode, onInstall, onDismiss, labels, returnFocus, class: className }: InstallPromptProps,
 ): JSX.Element | null {
-  const words = { ...DEFAULT_INSTALL_PROMPT_LABELS, ...labels }
+  const words = useLabels("InstallPrompt", DEFAULT_INSTALL_PROMPT_LABELS, labels)
   const [busy, setBusy] = useState(false)
   const [failed, setFailed] = useState(false)
   const card = useRef<HTMLElement>(null)
-  const target = useRef(returnFocus)
-  target.current = returnFocus
-  /** Set when the card is leaving with focus inside, read once it has left. */
-  const moveFocus = useRef(false)
   const shown = mode === "prompt" || mode === "ios"
-
-  // Read before the card leaves the page: once it is gone, focus has already fallen to the body.
-  // A server render has no document.
-  if (!shown && card.current?.contains(globalThis.document?.activeElement ?? null)) {
-    moveFocus.current = true
-  }
-
-  // A layout effect runs in the same commit that removes the card, so focus never rests on the
-  // body in between; a plain effect waits for the next frame.
-  useLayoutEffect(() => {
-    if (moveFocus.current) {
-      moveFocus.current = false
-      target.current?.()?.focus()
-    }
-    // The caller may unmount the card instead of changing `mode`. Effect cleanups run while its
-    // markup is still in the page, so focus can still be asked about there.
-    const element = card.current
-    return () => {
-      if (element?.isConnected && element.contains(element.ownerDocument.activeElement)) {
-        target.current?.()?.focus()
-      }
-    }
-  }, [shown])
+  // The card leaving, by `mode` or by the caller unmounting it, hands focus to `returnFocus`.
+  useFocusFallback(card, () => returnFocus?.())
 
   if (!shown) return null
 

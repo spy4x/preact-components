@@ -49,7 +49,9 @@
 
 import { describedImages, Lightbox, type LightboxImage } from "./lightbox.tsx"
 import type { JSX } from "preact"
-import { useEffect, useRef, useState } from "preact/hooks"
+import { useSignal } from "@preact/signals"
+import { useEffect, useRef } from "preact/hooks"
+import { useLabels } from "./i18n.tsx"
 
 /**
  * The view of a clicked element this component needs.
@@ -132,7 +134,7 @@ function openedAlt(
 export function resolveImage(
   target: ImageElementLike | null,
   imageSelector = "img",
-  fallbackAlt = "Image",
+  fallbackAlt: string = "Image",
 ): LightboxImage | null {
   if (!target || !target.matches(imageSelector)) return null
 
@@ -152,6 +154,20 @@ export function resolveImage(
 
 /** Attribute marking an image this component has made zoomable, so cleanup knows what it owns. */
 const MARKER = "data-lightbox-zoom"
+
+/**
+ * The components' focus ring, in `Button`'s colour, for an image that becomes a Tab stop. It is an
+ * outline drawn just inside the image's edge: a frame such as `WindowFrame` clips anything outside
+ * the image, and an inset ring would be painted under the picture.
+ */
+const FOCUS_RING = [
+  "focus-visible:outline-2",
+  "focus-visible:-outline-offset-2",
+  "focus-visible:outline-(--color-ring)",
+]
+
+/** Attribute listing the {@link FOCUS_RING} utilities this component added, for cleanup. */
+const RING_MARKER = "data-lightbox-ring"
 
 /** What {@link markZoomable} puts on an image, beyond the marker itself. */
 interface ZoomableMarks {
@@ -197,6 +213,9 @@ function markZoomable(container: Element, marks: ZoomableMarks): void {
     image.setAttribute("tabindex", "0")
     image.setAttribute("aria-label", `${marks.zoomLabel}: ${alt}`)
     if (marks.zoomCursor) image.style.cursor = "zoom-in"
+    const added = FOCUS_RING.filter((utility) => !image.classList.contains(utility))
+    image.classList.add(...added)
+    image.setAttribute(RING_MARKER, added.join(" "))
   }
 }
 
@@ -204,7 +223,10 @@ function markZoomable(container: Element, marks: ZoomableMarks): void {
 function unmarkZoomable(container: Element): void {
   for (const element of container.querySelectorAll(`[${MARKER}]`)) {
     const image = element as HTMLElement
-    for (const attribute of [MARKER, "role", "tabindex", "aria-label"]) {
+    const added = image.getAttribute(RING_MARKER)?.split(" ").filter(Boolean) ?? []
+    image.classList.remove(...added)
+    if (image.classList.length === 0) image.removeAttribute("class")
+    for (const attribute of [MARKER, RING_MARKER, "role", "tabindex", "aria-label"]) {
       image.removeAttribute(attribute)
     }
     image.style.removeProperty("cursor")
@@ -236,9 +258,8 @@ export interface ImageSequence {
  * already substituted it for a missing `alt`, but a caller who passes `fallbackAlt=""` can produce a
  * resolved image whose `alt` is still empty, and that image must be missing from this function's
  * `images` at the same position it will be missing from `Lightbox`'s. Filtering afterward, in the
- * caller, would have left the two disagreeing about where a later image landed — measured in review:
- * an earlier version filtered nowhere, and clicking a described image that came after an undescribed
- * one opened a different image than the one that was clicked.
+ * caller, would leave the two disagreeing about where a later image lands, and a click on a
+ * described image after an undescribed one would open a different image.
  *
  * @param elements Every element the container's `imageSelector` currently matches, in DOM order.
  * @param target The element that was clicked or activated with the keyboard.
@@ -253,7 +274,7 @@ export function collectSequence(
   elements: readonly ImageElementLike[],
   target: ImageElementLike | null,
   imageSelector = "img",
-  fallbackAlt = "Image",
+  fallbackAlt: string = "Image",
 ): ImageSequence {
   const resolved: Array<{ element: ImageElementLike; image: LightboxImage }> = []
   for (const element of elements) {
@@ -308,6 +329,16 @@ export interface ZoomableImagesProps {
   class?: string
 }
 
+/** The English words of `ZoomableImages`, each one a prop of its own. */
+const ZOOMABLE_IMAGES_LABELS: Required<
+  Pick<ZoomableImagesProps, "fallbackAlt" | "zoomLabel" | "label" | "closeLabel">
+> = {
+  fallbackAlt: "Image",
+  zoomLabel: "Zoom",
+  label: "Image viewer",
+  closeLabel: "Close",
+}
+
 /**
  * Zoomable images inside a container, opening the shared `Lightbox`.
  *
@@ -320,20 +351,30 @@ export function ZoomableImages(
   {
     containerSelector = "[data-lightbox]",
     imageSelector = "img",
-    fallbackAlt = "Image",
+    fallbackAlt: fallbackAltProp,
     zoomCursor = true,
-    zoomLabel = "Zoom",
-    label = "Image viewer",
-    closeLabel = "Close",
+    zoomLabel: zoomLabelProp,
+    label: labelProp,
+    closeLabel: closeLabelProp,
     previousLabel,
     nextLabel,
     onOpen,
     class: className,
   }: ZoomableImagesProps,
 ): JSX.Element {
-  const [sequence, setSequence] = useState<LightboxImage[]>([])
-  const [index, setIndex] = useState(0)
-  const [open, setOpen] = useState(false)
+  const { fallbackAlt, zoomLabel, label, closeLabel } = useLabels(
+    "ZoomableImages",
+    ZOOMABLE_IMAGES_LABELS,
+    {
+      fallbackAlt: fallbackAltProp,
+      zoomLabel: zoomLabelProp,
+      label: labelProp,
+      closeLabel: closeLabelProp,
+    },
+  )
+  const sequence = useSignal<LightboxImage[]>([])
+  const index = useSignal(0)
+  const open = useSignal(false)
   // Read at open time rather than listed as a dependency: an inline arrow is a new function on
   // every parent render, and the effect below would otherwise unmark and re-mark every image each
   // time, taking focus off the image a keyboard reader is on.
@@ -382,16 +423,13 @@ export function ZoomableImages(
         ...container.querySelectorAll(imageSelector),
       ] as unknown as ImageElementLike[]
       const collected = collectSequence(elements, target, imageSelector, fallbackAlt)
-      // Kept as a second guard rather than trusted as unreachable: `resolved.alt` above and
-      // `collectSequence`'s own filtering both go through `zoomableAlt`, so today the two cannot
-      // disagree — but they did once, when `fallbackAlt` was trimmed in one place and not the
-      // other, and a whitespace `fallbackAlt` reached this branch with `collected.index === -1`,
-      // opening whatever sat at position 0 instead of refusing. This is what keeps that class of
-      // mismatch from reopening the wrong-image bug even if the two decisions drift apart again.
+      // A second guard: `resolved.alt` above and `collectSequence`'s own filtering both go through
+      // `zoomableAlt`, so they agree, but if the two decisions ever drift apart, an index of `-1`
+      // refuses to open rather than opening whatever sits at position 0.
       if (collected.index < 0) return false
-      setSequence(collected.images)
-      setIndex(collected.index)
-      setOpen(true)
+      sequence.value = collected.images
+      index.value = collected.index
+      open.value = true
       latestOnOpen.current?.(resolved)
       return true
     }
@@ -415,11 +453,11 @@ export function ZoomableImages(
 
   return (
     <Lightbox
-      images={sequence}
-      index={index}
-      open={open}
-      onClose={() => setOpen(false)}
-      onIndexChange={setIndex}
+      images={sequence.value}
+      index={index.value}
+      open={open.value}
+      onClose={() => open.value = false}
+      onIndexChange={(next) => index.value = next}
       label={label}
       closeLabel={closeLabel}
       previousLabel={previousLabel}

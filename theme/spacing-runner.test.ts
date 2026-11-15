@@ -287,6 +287,44 @@ describe("registerSpacingTests", () => {
     )
   })
 
+  it("registers no direction test unless the app asks for one", async () => {
+    const { test, tests } = collector()
+    const fs = memoryFs({ "/repo/apps/app.tsx": `export const a = <div class="ml-2" />` })
+    registerSpacingTests({ test, root: ROOT, directories: ["apps"], fs })
+    expect(tests.map((t) => t.name)).toEqual(["every spacing class in apps is on the scale"])
+    await tests[0].run()
+  })
+
+  it("with logicalDirection, rejects every class that names a physical side", async () => {
+    const { test, tests } = collector()
+    const fs = memoryFs({
+      "/repo/apps/app.tsx": `export const a = <div class="ms-2 text-start" />`,
+      "/repo/apps/menu.tsx": `export const m = <div class="ml-2 rtl:mr-2 text-left" />`,
+    })
+    registerSpacingTests({ test, root: ROOT, directories: ["apps"], fs, logicalDirection: true })
+    expect(tests.map((t) => t.name)).toEqual([
+      "every spacing class in apps is on the scale",
+      "every class in apps follows the reading direction",
+    ])
+    await tests[0].run()
+    const error = await Promise.resolve().then(tests[1].run).then(() => null, (e: Error) => e)
+    expect(error?.message.split("\n")).toEqual([
+      "Physical sides in 2 place(s):",
+      `apps/menu.tsx:1:30 ml-2 — ml is a physical side, which does not flip under dir="rtl"; use ms-2`,
+      `apps/menu.tsx:1:44 text-left — text-left is a physical side, which does not flip under ` +
+      `dir="rtl"; use text-start`,
+    ])
+  })
+
+  it("with logicalDirection, passes a tree of logical classes", async () => {
+    const { test, tests } = collector()
+    const fs = memoryFs({
+      "/repo/apps/app.tsx": `export const a = <div class="ms-2 pe-4 end-0" />`,
+    })
+    registerSpacingTests({ test, root: ROOT, directories: ["apps"], fs, logicalDirection: true })
+    await tests[1].run()
+  })
+
   it("reads the real file system when no other is given", async () => {
     const { test, tests } = collector()
     const root = new URL("../", import.meta.url)

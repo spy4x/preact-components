@@ -2,6 +2,7 @@ import { cn } from "@spy4x/preact-cn"
 import { IconCheck, IconMinus, IconXMark } from "@spy4x/preact-icons"
 import type { ComponentChildren, JSX } from "preact"
 import { useId } from "preact/hooks"
+import { useLabels, useT } from "./i18n.tsx"
 
 /** How far a product covers one capability. */
 export type ComparisonValue = "yes" | "partial" | "no"
@@ -76,7 +77,10 @@ export interface ComparisonTableProps {
   method: ComponentChildren
   /** Who the caller's product is not for. Omitted, no fit paragraph is drawn. */
   fit?: ComponentChildren
-  /** BCP 47 locale the date is formatted in. Defaults to `"en"`. */
+  /**
+   * BCP 47 locale the date is formatted in. Defaults to the language of the nearest `I18nContext`,
+   * which is `"en"` without a provider.
+   */
   locale?: string
   /**
    * Time zone the date is formatted in. Defaults to `"UTC"`, so the server and the browser print
@@ -112,23 +116,25 @@ function ValueMark(
 /** The highlight of the caller's own column, header and body alike. */
 const OURS = "bg-selected-soft"
 /**
- * A cell of the first column, held in place while the rest scrolls under it. Its right edge is
+ * A cell of the first column, held in place while the rest scrolls under it. Its end edge is
  * drawn, so a column partly scrolled under it reads as tucked beneath, not as a gap.
  */
-const STICKY = "sticky left-0 z-10 border-r bg-surface text-left"
+const STICKY = "sticky start-0 z-10 border-e bg-surface text-start"
 const CELL = "border-b border-subtle px-2 py-3 sm:px-4"
 /**
- * A soft shadow inside the scrolling box's right edge, telling a reader more of the table lies that
+ * A soft shadow inside the scrolling box's end edge, telling a reader more of the table lies that
  * way. It is a box shadow, not a background image, so a contrast checker still reads every cell's
- * text against a plain ground.
+ * text against a plain ground. A shadow has no logical side, so `rtl:` moves it to the left edge.
  */
 const SCROLL_HINT =
-  "shadow-[inset_-1.5rem_0_1rem_-1rem_color-mix(in_oklab,var(--color-foreground)_30%,transparent)]"
+  "shadow-[inset_-1.5rem_0_1rem_-1rem_color-mix(in_oklab,var(--color-foreground)_30%,transparent)] " +
+  "[&:dir(rtl)]:shadow-[inset_1.5rem_0_1rem_-1rem_color-mix(in_oklab,var(--color-foreground)_30%,transparent)]"
 /**
- * A band of the surface colour at the right end of the last column's cells. It scrolls with them,
- * so it covers {@link SCROLL_HINT} once the table reaches its end, and at once when it fits.
+ * A band of the surface colour at the end of the last column's cells. It scrolls with them, so it
+ * covers {@link SCROLL_HINT} once the table reaches its end, and at once when it fits.
  */
-const HINT_COVER = "shadow-[inset_-1.5rem_0_0_0_var(--color-surface)]"
+const HINT_COVER =
+  "shadow-[inset_-1.5rem_0_0_0_var(--color-surface)] [&:dir(rtl)]:shadow-[inset_1.5rem_0_0_0_var(--color-surface)]"
 /**
  * {@link HINT_COVER} for the last product's header. In dark the preset paints the header row its
  * own opaque colour, which already hides the shadow there, and a surface-coloured band would cut a
@@ -163,14 +169,17 @@ export function ComparisonTable(
     checkedOn,
     method,
     fit,
-    locale = "en",
+    locale,
     timeZone = "UTC",
     labels,
     class: className,
   }: ComparisonTableProps,
 ): JSX.Element {
-  const words = { ...defaultComparisonTableLabels, ...labels }
+  const words = useLabels("ComparisonTable", defaultComparisonTableLabels, labels, {
+    checkedOn: ["date"],
+  })
   const titleId = useId()
+  const language = useT().language
   for (const row of rows) {
     if (row.values.length !== products.length) {
       throw new Error(
@@ -179,7 +188,11 @@ export function ComparisonTable(
       )
     }
   }
-  const date = new Intl.DateTimeFormat(locale, { dateStyle: "long", timeZone }).format(checkedOn)
+  // The sentence ends in its own full stop, so a date that ends in one drops it:
+  // "1 октября 2026 г." → "1 октября 2026 г".
+  const date = new Intl.DateTimeFormat(locale ?? language, { dateStyle: "long", timeZone }).format(
+    checkedOn,
+  ).replace(/\.$/, "")
 
   return (
     <div class={cn("flex min-w-0 max-w-full flex-col gap-4", className)}>
@@ -222,7 +235,7 @@ export function ComparisonTable(
                   scope="col"
                   class={cn(
                     CELL,
-                    "min-w-24 text-left align-top font-semibold text-foreground sm:whitespace-nowrap",
+                    "min-w-24 text-start align-top font-semibold text-foreground sm:whitespace-nowrap",
                     index === 0 ? OURS : index === products.length - 1 && HEADER_HINT_COVER,
                   )}
                   data-ours={index === 0 ? "" : undefined}

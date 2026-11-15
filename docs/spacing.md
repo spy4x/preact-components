@@ -27,7 +27,7 @@ Arbitrary values (`p-[13px]`, `gap-(--x)`) and arbitrary properties that set spa
 (`[padding:13px]`) are not allowed. In a stylesheet, Tailwind's `--spacing()` function takes a
 step too. Sizes and positions (`h-12`, `size-9`, `top-5`, `inset-2`, `max-w-6xl`) are not spacing,
 and the scale does not restrict them. Something that is not a step, such as a phone's safe-area
-inset, gets a named utility in `theme/preset.css` (`pb-safe`, `pb-safe-3`, `pl-safe`) instead of an arbitrary
+inset, gets a named utility in `theme/preset.css` (`pb-safe`, `pb-safe-3`, `ps-safe`) instead of an arbitrary
 value in a component.
 
 The scale is exported as `SPACING_STEPS` from `@spy4x/preact-theme/spacing`.

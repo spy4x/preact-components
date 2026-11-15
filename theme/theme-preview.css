@@ -34,6 +34,7 @@
     --color-border-control: oklch(0.872 0.01 258.338);
     --color-border-strong: oklch(0.707 0.022 261.325);
     --color-border-button: oklch(0.551 0.027 264.364);
+    --color-border-frame: transparent;
     --color-foreground: oklch(0.13 0.028 261.692);
     --color-muted-foreground: oklch(0.446 0.03 256.802);
     --color-placeholder: oklch(0.54 0.027 264.364);
@@ -88,6 +89,7 @@
     --color-border-control: oklch(0.872 0.01 258.338);
     --color-border-strong: oklch(0.707 0.022 261.325);
     --color-border-button: oklch(0.551 0.027 264.364);
+    --color-border-frame: transparent;
     --color-foreground: oklch(0.13 0.028 261.692);
     --color-muted-foreground: oklch(0.446 0.03 256.802);
     --color-placeholder: oklch(0.54 0.027 264.364);
@@ -125,6 +127,7 @@
     --color-border-control: oklch(0.446 0.03 256.802);
     --color-border-strong: oklch(0.551 0.027 264.364);
     --color-border-button: var(--color-border-strong);
+    --color-border-frame: var(--color-border-subtle);
     --color-foreground: oklch(0.985 0.002 247.839);
     --color-muted-foreground: oklch(0.75 0.022 261.325);
     --color-placeholder: oklch(0.707 0.022 261.325);

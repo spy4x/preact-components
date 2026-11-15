@@ -249,7 +249,7 @@ function InputButtonDemo() {
     <Stack gap="sm" class="max-w-sm">
       <div class="relative">
         <input
-          class="pc-input pr-12"
+          class="pc-input pe-12"
           type="search"
           name="guide-input-button"
           placeholder="Search users"
@@ -258,7 +258,7 @@ function InputButtonDemo() {
           onInput={(event) => query.value = event.currentTarget.value}
         />
         <button
-          class="btn-input-icon absolute inset-y-0 right-1.5 my-auto"
+          class="btn-input-icon absolute inset-y-0 end-1.5 my-auto"
           type="button"
           title="Search"
           aria-label="Search"
@@ -323,8 +323,8 @@ export const formDemos = {
       "Puts a small square button, such as search or clear, inside the right edge of a text field.",
     wide: false,
     snippet: `<div class="relative">
-  <input class="pc-input pr-12" type="search" placeholder="Search users" />
-  <button class="btn-input-icon absolute inset-y-0 right-1.5 my-auto" type="button" aria-label="Search">
+  <input class="pc-input pe-12" type="search" placeholder="Search users" />
+  <button class="btn-input-icon absolute inset-y-0 end-1.5 my-auto" type="button" aria-label="Search">
     <IconSearch class="size-4" />
   </button>
 </div>`,

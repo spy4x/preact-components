@@ -26,6 +26,21 @@ describe("CopyButton", () => {
     expect(html).not.toContain('aria-label="Copy"')
   })
 
+  it("renders the primary button with its label when asked for the primary look", () => {
+    const html = render(<CopyButton textToCopy="abc" title="Copy results" variant="primary" />)
+
+    expect(html).toContain("bg-accent-900")
+    expect(html).not.toContain("border-control")
+    expect(html).toContain("Copy results")
+  })
+
+  it("stays icon-only without a title, whatever look is asked for", () => {
+    const html = render(<CopyButton textToCopy="abc" variant="primary" />)
+
+    expect(html).toContain("size-9")
+    expect(html).not.toContain("bg-accent-900")
+  })
+
   it("takes a custom label for tooltip and accessible name", () => {
     const html = render(<CopyButton textToCopy="abc" copyLabel="Copy API key" />)
 
@@ -112,25 +127,36 @@ function body(status: CopyStatus, overrides: Partial<CopyButtonBodyProps> = {}) 
   )
 }
 
+/** `IconXMark`'s and `IconCheck`'s drawings, which the failed and copied states show. */
+const CROSS = 'd="M6 18 18 6M6 6l12 12"'
+const CHECK = 'd="m4.5 12.75 6 6 9-13.5"'
+
 describe("CopyButton's confirmation", () => {
   it("shows a cross and announces the failure after a failed copy, never the checkmark", () => {
     const html = body("failed")
 
-    expect(html).toContain('d="M18 6 6 18M6 6l12 12"')
-    expect(html).not.toContain('d="m5 13 4 4L19 7"')
+    expect(html).toContain(CROSS)
+    expect(html).not.toContain(CHECK)
     expect(html).toContain(
-      '<span role="status" aria-live="polite" class="sr-only">Copy failed</span>',
+      `<span role="status" aria-live="polite" class="sr-only">Couldn't copy</span>`,
     )
   })
 
   it("draws the failure cross in the danger colour", () => {
-    expect(body("failed")).toMatch(/<svg class="[^"]*text-danger[^"]*"/)
+    expect(body("failed")).toMatch(/<svg[^>]* class="[^"]*text-danger[^"]*"/)
+  })
+
+  it("draws a failed copy in the primary button's own colour, not the danger colour", () => {
+    const html = body("failed", { title: "Copy results", variant: "primary" })
+
+    expect(html).toContain(CROSS)
+    expect(html).not.toContain("text-danger")
   })
 
   it("shows the checkmark and announces the copy after a copy that worked", () => {
     const html = body("copied")
 
-    expect(html).toContain('d="m5 13 4 4L19 7"')
+    expect(html).toContain(CHECK)
     expect(html).toContain('<span role="status" aria-live="polite" class="sr-only">Copied</span>')
   })
 
@@ -145,7 +171,7 @@ describe("CopyButton's confirmation", () => {
     expect(copied).toMatch(/<\/svg>Copied<\/button>/)
     const failed = body("failed", { title: "Copy number" })
     expect(failed).not.toContain("Copy number")
-    expect(failed).toContain('<span class="text-danger">Copy failed</span></button>')
+    expect(failed).toContain(`<span class="text-danger">Couldn't copy</span></button>`)
   })
 
   it("takes both confirmation words from the caller", () => {

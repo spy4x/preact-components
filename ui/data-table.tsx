@@ -9,7 +9,9 @@ import type { ComponentChildren, JSX } from "preact"
 import { EmptyState } from "./empty-state.tsx"
 import { Stack } from "./layout.tsx"
 import { Pagination } from "./pagination.tsx"
-import { Table } from "./table.tsx"
+import { useRowCursor } from "./row-cursor.ts"
+import { Table, type TableProps } from "./table.tsx"
+import { translate, useT } from "./i18n.tsx"
 
 /** Horizontal alignment of one column's header and cells. Defaults to `"left"`. */
 export type DataTableColumnAlign = "left" | "center" | "right"
@@ -20,10 +22,10 @@ export type DataTableColumnAlign = "left" | "center" | "right"
  * `key` is the identity `toggleSort`/`sortRows` sort by, so it has to be one of `T`'s own string
  * keys, and it is also this column's Preact key. `sortable` and `aria-sort` both live only on this
  * shape — see {@link DataTableDisplayColumn} for the column that has neither. `id?: never` is what
- * makes the two shapes exclusive rather than merely different: without it, a column carrying both
- * `key` and `id` type-checked, was read as a data column by {@link isDataColumn}'s `"key" in
- * column`, and reported `aria-sort` under an `id` a caller had migrated to. `id` itself is never a
- * property this shape uses; the type only exists to reject one a caller left behind.
+ * makes the two shapes exclusive rather than merely different: a column carrying both `key` and
+ * `id` is a type error, rather than a data column (by {@link isDataColumn}'s `"key" in column`)
+ * reporting `aria-sort` under an `id` a caller migrated to. `id` itself is never a property this
+ * shape uses; the type only exists to reject one a caller left behind.
  */
 export interface DataTableDataColumn<T, K extends Extract<keyof T, string>> {
   /** Row field this column reads, and the sort key it toggles when `sortable`. */
@@ -46,11 +48,9 @@ export interface DataTableDataColumn<T, K extends Extract<keyof T, string>> {
  *
  * It is never sortable and never carries `aria-sort`: there is no row field for `sort` to name, so
  * there is nothing for a header press to toggle — `sortable?: never` and `key?: never` make both
- * a compile error rather than a value `DataTable` would have to notice and ignore at runtime. Before
- * they were added, `{ id, header, render, sortable: true }` type-checked and rendered as plain,
- * unclickable text with no error anywhere, and `{ key, id, header, render }` type-checked, was read
- * as a data column, and reported `aria-sort` on an `id` a caller had migrated to — the exact bug
- * this split exists to rule out, still reachable through the types alone.
+ * a compile error rather than a value `DataTable` would have to notice and ignore at runtime. So
+ * `{ id, header, render, sortable: true }` does not type-check, rather than rendering a plain header
+ * that ignores `sortable`, and neither does `{ key, id, header, render }`.
  *
  * `id` is this column's own Preact key, in a namespace the type system now keeps separate from
  * every data column's `key`. What the types do not check, and cannot — both are ordinary runtime
@@ -171,7 +171,7 @@ export interface DataTableBaseProps<T, K extends Extract<keyof T, string>> {
   caption: string
   /** Hides the caption visually (`sr-only`) while keeping it for assistive tech. Defaults to `false`. */
   captionHidden?: boolean
-  /** Shown instead of the body when `rows` is empty. Defaults to `<EmptyState title="No rows" />`. */
+  /** Shown instead of the body when `rows` is empty. Defaults to `<EmptyState title="Nothing to show" />`. */
   empty?: ComponentChildren
   /**
    * Identifies one row: the Preact key of its `<tr>`, so a row's DOM and state follow it through a
@@ -181,7 +181,21 @@ export interface DataTableBaseProps<T, K extends Extract<keyof T, string>> {
   rowKey: (row: T) => string | number
   /** Sets `data-e2e` on every body row, forwarded to `Table`. */
   rowDataE2E?: string
+  /**
+   * A `j`/`k`/Enter cursor over the rows on screen, through `useRowCursor`: `j` and `k` highlight
+   * the next and the previous row, and Enter calls `onOpen` with the highlighted row. Left out, no
+   * key listens. `enabled: false` turns the keys off, for a page with another list that listens.
+   */
+  cursor?: DataTableCursor<T>
   class?: string
+}
+
+/** {@link DataTableBaseProps.cursor}: what Enter does, and whether the keys listen. */
+export interface DataTableCursor<T> {
+  /** Runs when Enter is pressed while a row is highlighted, with that row. */
+  onOpen: (row: T) => void
+  /** Whether the keys listen. Defaults to `true`. */
+  enabled?: boolean
 }
 
 /** Client mode: `DataTable` sorts and pages the whole row set — see {@link DataTableMode}. */
@@ -220,9 +234,9 @@ export type DataTableProps<T, K extends Extract<keyof T, string>> =
   | DataTableServerProps<T, K>
 
 const alignClasses: Record<DataTableColumnAlign, string> = {
-  left: "text-left",
+  left: "text-start",
   center: "text-center",
-  right: "text-right",
+  right: "text-end",
 }
 
 /** `class` for one column's header and cells. */
@@ -394,6 +408,7 @@ export const rowKeyAttribute = "data-row-key"
 export function DataTable<T, K extends Extract<keyof T, string>>(
   props: DataTableProps<T, K>,
 ): JSX.Element {
+  const translator = useT()
   const {
     columns,
     rows,
@@ -405,6 +420,7 @@ export function DataTable<T, K extends Extract<keyof T, string>>(
     paging,
     rowKey,
     rowDataE2E,
+    cursor,
     class: className,
   } = props
   const server = props.mode === "server"
@@ -439,20 +455,26 @@ export function DataTable<T, K extends Extract<keyof T, string>>(
     )
     : [
       <td key="empty" colspan={columns.length}>
-        {empty ?? <EmptyState title="No rows" />}
+        {empty ?? (
+          <EmptyState
+            title={translate(translator, "DataTable.empty", "Nothing to show")}
+          />
+        )}
       </td>,
     ]
 
+  const table: TableProps = {
+    caption,
+    captionClass: captionHidden ? "sr-only" : undefined,
+    headerSlot,
+    bodySlots,
+    bodyKeys,
+    rowDataE2E,
+  }
+
   return (
     <Stack class={className}>
-      <Table
-        caption={caption}
-        captionClass={captionHidden ? "sr-only" : undefined}
-        headerSlot={headerSlot}
-        bodySlots={bodySlots}
-        bodyKeys={bodyKeys}
-        rowDataE2E={rowDataE2E}
-      />
+      {cursor ? <CursorTable {...table} rows={visible} cursor={cursor} /> : <Table {...table} />}
       {paging && (
         <Pagination
           page={currentPage ?? 1}
@@ -466,4 +488,19 @@ export function DataTable<T, K extends Extract<keyof T, string>>(
       )}
     </Stack>
   )
+}
+
+/**
+ * `Table` with a `useRowCursor` over its body rows, for {@link DataTable}'s `cursor`. A component of
+ * its own, so a `DataTable` without `cursor` calls no hook and listens to no key.
+ */
+function CursorTable<T>(
+  { rows, cursor, ...table }: TableProps & { rows: readonly T[]; cursor: DataTableCursor<T> },
+): JSX.Element {
+  const { rowProps } = useRowCursor({
+    count: rows.length,
+    onOpen: (index) => cursor.onOpen(rows[index]),
+    enabled: cursor.enabled ?? true,
+  })
+  return <Table {...table} rowProps={rowProps} />
 }

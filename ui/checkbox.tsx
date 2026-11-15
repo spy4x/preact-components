@@ -7,24 +7,26 @@ export type CheckboxShape = "square" | "round"
 
 /**
  * The round box, drawn by these utilities rather than by the browser: a native checkbox ignores
- * `border-radius`. The input stays a real checkbox — only its paint is replaced — so its role,
- * name, keyboard and form value are the browser's own. Keyboard focus draws `.btn`'s 2 px
- * outline, set off by 2 px, in `--color-ring`, the colour of every component's focus ring. The
- * tick is the box's `::after`, a rotated corner of two borders; while indeterminate it is a flat
- * bar instead. The empty ring is drawn in `--color-border-strong`, the token for a checkbox's
- * edge: gray-400 in the light palette, the square box's colour, and gray-500 in the dark ones,
- * where it clears 3:1. The tick is drawn in the surface colour, which clears 3:1 against the
- * accent fill in every palette. Every class is written out whole, so Tailwind's scanner finds it.
+ * `border-radius`. The input stays a real checkbox — only its paint is replaced — so its role, name,
+ * keyboard and form value are the browser's own. Keyboard focus draws `.btn`'s 2 px outline, set
+ * off by 2 px, in `--color-ring`, the colour of every component's focus ring. The tick is the box's
+ * `::after`, a rotated corner of two borders; while indeterminate it is a flat bar instead. The
+ * tick's own direction is fixed left to right, so its inline-end border stays on the right and a
+ * check mark never mirrors in a right-to-left page. The empty ring is drawn in
+ * `--color-border-strong`, the token for a checkbox's edge: gray-400 in the light palette, the
+ * square box's colour, and gray-500 in the dark ones, where it clears 3:1. The tick is drawn in the
+ * surface colour, which clears 3:1 against the accent fill in every palette. Every class is written
+ * out whole, so Tailwind's scanner finds it.
  */
 const roundBox = [
   "grid size-5 shrink-0 cursor-pointer appearance-none place-content-center rounded-full border-2",
   "border-[color:var(--color-border-strong,oklch(0.707_0.022_261.325))] bg-[var(--color-surface,oklch(1_0_0))]",
   "checked:border-[color:var(--color-primary-muted,oklch(0.558_0.288_302.321))] checked:bg-[var(--color-primary-muted,oklch(0.558_0.288_302.321))]",
   "indeterminate:border-[color:var(--color-primary-muted,oklch(0.558_0.288_302.321))] indeterminate:bg-[var(--color-primary-muted,oklch(0.558_0.288_302.321))]",
-  "after:hidden after:h-2.5 after:w-1.5 after:-translate-y-px after:rotate-45 after:border-r-2 after:border-b-2 after:content-['']",
+  "after:hidden after:h-2.5 after:w-1.5 after:-translate-y-px after:rotate-45 after:border-e-2 after:[direction:ltr] after:border-b-2 after:content-['']",
   "after:border-[color:var(--color-surface,oklch(1_0_0))]",
   "checked:after:block indeterminate:after:block",
-  "indeterminate:after:h-0 indeterminate:after:w-2.5 indeterminate:after:translate-y-0 indeterminate:after:rotate-0 indeterminate:after:border-r-0",
+  "indeterminate:after:h-0 indeterminate:after:w-2.5 indeterminate:after:translate-y-0 indeterminate:after:rotate-0 indeterminate:after:border-e-0",
   "focus-visible:outline-2 focus-visible:outline-offset-2",
   "focus-visible:outline-[color:var(--color-ring,var(--color-accent-900,oklch(0.381_0.176_304.987)))]",
   "disabled:cursor-not-allowed disabled:opacity-50",

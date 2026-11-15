@@ -1,4 +1,5 @@
 import { cn } from "@spy4x/preact-cn"
+import { IconXMark } from "@spy4x/preact-icons"
 import { useSignal } from "@preact/signals"
 import type { ComponentChildren, JSX } from "preact"
 import { useEffect, useId, useRef } from "preact/hooks"
@@ -14,7 +15,9 @@ import {
 } from "./combobox.tsx"
 import { isComposingInput, useComposedQuery } from "./composed-query.ts"
 import { isImeKeyPress } from "./ime.ts"
-import { CrossGlyph, listboxClasses, listboxOptionClass } from "./listbox-parts.tsx"
+import { listboxClasses, listboxOptionClass } from "./listbox-parts.tsx"
+import { useDismiss } from "./use-dismiss.ts"
+import { useLabels } from "./i18n.tsx"
 
 /**
  * The comparison key of a tag: trimmed, composed to NFC and lower-cased, so `" Work"` and `"work"`
@@ -86,8 +89,8 @@ export function splitTagText(text: string): { tags: string[]; rest: string } {
  * The suggestions to offer for a query: matching ones, minus the tags already chosen, each spelling
  * once.
  *
- * Matching is `Combobox`'s ({@link filterItems}): a substring of the folded text, so `"sao"` finds
- * `"São Paulo"`. A suggestion counts as chosen when a tag matches it without regard to case, the
+ * Matching is `Combobox`'s ({@link filterItems}): the start of a word in the folded text, in any
+ * order, forgiving a typo, so `"sao"` finds `"São Paulo"`, best match first. A suggestion counts as chosen when a tag matches it without regard to case, the
  * same rule {@link addTags} uses, so picking `"work"` hides `"Work"` too.
  *
  * @param suggestions Every suggestion, in the caller's order.
@@ -245,11 +248,35 @@ export interface TagInputProps {
 const fieldClasses =
   "flex min-h-12 w-full flex-wrap items-center gap-1 rounded-primary border border-control bg-surface p-1 focus-within:ring-2 focus-within:ring-focus"
 const chipClasses =
-  "inline-flex min-w-0 max-w-full items-center rounded-full bg-selected-soft pl-3 text-sm text-selected"
+  "inline-flex min-w-0 max-w-full items-center rounded-full bg-selected-soft ps-3 text-sm text-selected"
 const removeClasses =
   "inline-flex size-11 shrink-0 cursor-pointer items-center justify-center rounded-full hover:bg-selected-soft-hover focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-focus disabled:cursor-not-allowed"
 const inputClasses =
   "h-11 min-w-32 flex-1 bg-transparent px-2 text-foreground outline-none placeholder:text-placeholder disabled:cursor-not-allowed"
+
+/** The English words of `TagInput`, each one a prop of its own. */
+const TAG_INPUT_LABELS: Required<
+  Pick<
+    TagInputProps,
+    | "placeholder"
+    | "requiredMessage"
+    | "removeLabel"
+    | "tagsLabel"
+    | "suggestionsLabel"
+    | "addedMessage"
+    | "removedMessage"
+    | "duplicateMessage"
+  >
+> = {
+  placeholder: "Add a tag…",
+  requiredMessage: "Add at least one tag",
+  removeLabel: (tag) => `Remove tag ${tag}`,
+  tagsLabel: "Tags",
+  suggestionsLabel: "Suggestions",
+  addedMessage: (tag) => `Added tag ${tag}`,
+  removedMessage: (tag) => `Removed tag ${tag}`,
+  duplicateMessage: (tag) => `${tag} is already added`,
+}
 
 /**
  * A text field that collects several tags: type one and press Enter or a comma, or pick one of the
@@ -280,21 +307,50 @@ export function TagInput({
   id: callerId,
   label,
   ariaLabel,
-  placeholder = "Add a tag…",
+  placeholder: placeholderProp,
   disabled = false,
   error,
   "aria-describedby": callerDescribedBy,
   "aria-invalid": callerInvalid,
   required = false,
-  requiredMessage = "Add at least one tag",
-  removeLabel = (tag) => `Remove tag ${tag}`,
-  tagsLabel = "Tags",
-  suggestionsLabel = "Suggestions",
-  addedMessage = (tag) => `Added tag ${tag}`,
-  removedMessage = (tag) => `Removed tag ${tag}`,
-  duplicateMessage = (tag) => `${tag} is already added`,
+  requiredMessage: requiredMessageProp,
+  removeLabel: removeLabelProp,
+  tagsLabel: tagsLabelProp,
+  suggestionsLabel: suggestionsLabelProp,
+  addedMessage: addedMessageProp,
+  removedMessage: removedMessageProp,
+  duplicateMessage: duplicateMessageProp,
   class: className,
 }: TagInputProps): JSX.Element {
+  const {
+    placeholder,
+    requiredMessage,
+    removeLabel,
+    tagsLabel,
+    suggestionsLabel,
+    addedMessage,
+    removedMessage,
+    duplicateMessage,
+  } = useLabels(
+    "TagInput",
+    TAG_INPUT_LABELS,
+    {
+      placeholder: placeholderProp,
+      requiredMessage: requiredMessageProp,
+      removeLabel: removeLabelProp,
+      tagsLabel: tagsLabelProp,
+      suggestionsLabel: suggestionsLabelProp,
+      addedMessage: addedMessageProp,
+      removedMessage: removedMessageProp,
+      duplicateMessage: duplicateMessageProp,
+    },
+    {
+      removeLabel: ["tag"],
+      addedMessage: ["tag"],
+      removedMessage: ["tag"],
+      duplicateMessage: ["tag"],
+    },
+  )
   const generatedId = useId()
   const id = callerId ?? generatedId
   const rootRef = useRef<HTMLDivElement>(null)
@@ -330,12 +386,9 @@ export function TagInput({
     // value while hydrating and fires no `input` event for it.
     const typed = inputRef.current?.value ?? ""
     if (typed !== "" && draft.value === "") draft.value = typed
-    const handleClickOutside = (event: MouseEvent) => {
-      if (rootRef.current && !rootRef.current.contains(event.target as Node)) close()
-    }
-    document.addEventListener("mousedown", handleClickOutside)
-    return () => document.removeEventListener("mousedown", handleClickOutside)
   }, [])
+
+  useDismiss(rootRef, isOpen.value, () => close())
 
   // Keep the highlighted suggestion on screen, as `Combobox` does.
   useEffect(() => {
@@ -465,7 +518,7 @@ export function TagInput({
                   onMouseDown={(event) => event.preventDefault()}
                   onClick={() => removeAt(index)}
                 >
-                  <CrossGlyph />
+                  <IconXMark class="size-4" />
                 </button>
               </li>
             ))}

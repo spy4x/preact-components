@@ -42,7 +42,7 @@ describe("SyncStatus", () => {
   it("offers Retry after a failure, outside the live region", () => {
     const html = render(<SyncStatus online pending={2} failed onRetry={() => {}} />)
 
-    expect(regionText(html)).toBe("Sync failed")
+    expect(regionText(html)).toBe("Couldn't sync")
     expect(html).toMatch(/<\/span><button[^>]*>.*Retry.*<\/button><\/div>$/)
   })
 

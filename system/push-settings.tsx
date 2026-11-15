@@ -9,9 +9,11 @@
 
 import { cn } from "@spy4x/preact-cn"
 import { Button } from "@spy4x/preact-ui/button"
+import { useFocusFallback } from "@spy4x/preact-ui/use-focus-after-removal"
 import { useSignal } from "@preact/signals"
 import type { JSX } from "preact"
-import { useEffect, useId, useLayoutEffect, useRef } from "preact/hooks"
+import { useEffect, useId, useRef } from "preact/hooks"
+import { useLabels } from "@spy4x/preact-ui/i18n"
 
 /**
  * What the block shows.
@@ -78,20 +80,20 @@ export interface PushSettingsLabels {
 export const DEFAULT_PUSH_SETTINGS_LABELS: PushSettingsLabels = {
   title: "Notifications",
   checking: "Checking this device…",
-  unsupported: "This browser cannot show notifications.",
+  unsupported: "This browser can't show notifications.",
   needsInstall:
     "On an iPhone or iPad, notifications work once the app is on your home screen. Tap Share, then Add to Home Screen, and open the app from there.",
-  unavailable: "Notifications are not set up on this server.",
+  unavailable: "Notifications aren't set up for this app yet.",
   blocked:
-    "Notifications are blocked for this app. To allow them, open your browser's settings for this site, or your device's notification settings for this app, set Notifications to Allow, then come back here.",
+    "Notifications are blocked for this app. To allow them, open your browser's settings for this site (or your device's notification settings), set Notifications to Allow, and come back here.",
   off: "Notifications are off on this device.",
   on: "Notifications are on for this device.",
   enable: "Turn on notifications",
   disable: "Turn off notifications",
   test: "Send a test notification",
-  enableFailed: "Notifications could not be turned on. Try again.",
-  disableFailed: "Notifications could not be turned off. Try again.",
-  testFailed: "The test notification could not be sent. Try again.",
+  enableFailed: "Couldn't turn on notifications. Try again.",
+  disableFailed: "Couldn't turn off notifications. Try again.",
+  testFailed: "Couldn't send the test notification. Try again.",
   testSent: "Test notification sent. It should arrive in a moment.",
   turnedOn: "Notifications turned on.",
   turnedOff: "Notifications turned off.",
@@ -152,31 +154,20 @@ export function PushSettings(
   { status, busy, failed, sent, onEnable, onDisable, onTest, labels, class: className }:
     PushSettingsProps,
 ): JSX.Element {
-  const words = { ...DEFAULT_PUSH_SETTINGS_LABELS, ...labels }
+  const words = useLabels("PushSettings", DEFAULT_PUSH_SETTINGS_LABELS, labels)
   const block = useRef<HTMLDivElement>(null)
   const description = useRef<HTMLParagraphElement>(null)
   const titleId = useId()
   const messageId = useId()
   const announcement = useSignal("")
   const previous = useRef(status)
-  /** Set while rendering with focus inside the block, read once the render is in the page. */
-  const hadFocus = useRef(false)
   /** Set when focus was moved to the explanation, which a screen reader then reads by itself. */
   const movedFocus = useRef(false)
 
-  // Read before this render reaches the page: once a focused button is gone, focus has already
-  // fallen to the body. A server render has no document.
-  hadFocus.current = Boolean(
-    block.current?.contains(globalThis.document?.activeElement ?? null),
-  )
-
-  // A layout effect runs in the commit that removed the button, so focus never rests on the body.
-  useLayoutEffect(() => {
-    const element = block.current
-    if (hadFocus.current && element && !element.contains(element.ownerDocument.activeElement)) {
-      description.current?.focus()
-      movedFocus.current = true
-    }
+  // A button leaving with focus on it hands focus to the sentence that says why.
+  useFocusFallback(block, () => {
+    movedFocus.current = true
+    return description.current
   })
 
   const message = failed ? words[FAILURES[failed]] : sent ? words.testSent : ""

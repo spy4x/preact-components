@@ -3,20 +3,26 @@
 Charts for Preact that render complete on the server and become interactive in the browser, plus
 the axis and data helpers behind them.
 
-- **Server-rendered, finished without JavaScript** — `LineChart`, `Bars`, `DonutChart`, `Kpi`,
-  `KpiGrid`. The markup a server sends is the whole chart: axes, lines, bars, legend, a native
-  tooltip on every point.
+- **Server-rendered, finished without JavaScript** — `LineChart`, `Bars`, `RankedBars`, `DotPlot`,
+  `DonutChart`, `Kpi`, `KpiGrid`, `DependencyGraph`. The markup a server sends is the whole chart: axes, lines, bars, legend, a
+  native tooltip on every point.
 - **Interactive once hydrated** — `LineChart` adds a crosshair and a tooltip that follow the pointer,
   and steps through its points with the arrow keys, Home and End; `DonutChart` gives every slice a
   tooltip with its label, value and share, by pointer and by keyboard. In both, ArrowDown and
   ArrowRight go to the next item and ArrowUp and ArrowLeft to the previous one. Both tooltips stay
   inside the chart and the viewport, flipping to the other side of the point near an edge.
-- **Titles fit the page's outline.** `LineChart`, `Bars` and `DonutChart` print `title` as an `<h3>`,
+- **Titles fit the page's outline.** `LineChart`, `Bars`, `RankedBars` and `DonutChart` print `title` as an `<h3>`,
   with data and without; `headingLevel` picks another level.
-- **A caller's `class` wins.** Every component merges `class` into its own classes with
-  `tailwind-merge`, so `<Kpi class="px-6">` replaces the card's `px-4` instead of competing with it.
-  `Bars` renders a wrapper `<div>` around its heading and table, and `class` goes on that wrapper,
-  not on the `<table>`.
+- **A caller's `class` wins on most components.** `LineChart`, `DonutChart` and `Kpi` merge
+  `class` into their own classes with `tailwind-merge`, so `<Kpi class="px-6">` replaces the card's
+  `px-4` instead of competing with it. `Bars`, `RankedBars` and `DotPlot` add `class` after their own with `join`,
+  so an island that renders them carries no `tailwind-merge`; mark an override important
+  (`gap-4!`). `Bars` renders a wrapper `<div>` around its heading and table, and `class` goes on
+  that wrapper, not on the `<table>`.
+- **Every value is readable without the picture.** `LineChart` prints its points in a visually
+  hidden table after the plot, one row per X position and one column per series, captioned with
+  the chart's accessible name; `xLabel` names the first column and `dataTable={false}` leaves it
+  out.
 - **No charting library.** Nothing here imports d3 or any other: the axis maths is `scales.ts`, the
   time ticks are `time-ticks.ts`, and the hover layer is plain Preact.
 
@@ -29,37 +35,42 @@ the axis and data helpers behind them.
   with an inline fallback, so a chart picks up `theme/` when it is loaded and still renders
   standalone. They are applied through `style`, because `var()` does not resolve inside SVG
   presentation attributes such as `fill="…"`.
-- **A series palette for both themes.** `DEFAULT_CHART_PALETTE` is five colours — blue, orange,
-  green, violet, magenta — with a light and a dark step each. A chart's root sets them as `--chart-1`
-  … `--chart-5`, switching to the dark steps under a `.dark` ancestor. Every step reaches 3:1
-  against its page (white and gray-50 light; gray-800, gray-900 and the ink palette's card and page
-  dark), and neighbours stay apart for colour-blind readers. An app recolours a slot with
-  `--color-chart-1` … `--color-chart-5`, or passes `colors`.
+- **A series palette for both themes.** `DEFAULT_CHART_PALETTE` is eight colours — blue, orange,
+  green, violet, magenta, amber, teal, olive — with a light and a dark step each. A chart's root sets
+  them as `--chart-1` … `--chart-8`, switching to the dark steps under a `.dark` ancestor. Every
+  step reaches 3:1 against its page (white and gray-50 light; gray-800, gray-900 and the ink
+  palette's card and page dark), and neighbours stay apart for colour-blind readers. An app recolours a slot with
+  `--color-chart-1` … `--color-chart-8`, or passes `colors`.
 - **Server-renderable.** `document`, `window`, `IntersectionObserver` and `ResizeObserver` are touched
   inside effects and event handlers only. What the server prints, the browser prints too: the time
   axis lays its ticks on the wall clock of `UTC` and prints them in `en-GB` unless told otherwise
   (`timeZone`, `locale`), so hydration never has to replace text.
-- **No sibling package imports.** `charts/` depends on `preact`, `arktype`, `tailwind-merge` and
-  `@spy4x/platform`'s axis maths, and nothing else in the workspace, so it stays independent of
-  `ui/` and `signals/`.
+- **One sibling import.** `charts/` depends on `preact`, `arktype`, `tailwind-merge`,
+  `@spy4x/platform`'s axis maths and `@spy4x/preact-cn`'s `join`, and nothing else in the
+  workspace, so it stays independent of `ui/` and `signals/`.
 
 ## Components
 
-| Component    | Subpath       | Interactive in a browser               | Key props / ports                                                                                  |
-| ------------ | ------------- | -------------------------------------- | -------------------------------------------------------------------------------------------------- |
-| `LineChart`  | `line-chart`  | crosshair, tooltip, arrow-key stepping | `series`, `xAxis`, `height`, `valueFormat`, `xFormat`, `yDomain`, `referenceValue`, `ignoreZeroes` |
-| `Bars`       | `bars`        | no                                     | `data`, `max`, `valueFormat`, `labelWidth`, `colors`                                               |
-| `DonutChart` | `donut-chart` | slice tooltip, arrow-key stepping      | `data`, `centerValue`, `centerLabel`, `valueFormat`, `showLegend`, `colors`, `axisColor`           |
-| `Kpi`        | `kpi`         | no                                     | `label`, `value`, `sub`, `tone`                                                                    |
-| `KpiGrid`    | `kpi`         | no                                     | `children`, `minWidth`                                                                             |
+| Component         | Subpath            | Interactive in a browser               | Key props / ports                                                                                                                                 |
+| ----------------- | ------------------ | -------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `LineChart`       | `line-chart`       | crosshair, tooltip, arrow-key stepping | `series`, `xAxis`, `height`, `valueFormat`, `xFormat`, `yDomain`, `referenceValue`, `ignoreZeroes`, `dataTable`, `xLabel`                         |
+| `Bars`            | `bars`             | no                                     | `data` (a value or stacked `segments` per row), `max`, `valueFormat`, `labelWidth`, `colors`, `reference`                                         |
+| `RankedBars`      | `ranked-bars`      | no                                     | `data` (`values`, `href` or `onSelect`, `lowSample`, `image`, `note` per row), `columns` (`label`, `value`, 1–3 `extra`), `valueFormat`, `navigate` |
+| `DotPlot`         | `dot-plot`         | no                                     | `rows`, `summary`, `domain`, `zero`, `bands`, `valueFormat`, `ariaLabel`, `missingLabel`                                                          |
+| `DonutChart`      | `donut-chart`      | slice tooltip, arrow-key stepping      | `data`, `centerValue`, `centerLabel`, `valueFormat`, `showLegend`, `colors`, `axisColor`                                                          |
+| `Kpi`             | `kpi`              | no                                     | `label`, `value`, `sub`, `tone`, `change` (`{ text, direction, tone? }`: icon and words, the only toned line)                                     |
+| `KpiGrid`         | `kpi`              | no                                     | `children`, `minWidth`                                                                                                                            |
+| `DependencyGraph` | `dependency-graph` | chain highlight, CSS only              | `nodes` (`href`, `tone`, `emphasis`, `badge`, `description`), `edges` (`style`, `tone`), `label`, `emptyLabel`, `dependsOnLabel`, `neededByLabel` |
 
-Every chart prints its values through `valueFormat`. The older names, `Bars`' `format` and
-`LineChart`'s `yFormat`, still work the same way and are deprecated; when both are passed,
-`valueFormat` wins. They are removed in the next major.
+Every chart prints its values through `valueFormat`. The older names, `format` on `Bars`,
+`RankedBars` and `DotPlot` and `yFormat` on `LineChart`, still work the same way and are deprecated;
+when both are passed, `valueFormat` wins. They are removed in the next major.
 
-Helpers: `createInViewObserver` (`use-in-view`), `timeSeriesPointSchema` (`payload`), the
-`TIME_FRAMES` / `TimeFrame` / `TimeSeriesPoint` vocabulary (`time-series`), and the axis maths in
-`scales` — `niceStep`, `ticks`, `niceScale`, `paddedDomain`, `extent`.
+Helpers: `changeText(change, period, locale?)` (`change`) writes a change against the period before
+as one neutral line, `+3 vs previous 7 days` or `No change vs yesterday`, never a percentage;
+`createInViewObserver` (`use-in-view`), `timeSeriesPointSchema` (`payload`), the `TIME_FRAMES` /
+`TimeFrame` / `TimeSeriesPoint` vocabulary (`time-series`), and the axis maths in `scales` —
+`niceStep`, `ticks`, `niceScale`, `paddedDomain`, `extent`.
 
 `linearScale`, `xLabelStride`, `previousPeriod`, `loadChartPayload`, `chartPayloadSchema`,
 `LoadPayloadResult`, `DateRange`, `useInView`, `InViewRef` and `InViewOptions`' `once` were removed
@@ -99,6 +110,15 @@ const shifted = previous.data.map((p) => ({ x: +new Date(p.timeGroup) + span, y:
   referenceLabel="Contracted"
 />
 ```
+
+A point marked `hollow: true` keeps its place, line and tooltip but draws as an unfilled ring in
+the series colour, to set it apart — a period with too little data, say:
+
+```tsx
+points: weeks.map((w) => ({ x: w.label, y: w.average, hollow: w.samples < 5 }))
+```
+
+A dashed series gets a 24 px legend swatch, wide enough to show the dash; a solid one gets 12 px.
 
 A comparison is the caller's data: load the earlier window, move its instants forward by the
 window's length, and pass it as a dashed series.
@@ -191,14 +211,51 @@ and from its own subpath, except `CHART_PALETTE_CLASS`, which only `./colors` ex
   behind a bar or an empty donut. Each is a theme variable with an inline fallback, so it works with
   or without `theme/`'s stylesheet.
 
-### Bars and DonutChart (`./bars`, `./donut-chart`)
+### Bars, RankedBars, DotPlot and DonutChart (`./bars`, `./ranked-bars`, `./dot-plot`, `./donut-chart`)
+
+`RankedBars` is a ranked list with several numbers per row, such as visits per source, built on
+`Bars`' scale and bars: a header row, then per row an optional 40 px `image` (`{ src, alt }`,
+lazy-loaded), the label (a link with `href`, a button with `onSelect`, either covering the row), an
+optional muted `note` under it and the bar, then the bar's number and one to three more from the
+row's `values`, right-aligned in tabular figures. A missing or non-finite number prints "–". On a
+phone the extra numbers join the note's muted line under the label, each after its header, so the
+table keeps two columns. `lowSample` mutes a row. It shares `Bars`' empty label. A page that renders
+only `Bars` carries none of its markup.
+
+A row with `href` is a real link and works without JavaScript. Pass the app's router as
+`navigate` and a plain click on it routes in place, as `Link` does. A row with `onSelect` is a button
+whose handler runs only once the page is hydrated, so it needs JavaScript: on a server-rendered page
+that must work without it, give the row an `href` instead.
 
 - `barPercent(value, top)` is a bar's width as a percentage of the longest bar, clamped to
   `0…100`; a non-finite or negative value, or a `top` of `0` or less, gives `0`.
+- `barTotal(datum)` is a row's total: its `value`, or the sum of a stacked row's finite, positive
+  segments.
+- `dotPercent(value, domain)` is a `DotPlot` position as a percentage of `[low, high]`, clamped to
+  `0…100`; an empty, reversed or non-finite domain gives `0`.
 - `donutGeometry(data, { colors, emptyColor })` is `DonutChart`'s slice maths: each slice's share,
   printed percent, colour and start and end, the total, and a ready `conic-gradient(…)` value.
   Negative and non-finite values count as `0`, and data with nothing positive gives one empty ring.
   Use it to draw a donut or a share legend of your own.
+
+### Dependency graph (`./dependency-graph`)
+
+`DependencyGraph` draws boxes joined by curved arrows as one SVG, finished on the server: `from`
+is the node that comes first, on the left, and `to` the one that waits on it. Hovering a node, or
+focusing one that has `href`, keeps the nodes and edges before and after it and dims the rest with
+a scoped stylesheet (`:has()`), so the highlight needs no script; past 50,000 chain memberships it
+is left out instead of bloating the markup. Nodes with `href` are links, in Tab order column by
+column; a visually hidden list after the graph says what each node depends on and what needs it.
+The frame scrolls sideways inside its parent and is a Tab stop. An empty `nodes` prints
+`emptyLabel`.
+
+- `layoutGraph(nodes, edges)` is its layout, pure and exported: each node's column is the longest
+  chain of edges before it, and barycentre passes order each column to cut crossings, ties kept in
+  input order. It returns `{ nodes, edges, columns, rows, cycles, unknown }`: an edge that closes a
+  cycle is drawn but left out of the columns and listed in `cycles` (a self-loop is listed and not
+  drawn), an edge naming an unknown node is dropped and listed in `unknown`, and a repeated edge
+  counts once. Linear in nodes and edges apart from a sort per column; 2,000 nodes and 10,000
+  edges lay out in tens of milliseconds.
 
 ### Data and loading (`./payload`, `./use-in-view`)
 
@@ -233,3 +290,19 @@ its chart and the viewport at 375 and 1440 pixels wide.
 `MetricsList` (domain-coupled to metric catalogs and device ids — the layout idea lives on in
 `Bars`), `DateTimeFilter` (a range picker belongs with the app or `ui/`), `Export` (drags in
 `xlsx`), and `chooseChartRoute`, which is a proposal rather than implemented code.
+
+## Translations
+
+Every word the charts components show by default comes from this package's catalog,
+`@spy4x/preact-charts/i18n/<language>`, in `ar`, `de`, `en`, `es`, `pt-BR` and `ru`. It is read from
+the same `I18nContext` as the `ui` components (see "Translations" in `@spy4x/preact-ui`), so an app
+adds it beside the `ui` catalog in one `createTranslator`. Each language subpath, `./i18n/de` and
+the rest, has one `default` export: that language's catalog. Each key is `<Component>.<field>`, the
+prop it fills (`LineChart.emptyLabel`). A word passed as a prop still wins, and without a provider
+every component renders the English it always has.
+
+A chart's default name counts its slices or series, so `DonutChart.chartLabel` and
+`LineChart.chartLabel` are plural messages. `changeText` is a plain function, not a component: pass
+the app's translator as its fourth argument (`changeText(change, period, locale, useT())`) to word it
+from `changeText.none` and `changeText.delta`. Numbers and dates on the axes follow `locale`, not the
+translator.

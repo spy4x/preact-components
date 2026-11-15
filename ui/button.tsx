@@ -1,4 +1,5 @@
 import { join } from "@spy4x/preact-cn/join"
+import { IconSpinner } from "@spy4x/preact-icons"
 import type { ComponentChildren, JSX, Ref, RefObject, VNode } from "preact"
 import { useCallback } from "preact/hooks"
 import { forwardRef } from "./forward-ref.ts"
@@ -6,8 +7,19 @@ import { HotkeyHint } from "./hotkey-hint.tsx"
 import { ariaKeyShortcuts, type HotkeyProps, useApplePlatform, useHotkeyClick } from "./hotkeys.ts"
 import { followLinkClick } from "./link.tsx"
 
-/** Visual role of a {@link Button}. */
-export type ButtonVariant = "primary" | "secondary" | "outline" | "ghost" | "icon" | "danger"
+/**
+ * Visual role of a {@link Button}. `"danger-ghost"` is the quiet destructive action: transparent
+ * like `"ghost"`, in the danger text colour, for a dialog footer or a menu where a confirmation
+ * guards it; `"danger"` is the filled one that confirms.
+ */
+export type ButtonVariant =
+  | "primary"
+  | "secondary"
+  | "outline"
+  | "ghost"
+  | "icon"
+  | "danger"
+  | "danger-ghost"
 
 /** Control height and text scale of a {@link Button}. */
 export type ButtonSize = "sm" | "md" | "lg"
@@ -48,6 +60,11 @@ export interface ButtonLinkProps extends
     "class" | "href" | "target" | "download" | "onClick" | "size"
   >,
   HotkeyProps {
+  /**
+   * Any `data-*` attribute, such as an analytics event name. JSX accepts these on its own, but an
+   * object literal typed `ButtonLinkProps` (a `PlanCard` action) needs them declared.
+   */
+  [dataAttribute: `data-${string}`]: string | undefined
   /** Where the link goes. Rendered as a real `href`, so the link works before any script runs. */
   href: string
   /**
@@ -90,6 +107,10 @@ const baseLook =
  *
  * The secondary fill is the hover step, which in light is the canvas itself, so its edge is a
  * `--color-border-button` border that stands 3:1 off the page and a card in every palette.
+ *
+ * The quiet danger text is `--color-danger`, and its hover the `--color-danger-soft` tint: in
+ * light red-700 reads 5.8:1 or better on the canvas, a card and the tint; in dark red-400 reads
+ * 4.7:1 or better on the gray-800 card, the ink card and the tint over either.
  */
 const variantClasses: Record<ButtonVariant, string> = {
   primary:
@@ -99,14 +120,7 @@ const variantClasses: Record<ButtonVariant, string> = {
   ghost: "bg-transparent text-foreground hover:bg-hover",
   icon: "bg-transparent text-muted hover:bg-hover hover:text-foreground",
   danger: "bg-danger-fill text-danger-fill-foreground hover:bg-danger-fill-hover",
-}
-
-/** The gap sits with the size, so `"none"` leaves it out; the other sizes keep the same class list. */
-const gapClasses: Record<ButtonSize | "none", string> = {
-  sm: "gap-2",
-  md: "gap-2",
-  lg: "gap-2",
-  none: "",
+  "danger-ghost": "bg-transparent text-danger hover:bg-danger-soft",
 }
 
 const sizeClasses: Record<ButtonSize | "none", string> = {
@@ -144,26 +158,12 @@ export function buttonClasses(
 ): string {
   return join(
     baseLayout,
-    gapClasses[size],
+    // Every size has the same gap; `"none"` adds none.
+    size !== "none" && "gap-2",
     baseLook,
     variantClasses[variant],
     variant === "icon" ? iconSizeClasses[size] : sizeClasses[size],
     className,
-  )
-}
-
-/** The spinner a busy {@link Button} shows; the button's own text or `aria-label` names it. */
-function BusySpinner(): JSX.Element {
-  return (
-    <svg
-      class="size-4 shrink-0 animate-spin motion-reduce:animate-none"
-      viewBox="0 0 24 24"
-      fill="none"
-      aria-hidden="true"
-    >
-      <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="3" />
-      <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 0 1 8-8v4a4 4 0 0 0-4 4H4z" />
-    </svg>
   )
 }
 
@@ -291,7 +291,7 @@ function renderButton(
       aria-disabled="true"
       onClick={ignorePress}
     >
-      <BusySpinner />
+      <IconSpinner class="size-4" />
       {variant === "icon" ? null : busyLabel ?? children}
       {hint}
     </button>

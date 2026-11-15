@@ -9,7 +9,7 @@
 import {
   CommandPalette,
   type CommandPaletteOption,
-  rankOptions,
+  matchOptions,
 } from "@spy4x/preact-ui/command-palette"
 import type { JSX } from "preact"
 import { useMemo } from "preact/hooks"
@@ -81,8 +81,8 @@ export function searchIndex(registry: PartialDemoRegistry, guidePlace = "Guide")
 }
 
 /**
- * The entries that match `query`, best first, at most `limit` of them: `rankOptions` from the
- * library, except that an empty query matches the pages only.
+ * The entries that match `query`, best first, at most `limit` of them: the library palette's
+ * forgiving `matchOptions`, except that an empty query matches the pages only.
  *
  * @param entries The index.
  * @param query What the reader typed.
@@ -96,7 +96,7 @@ export function searchEntries<Entry extends SearchEntry>(
   if (query.trim() === "") {
     return entries.filter((entry) => entry.kind === SearchKind.PAGE).slice(0, limit)
   }
-  return rankOptions(entries, query, limit)
+  return matchOptions(entries, query, limit)
 }
 
 /** The word beside a result for each kind of entry. */

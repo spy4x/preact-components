@@ -1,6 +1,7 @@
 import { IconAlertTriangle } from "@spy4x/preact-icons"
 import type { JSX } from "preact"
 import { useEffect, useRef } from "preact/hooks"
+import { useLabels } from "@spy4x/preact-ui/i18n"
 import type { DeletionDependency } from "./types.ts"
 
 export interface DeletionValidationProps {
@@ -8,7 +9,7 @@ export interface DeletionValidationProps {
   dependencies: DeletionDependency[]
   /** Model name used in the sentence, for example `"Region"`. */
   model: string
-  /** Heading above the list. Defaults to `To archive this <model>, please first archive:`. */
+  /** Heading above the list. Defaults to `Archive these first, then you can archive this <model>:`. */
   label?: string
 }
 
@@ -44,6 +45,14 @@ export interface DeletionValidationProps {
 export function DeletionValidation(
   { dependencies, model, label }: DeletionValidationProps,
 ): JSX.Element {
+  const { heading } = useLabels(
+    "DeletionValidation",
+    {
+      heading: (model: string) => `Archive these first, then you can archive this ${model}:`,
+    },
+    undefined,
+    { heading: ["model"] },
+  )
   const block = useRef<HTMLDivElement>(null)
   const lastScrolledFor = useRef<string | null>(null)
   const hasDependencies = dependencies.length > 0
@@ -76,16 +85,16 @@ export function DeletionValidation(
           <div class="shrink-0">
             <IconAlertTriangle class="size-5" />
           </div>
-          <div class="ml-3">
+          <div class="ms-3">
             <h3 class="text-sm font-medium">
-              {label ?? `To archive this ${model}, please first archive:`}
+              {label ?? heading(model)}
             </h3>
             <div class="mt-2 text-sm max-w-xl">
-              <ul role="list" class="list-disc space-y-1 pl-4">
+              <ul role="list" class="list-disc space-y-1 ps-4">
                 {dependencies.map((dependency) => (
                   <li key={dependency.kind}>
                     <div>{dependency.kind}:</div>
-                    <div class="my-2 ml-4 space-x-2">
+                    <div class="my-2 ms-4 space-x-2">
                       {dependency.values.map((item) => (
                         <div key={item.url} class="inline-block">
                           <a class="pc-link text-primary" href={item.url}>{item.title}</a>

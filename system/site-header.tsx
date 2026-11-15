@@ -13,10 +13,13 @@
  */
 
 import { cn } from "@spy4x/preact-cn"
-import { IconBars3, type IconProps, IconXMark } from "@spy4x/preact-icons"
+import { IconBars3, IconExternalLink, type IconProps, IconXMark } from "@spy4x/preact-icons"
 import type { ComponentChildren, ComponentType, JSX } from "preact"
 import { useId } from "preact/hooks"
 import { barFocusOffset, useMobilePanel } from "./mobile-panel.ts"
+import { MENU_GROUP } from "@spy4x/preact-ui/dropdown"
+import { useT } from "@spy4x/preact-ui/i18n"
+import { translate } from "./i18n.ts"
 
 /** One entry of {@link SiteHeaderProps.links}. */
 export interface SiteHeaderLink {
@@ -25,6 +28,16 @@ export interface SiteHeaderLink {
   href: string
   /** Rendered at `size-5` beside the label, in both the desktop row and the mobile panel. */
   Icon?: ComponentType<IconProps>
+  /**
+   * Marks a link that leaves the site: an icon follows the label. The link still opens in the same
+   * tab; whether to leave the page is the visitor's choice, not this component's.
+   */
+  external?: boolean
+  /**
+   * Words a screen reader hears after the label of an `external` link, such as
+   * `"(opens example.com)"`, since the icon is hidden from it. Printed only with `external`.
+   */
+  externalHint?: string
 }
 
 /** Every user-visible or accessible string this component prints that is not `links`/`brand`. */
@@ -88,7 +101,7 @@ function SiteHeaderNavLink(
     onClick?: () => void
   },
 ): JSX.Element {
-  const { label, href, Icon } = link
+  const { label, href, Icon, external, externalHint } = link
   const current = isCurrentLink(href, currentPath)
 
   return (
@@ -100,6 +113,8 @@ function SiteHeaderNavLink(
     >
       {Icon && <Icon class="size-5" />}
       {label}
+      {external && <IconExternalLink class="size-4" aria-hidden="true" />}
+      {external && externalHint && <span class="sr-only">{` ${externalHint}`}</span>}
     </a>
   )
 }
@@ -137,6 +152,10 @@ function SiteHeaderNavLink(
  * other is removed from the tree entirely rather than merely hidden behind `aria-hidden`, which is
  * what keeps two landmarks sharing one `aria-label` from ever being announced at the same time.
  *
+ * **One menu open at a time.** The `<details>` joins `Dropdown`'s `MENU_GROUP`, so opening it
+ * closes an open `Dropdown` in `actions`, such as a `LanguagePicker` menu, and opening that closes
+ * this, with or without JavaScript.
+ *
  * **No links, no navigation.** With `links` empty or left out, neither `<nav>` nor the menu button
  * is drawn, since a button that opens an empty panel is a dead control: the bar is `brand` on the
  * left and `actions` on the right, a single-page tool's top bar.
@@ -144,8 +163,9 @@ function SiteHeaderNavLink(
 export function SiteHeader(props: SiteHeaderProps): JSX.Element {
   const { links = [], currentPath, brand, actions, labels, class: className } = props
   const hasLinks = links.length > 0
-  const menuLabel = labels?.menu ?? "Menu"
-  const navLabel = labels?.nav ?? "Main navigation"
+  const translator = useT()
+  const menuLabel = labels?.menu ?? translate(translator, "SiteHeader.menu", "Menu")
+  const navLabel = labels?.nav ?? translate(translator, "SiteHeader.nav", "Main navigation")
   const panelId = useId()
 
   const { open, detailsRef, triggerRef, handleToggle, close } = useMobilePanel()
@@ -153,7 +173,7 @@ export function SiteHeader(props: SiteHeaderProps): JSX.Element {
   return (
     <header
       class={cn(
-        "relative border-b border-subtle bg-surface dark:bg-canvas",
+        "relative border-b border-subtle bg-surface dark:bg-canvas print:hidden",
         barFocusOffset,
         className,
       )}
@@ -177,7 +197,12 @@ export function SiteHeader(props: SiteHeaderProps): JSX.Element {
           {actions}
 
           {hasLinks && (
-            <details ref={detailsRef} class="group lg:hidden" onToggle={handleToggle}>
+            <details
+              ref={detailsRef}
+              class="group lg:hidden"
+              name={MENU_GROUP}
+              onToggle={handleToggle}
+            >
               <summary
                 ref={triggerRef}
                 aria-expanded={open}

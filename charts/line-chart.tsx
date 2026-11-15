@@ -1,6 +1,7 @@
 import type { JSX } from "preact"
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "preact/hooks"
 import { twMerge } from "tailwind-merge"
+import { useLabels } from "@spy4x/preact-ui/i18n"
 import {
   CHART_PALETTE_CLASS,
   DEFAULT_AXIS_COLOR,
@@ -24,11 +25,18 @@ import { positionTooltip, TOOLTIP_TEXT_COLOR } from "./tooltip.ts"
 /** A point's place on the X axis: a label, or — on a time axis — an instant. */
 export type LineX = string | number | Date
 
+/** One reading of a {@link LineSeries}: where it sits on the X axis and its value. */
 export interface LinePoint {
   /** A label on a category axis (repeated across series to line them up), an instant on a time axis. */
   x: LineX
   /** `null` or a non-finite number is a missing value: the line breaks there. */
   y: number | null
+  /**
+   * Draw this point's dot as a hollow ring in the series colour instead of a filled dot, to set it
+   * apart: a partial period, an estimate, a reading on thin data. Its line, tooltip and value stay
+   * the same. Defaults to `false`; it shows only where the series draws its dots.
+   */
+  hollow?: boolean
 }
 
 export interface LineSeries {
@@ -105,6 +113,13 @@ export interface LineChartProps {
   emptyLabel?: string
   /** Added to the accessible name once the chart responds to keys. */
   keyboardHint?: string
+  /**
+   * Print the points as a visually hidden table after the plot, one row per X position and one
+   * column per series, so a screen reader can read every value. Defaults to `true`.
+   */
+  dataTable?: boolean
+  /** Heading of the hidden table's first column, the X positions. Defaults to `"Point"`. */
+  xLabel?: string
   class?: string
 }
 
@@ -135,6 +150,18 @@ interface Line {
   dashed: boolean
   showPoints: boolean
   values: (number | null | undefined)[]
+  /** Per {@link Slot}: whether that point's dot is drawn hollow. */
+  hollow: boolean[]
+}
+
+/** The chart's English words, each a key `LineChart.<field>` of the catalog. */
+const LINE_CHART_LABELS = {
+  missingValuesLabel: "Dashed grey lines mark gaps in the data.",
+  loadingLabel: "Loading…",
+  emptyLabel: "No data",
+  keyboardHint: "Use the arrow keys to move between points.",
+  xLabel: "Point",
+  chartLabel: (count: number) => `Line chart with ${count} series`,
 }
 
 /**
@@ -175,14 +202,24 @@ export function LineChart({
   referenceLabel,
   referenceColor,
   ignoreZeroes = false,
-  missingValuesLabel = "Dashed grey segments bridge missing values.",
+  missingValuesLabel: missingValuesLabelProp,
   isLoading = false,
-  loadingLabel = "Loading…",
-  emptyLabel = "No data",
-  keyboardHint = "Arrow keys step through the points.",
+  loadingLabel: loadingLabelProp,
+  emptyLabel: emptyLabelProp,
+  keyboardHint: keyboardHintProp,
+  dataTable = true,
+  xLabel: xLabelProp,
   class: className,
 }: LineChartProps): JSX.Element {
   const yFormat = valueFormat ?? legacyYFormat ?? formatNumber
+  const { missingValuesLabel, loadingLabel, emptyLabel, keyboardHint, xLabel, chartLabel } =
+    useLabels("LineChart", LINE_CHART_LABELS, {
+      missingValuesLabel: missingValuesLabelProp,
+      loadingLabel: loadingLabelProp,
+      emptyLabel: emptyLabelProp,
+      keyboardHint: keyboardHintProp,
+      xLabel: xLabelProp,
+    }, { chartLabel: ["count"] })
   const rootRef = useRef<HTMLDivElement>(null)
   const areaRef = useRef<HTMLDivElement>(null)
   const tooltipRef = useRef<HTMLDivElement>(null)
@@ -217,10 +254,13 @@ export function LineChart({
   const Heading = `h${headingLevel}` as "h3"
   const lines: Line[] = series.map((entry, index) => {
     const values: Line["values"] = slots.map(() => undefined)
+    const hollow = slots.map(() => false)
     const at = new Map(slots.map((slot, slotIndex) => [slot.key, slotIndex]))
     for (const point of entry.points) {
       const slotIndex = at.get(slotKey(point.x, xAxis))
-      if (slotIndex !== undefined) values[slotIndex] = point.y
+      if (slotIndex === undefined) continue
+      values[slotIndex] = point.y
+      hollow[slotIndex] = point.hollow ?? false
     }
     return {
       name: entry.name,
@@ -228,13 +268,14 @@ export function LineChart({
       dashed: entry.dashed ?? false,
       showPoints: entry.showPoints ?? true,
       values,
+      hollow,
     }
   })
 
   const plotted = lines.flatMap((line) => line.values.filter(isDefined))
   const hasReference = referenceValue !== undefined && Number.isFinite(referenceValue)
   const bounds = extent(hasReference ? [...plotted, referenceValue] : plotted)
-  const label = ariaLabel ?? title ?? `Line chart with ${series.length} series`
+  const label = ariaLabel ?? title ?? chartLabel(series.length)
 
   const y = resolveYDomain(yDomain, bounds ?? [0, 1], yTicks)
   const toFraction = (value: number) => y.max === y.min ? 0.5 : (y.max - value) / (y.max - y.min)
@@ -408,15 +449,21 @@ export function LineChart({
                     ? (
                       <span
                         key={`dot-${lineIndex}-${slotIndex}`}
-                        class={interactive
-                          ? "pointer-events-none absolute size-2 -translate-x-1/2 -translate-y-1/2 rounded-full"
-                          : "absolute size-2 -translate-x-1/2 -translate-y-1/2 rounded-full"}
+                        class={[
+                          "absolute size-2 -translate-x-1/2 -translate-y-1/2 rounded-full",
+                          interactive ? "pointer-events-none" : "",
+                          line.hollow[slotIndex] ? "border-2" : "",
+                        ].filter(Boolean).join(" ")}
                         style={{
                           left: percent(slots[slotIndex].position),
                           top: percent(toFraction(value)),
-                          background: line.color,
+                          // A hollow dot is a ring: the series colour on its border, nothing inside.
+                          ...(line.hollow[slotIndex]
+                            ? { borderColor: line.color, background: "none" }
+                            : { background: line.color }),
                         }}
                         title={`${line.name} ${slots[slotIndex].label}: ${yFormat(value)}`}
+                        data-chart-hollow={line.hollow[slotIndex] ? "" : undefined}
                       />
                     )
                     : null
@@ -492,7 +539,7 @@ export function LineChart({
                 <span key={`legend-${lineIndex}`} class="inline-flex items-center gap-1">
                   <span
                     class={line.dashed
-                      ? "inline-block w-3 border-t-2 border-dashed"
+                      ? "inline-block w-6 border-t-2 border-dashed"
                       : "inline-block w-3 border-t-2"}
                     style={{ borderColor: line.color }}
                   />
@@ -511,6 +558,38 @@ export function LineChart({
                 </span>
               )
               : null}
+          </div>
+        )
+        : null}
+      {dataTable
+        ? (
+          // The wrapper hides the table: `sr-only` on a table itself keeps the table's content size,
+          // which would add blank scroll under the chart and sideways scroll on a phone.
+          <div class="sr-only" data-chart-table="">
+            <table>
+              <caption>{label}</caption>
+              <thead>
+                <tr>
+                  <th scope="col">{xLabel}</th>
+                  {lines.map((line, lineIndex) => (
+                    <th key={`th-${lineIndex}`} scope="col">{line.name}</th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {slots.map((slot, slotIndex) => (
+                  <tr key={`tr-${slot.key}`}>
+                    <th scope="row">{slot.label}</th>
+                    {lines.map((line, lineIndex) => {
+                      const value = line.values[slotIndex]
+                      return (
+                        <td key={`td-${lineIndex}`}>{isDefined(value) ? yFormat(value) : "–"}</td>
+                      )
+                    })}
+                  </tr>
+                ))}
+              </tbody>
+            </table>
           </div>
         )
         : null}

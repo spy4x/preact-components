@@ -80,6 +80,26 @@ describe("PageHero", () => {
     expect(html).not.toContain("<time")
   })
 
+  it("puts the note right under the meta line, in the same quiet block", () => {
+    const html = render(
+      <PageHero title="Features" author={{ name: "Anton Shubin" }} note="Work in progress.">
+        <a href="/sign-up">Start free</a>
+      </PageHero>,
+    )
+    const block = html.match(/<div class="flex flex-col gap-1">(.*?)<\/div>/)?.[1] ?? ""
+    expect(block).toMatch(/data-e2e="page-hero-meta">.*<\/p><p [^>]*data-e2e="page-hero-note">/)
+    const note = html.match(/<p class="([^"]*)" data-e2e="page-hero-note">(.*?)<\/p>/)
+    expect(note?.[1]).toMatch(/\btext-sm\b.*\btext-muted\b/)
+    expect(note?.[2]).toBe("Work in progress.")
+    expect(html.indexOf("Start free")).toBeLessThan(html.indexOf("page-hero-note"))
+  })
+
+  it("draws the note alone when there is no author or date", () => {
+    const html = render(<PageHero title="Features" note="Work in progress." />)
+    expect(html).toContain(`data-e2e="page-hero-note">Work in progress.</p>`)
+    expect(html).not.toContain("page-hero-meta")
+  })
+
   it("draws no meta line without an author or a date", () => {
     const html = render(<PageHero title="Features" />)
     expect(html).not.toContain("page-hero-meta")

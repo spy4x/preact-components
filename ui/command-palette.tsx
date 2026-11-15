@@ -1,16 +1,31 @@
-import { cn } from "@spy4x/preact-cn"
-import { IconSearch, IconXMark } from "@spy4x/preact-icons"
-import type { JSX } from "preact"
-import { useEffect, useId, useRef, useState } from "preact/hooks"
+import { join } from "@spy4x/preact-cn/join"
+import {
+  IconChevronLeft,
+  IconChevronRight,
+  type IconProps,
+  IconSearch,
+  IconXMark,
+} from "@spy4x/preact-icons"
+import type { ComponentChildren, ComponentType, JSX } from "preact"
+import { useSignal } from "@preact/signals"
+import { useCallback, useEffect, useId, useRef } from "preact/hooks"
+import { matchEntry, type SearchMatchKind } from "@spy4x/platform/universal/text"
 import { comboboxKey, comboboxKeyAction, fold } from "./combobox.tsx"
 import { HotkeyHint } from "./hotkey-hint.tsx"
+import { TooltipCore } from "./tooltip-core.tsx"
+import { useLabels } from "./i18n.tsx"
 import { focusBefore, focusOnClose } from "./palette-focus.ts"
-import { ariaKeyShortcuts, hotkeyClickBinding, useApplePlatform, useHotkeys } from "./hotkeys.ts"
+import { ariaKeyShortcuts, hotkeyActionBinding, useApplePlatform, useHotkeys } from "./hotkeys.ts"
 import { isComposingInput, useComposedQuery } from "./composed-query.ts"
 import { isImeKeyPress } from "./ime.ts"
 import type { KbdLabels } from "./kbd-keys.tsx"
+import { BADGE_BASE, BADGE_FILLED_GRAY } from "./plain-classes.ts"
 import { acquireScrollLock, type ScrollLock } from "./scroll-lock.ts"
 import { useBackdropPress } from "./backdrop-press.ts"
+import type { KeyValueStore } from "@spy4x/platform/universal/key-value-store"
+import { addRecent, bestMatch, readRecent, recentOptions, writeRecent } from "./palette-pins.ts"
+
+export { clearCommandPaletteRecent } from "./palette-pins.ts"
 
 /** One result the palette lists. Extend it with whatever `onSelect` needs, such as an `href`. */
 export interface CommandPaletteOption {
@@ -24,6 +39,85 @@ export interface CommandPaletteOption {
   hint?: string
   /** The heading the option is listed under. Options without one are listed first, unheaded. */
   group?: string
+  /**
+   * Other names the default filter finds the option by, such as `["calendar", "календарь"]`.
+   * Never shown.
+   */
+  aliases?: readonly string[]
+  /**
+   * An icon from `@spy4x/preact-icons` before the label, drawn at `size-4` and hidden from screen
+   * readers. When one option of a group has an icon, every row of that group keeps its space, so
+   * the labels line up.
+   */
+  icon?: ComponentType<IconProps>
+  /**
+   * The command's own shortcut, one combination written the way `useHotkeys` takes it, such as
+   * `"mod+shift+l"`. The row shows it as keys from `sm` up where the pointer is fine, and announces
+   * it in `aria-keyshortcuts`. The palette only shows it: binding it is the caller's.
+   */
+  kbd?: string
+  /** A setting's current value in one short word, such as `"Dark"` or `"On"`, shown as a badge. */
+  state?: string
+  /**
+   * Why the command cannot run now, such as `"Needs a connection"`. The row stays listed, dimmed,
+   * with this in place of its `detail`; Enter or a click runs nothing and says this instead.
+   */
+  disabledReason?: string
+  /**
+   * What Enter or a click does, called in place of `onSelect`: after the palette closes, or with it
+   * still open under `keepOpen`.
+   */
+  run?: (details: CommandPaletteSelectDetails) => void
+  /**
+   * Makes the row a quick-create entry, such as "New note": Tab or Enter on it puts the palette in
+   * its text mode, with the label as a chip before the emptied field and this row alone listed.
+   * Enter then picks it with what was typed as `text`; Enter with nothing typed does nothing, and
+   * Backspace in the empty field leaves the mode.
+   */
+  takesText?: boolean
+  /**
+   * Sub-rows, such as System, Light and Dark under Theme. Tab or Enter on the row lists them,
+   * filtered by the query as the top level is, with the path shown before the emptied field; they
+   * may have children of their own. Backspace in the empty field goes back a level. A top-level
+   * query does not search them.
+   */
+  children?: readonly this[]
+  /**
+   * Keeps the palette open after `run`, with the same row highlighted and the list neither filtered
+   * nor sorted again, for a toggle such as a theme switch. Re-render with the option's new `state`
+   * and its badge changes in place; the status region then says `stateChanged(label, state)`.
+   */
+  keepOpen?: boolean
+}
+
+/**
+ * How a query matched an option, strongest first: one of `matchEntry`'s kinds from
+ * `@spy4x/platform/universal/text` (`exact`, `prefix`, `words`, `alias`, `layout`, `translit`,
+ * `typo`), or `detail` when only the option's `detail` holds the query.
+ */
+export type CommandPaletteMatchKind = SearchMatchKind | "detail"
+
+/** English defaults for the words `showMatch` puts beside a result, one per {@link CommandPaletteMatchKind}. */
+export const defaultCommandPaletteMatchLabels: Readonly<Record<CommandPaletteMatchKind, string>> = {
+  exact: "Exact name",
+  prefix: "Start of the name",
+  words: "Words in any order",
+  alias: "Another name",
+  layout: "Other keyboard layout",
+  translit: "Other alphabet",
+  typo: "Typo fixed",
+  detail: "In the details",
+}
+
+/** What a pick tells `onSelect` and `run` besides the option. */
+export interface CommandPaletteSelectDetails {
+  /**
+   * The reader asked for the other way to open it, with Ctrl+Enter (⌘Enter on a Mac), a middle
+   * click or a Ctrl/⌘+click: for a link, a new tab. The caller decides what it means.
+   */
+  alternative: boolean
+  /** What the reader typed for a `takesText` option, trimmed and never empty; absent otherwise. */
+  text?: string
 }
 
 /** The palette's own words. Each has an English default in {@link defaultCommandPaletteLabels}. */
@@ -43,6 +137,29 @@ export interface CommandPaletteLabels {
   loading: string
   /** What the list says when a `search` call failed. */
   error: string
+  /** What the palette announces when a `keepOpen` command changed its option's `state`. */
+  stateChanged: (label: string, state: string) => string
+  /** The quiet hint at the field's end while it is empty and some option is a command. */
+  commandsHint: string
+  /** A `takesText` row's name once text is typed for it, such as `New note: "buy milk"`. */
+  withText: (label: string, text: string) => string
+  /** The accessible name of the button that leaves a submenu or a text mode. */
+  back: string
+  /** The heading over the recent picks the empty query lists, with `recent`. */
+  recent: string
+  /** The heading over the one command whose name or alias starts with the query. */
+  bestMatch: string
+  /**
+   * What the palette announces once typing pauses, for one result or more. No result is said by
+   * `empty`.
+   */
+  results: (count: number) => string
+  /** The word after ↑ ↓ in the key hints under the list. */
+  keysMove: string
+  /** The word after Enter in the key hints under the list. */
+  keysOpen: string
+  /** The word after Ctrl+Enter (⌘Enter on a Mac) in the key hints under the list. */
+  keysAlternative: string
 }
 
 /** English defaults for every {@link CommandPaletteLabels} entry. */
@@ -52,7 +169,17 @@ export const defaultCommandPaletteLabels: Readonly<CommandPaletteLabels> = {
   close: "Close the search",
   empty: "Nothing matches.",
   loading: "Searching…",
-  error: "The search failed. Try again.",
+  error: "Couldn't search. Try again.",
+  stateChanged: (label, state) => `${label}: ${state}`,
+  commandsHint: "> for commands",
+  withText: (label, text) => `${label}: “${text}”`,
+  back: "Back",
+  recent: "Recent",
+  bestMatch: "Best match",
+  results: (count) => count === 1 ? "1 result" : `${count} results`,
+  keysMove: "move",
+  keysOpen: "open",
+  keysAlternative: "alternative",
 }
 
 /**
@@ -68,22 +195,69 @@ const DEFAULT_HOTKEYS: readonly string[] = ["/", "mod+k"]
  */
 const SLOW_SEARCH_MS = 300
 
+/** How long, in milliseconds, typing has to pause before the palette announces the result count. */
+const COUNT_PAUSE_MS = 250
+
+/** Where a {@link CommandPalette} keeps its recent picks: its `recent` prop. */
+export interface CommandPaletteRecent {
+  /** The key the picks are kept under. Give each palette its own. */
+  storageKey: string
+  /**
+   * Where they are kept: pass `() => localStorage`, since reading `localStorage` itself throws
+   * where a browser blocks site data. Called when the palette opens and on a pick, never during a
+   * render, and always inside a guard: storage that throws, or holds something else, only means
+   * nothing is remembered. On sign-out call {@link clearCommandPaletteRecent} with the same two.
+   */
+  storage: () => KeyValueStore
+}
+
+/**
+ * What a {@link CommandPalette}'s `trigger` function gets to draw a trigger of its own, such as an
+ * app shell's search button.
+ */
+export interface CommandPaletteTrigger {
+  /**
+   * Opens the palette. With `query`, the field holds that text with the caret after it, as if the
+   * reader had typed it; without, it holds `defaultQuery`, selected. Does nothing while it is open.
+   */
+  open: (query?: string) => void
+  /**
+   * The ref for the trigger's element, so focus goes back to it when the palette closes. A trigger
+   * without it gets focus back as a hidden one does: on the element that had it before.
+   */
+  ref: (element: HTMLElement | null) => void
+  /**
+   * The hotkeys for the trigger's `aria-keyshortcuts`, such as `"/ Control+K"`, or `undefined`
+   * when `hotkeys` is `[]`.
+   */
+  shortcuts: string | undefined
+  /** The first of `hotkeys`, for a hint such as `<Kbd keys={hotkey} />`, or `undefined`. */
+  hotkey: string | undefined
+}
+
 /** Props every {@link CommandPalette} takes, whichever data mode it uses. */
 export interface CommandPaletteBaseProps<T extends CommandPaletteOption> {
-  /** Called with the option the reader picked, after the palette has closed. */
-  onSelect: (option: T) => void
+  /**
+   * Called with the option the reader picked, after the palette has closed. An option with `run`
+   * runs that instead, and a disabled one (`disabledReason`) neither. `details` says whether the
+   * pick was the alternative one and carries a `takesText` option's text.
+   */
+  onSelect: (option: T, details: CommandPaletteSelectDetails) => void
+  /** Called with `true` when the palette opens and with `false` when it closes. */
+  onOpenChange?: (open: boolean) => void
   /**
    * The combinations that open the palette, written the way `useHotkeys` takes them. Defaults to
    * `["/", "mod+k"]`: `/`, and ⌘K on Apple platforms or Ctrl+K elsewhere. `[]` turns them off.
-   * Each one clicks the trigger, by the rule a button's `hotkey` follows, so it does nothing while
-   * the trigger is hidden. The trigger announces them all in `aria-keyshortcuts` and shows the
-   * first one, as a button's `hotkey` hint, where the screen is wide and the pointer fine. While the reader types in a text field, a combination with
-   * Control, Command or `mod` still opens it; a plain key or an Alt combination does not, since
-   * both type text, and the field keeps its editing chords (`mod` with A, C, V, X, Z or Y). See
-   * `firesInFields`.
+   * Each one opens the palette itself, with a custom trigger, with none, and while the trigger is
+   * hidden; inside a dialog it opens only when that dialog holds the trigger, and while a modal
+   * dialog is open it waits. The trigger announces them all in `aria-keyshortcuts` and shows the
+   * first one, as a button's `hotkey` hint, where the screen is wide and the pointer fine. While
+   * the reader types in a text field, a combination with Control, Command or `mod` still opens it;
+   * a plain key or an Alt combination does not, since both type text, and the field keeps its
+   * editing chords (`mod` with A, C, V, X, Z or Y). See `firesInFields`.
    */
   hotkeys?: readonly string[]
-  /** The words the trigger's hotkey hint shows for a key; see `KBD_LABELS`. */
+  /** The words the trigger's hotkey hint and each option's `kbd` show for a key; see `KBD_LABELS`. */
   kbdLabels?: Partial<KbdLabels>
   /** Overrides for the palette's words; see {@link defaultCommandPaletteLabels}. */
   labels?: Partial<CommandPaletteLabels>
@@ -92,18 +266,63 @@ export interface CommandPaletteBaseProps<T extends CommandPaletteOption> {
    * with `-close`.
    */
   dataE2E?: string
-  /** Extra classes for the trigger, such as its width. */
+  /**
+   * Extra classes for the trigger, appended after its own and not merged into them, so
+   * `tailwind-merge` stays out of the bundle. To replace one of the trigger's own utilities, such
+   * as its width, mark the replacement important with a trailing `!`: `w-80!`.
+   */
   class?: string
+  /**
+   * The trigger's shape. `"button"`, the default, is an icon button on a phone and a field-shaped
+   * button with the placeholder and the hotkey hint from `sm`. `"field"` is the field-shaped button
+   * at every width, as wide as its container. `"icon"` is the icon button at every width, for a
+   * tight spot, with a tooltip below it that shows its placeholder and its first hotkey. A
+   * printable key typed on a focused `"field"` trigger opens the palette with that key as the
+   * query, as a real field would take it; a key that is one of `hotkeys` opens it as the hotkey
+   * does.
+   *
+   * A function draws a trigger of its own instead, from what {@link CommandPaletteTrigger} hands
+   * it; returning `null` draws none, leaving the hotkeys. Give its element `aria-haspopup="dialog"`
+   * and `aria-keyshortcuts={shortcuts}`.
+   */
+  trigger?: "button" | "field" | "icon" | ((api: CommandPaletteTrigger) => ComponentChildren)
+  /**
+   * Until the page hydrates, the trigger is a link to this address, drawn the same, so a reader
+   * without JavaScript reaches a search page instead of a button that does nothing. A function
+   * `trigger` draws its own element and ignores it.
+   */
+  triggerHref?: string
+  /**
+   * The query the field holds each time the palette opens, selected, so the first key typed
+   * replaces it. Defaults to the empty query.
+   */
+  defaultQuery?: string
+  /**
+   * Shows beside each result how the query matched it ({@link CommandPaletteMatchKind}), in the
+   * words of `matchLabels`. Every result carries the kind in `data-match` either way.
+   */
+  showMatch?: boolean
+  /** Overrides for the words `showMatch` shows; see {@link defaultCommandPaletteMatchLabels}. */
+  matchLabels?: Partial<Record<CommandPaletteMatchKind, string>>
+  /**
+   * Remembers the last 10 top-level picks and lists up to 5 of them under "Recent" on the empty
+   * query, newest first, skipping any no option has now. Omit it to remember nothing.
+   */
+  recent?: CommandPaletteRecent
 }
 
 /** The local data mode: the palette filters `options` itself. */
 export interface CommandPaletteLocalProps<T extends CommandPaletteOption>
   extends CommandPaletteBaseProps<T> {
-  /** Every option, filtered as the reader types. */
+  /**
+   * Every option, filtered as the reader types. A query that starts with ">" lists only the
+   * commands (options with `run`), filtered by the rest of the query.
+   */
   options: readonly T[]
   /**
-   * The options a query shows, in order. Defaults to {@link rankOptions}: names equal to the query,
-   * then names starting with it, then names containing it, then details containing it.
+   * The options a query shows, in order. Defaults to {@link matchOptions}, which forgives typos,
+   * word order, the other keyboard layout and the other alphabet. {@link rankOptions} is the plain
+   * substring ranking the palette used before.
    */
   filter?: (options: readonly T[], query: string) => readonly T[]
   search?: never
@@ -119,9 +338,25 @@ export interface CommandPaletteRemoteProps<T extends CommandPaletteOption>
    * answer is ignored even when the function does not listen to `signal`. A rejection shows the
    * error label. While the next answer loads, the previous results stay listed as they are; past
    * 300 ms the loading label shows beside the field and is announced. Enter pressed
-   * while it loads waits for the answer and picks its first result.
+   * while it loads, before any answer for the query is listed, waits for one and picks its first
+   * row.
+   *
+   * `show` lists an early answer for the same query at once, such as the commands that match
+   * before a server's results arrive; it can be called more than once, and the promise's answer
+   * replaces it. Once an early answer is listed, Enter picks the highlighted row without waiting,
+   * and a later answer for the same query keeps the highlighted option, found by its `id`, rather
+   * than moving the highlight to the first row. A call after the promise settled, or from a stale
+   * call, is ignored. A rejection after an early answer keeps its rows and shows the error label
+   * beside the field. The palette does not read a ">" itself in this mode: listing only the
+   * commands for a query that starts with ">" is `search`'s job. The "> for commands" hint shows on
+   * the empty query while the listed answer holds a command (an option with `run`) and nothing
+   * shows beside the field.
    */
-  search: (query: string, signal: AbortSignal) => Promise<readonly T[]>
+  search: (
+    query: string,
+    signal: AbortSignal,
+    show: (options: readonly T[]) => void,
+  ) => Promise<readonly T[]>
   /** Milliseconds of quiet typing before `search` is called. Defaults to `200`. */
   debounce?: number
   options?: never
@@ -141,7 +376,8 @@ export interface CommandPaletteGroup<T extends CommandPaletteOption> {
 }
 
 /**
- * The options that match `query`, best first, at most `limit` of them: names equal to the query,
+ * The plain substring ranking, kept for callers that want it over {@link matchOptions}: the
+ * options that match `query`, best first, at most `limit` of them: names equal to the query,
  * then names that start with it, then names that contain it, then options whose `detail` contains
  * it. The input order breaks ties. Matching folds case and accents the way `Combobox` does, and an
  * empty query matches every option. It reads only `label` and `detail`, so any list with those
@@ -174,6 +410,65 @@ export function rankOptions<T extends Pick<CommandPaletteOption, "label" | "deta
     .map((scored) => scored.option)
 }
 
+/** What {@link matchOptions} and {@link matchOption} read of an option. */
+export type MatchableOption = Pick<CommandPaletteOption, "label" | "detail" | "aliases">
+
+/** Whether the option's `detail` holds the query, folding case and accents. */
+function detailHolds(needle: string, option: MatchableOption): boolean {
+  return option.detail !== undefined && fold(option.detail).includes(needle)
+}
+
+/**
+ * How `query` matched one option, or `undefined` when it did not or the query is empty: what
+ * `matchEntry` from `@spy4x/platform/universal/text` says of its `label` and `aliases`, else
+ * `"detail"` when its `detail` holds the query.
+ *
+ * @param query What the reader typed.
+ * @param option The option to test.
+ */
+export function matchOption(
+  query: string,
+  option: MatchableOption,
+): CommandPaletteMatchKind | undefined {
+  const needle = fold(query.trim())
+  if (needle === "") return undefined
+  const match = matchEntry(query, option)
+  if (match) return match.how
+  return detailHolds(needle, option) ? "detail" : undefined
+}
+
+/**
+ * The options that match `query`, best first, at most `limit` of them: the palette's default
+ * filter. Labels and aliases are matched by `matchEntry` from `@spy4x/platform/universal/text`,
+ * which ignores case, accents and word order, lets each query word start a word of the name, fixes
+ * one typo in a word of four letters or more, and reads a query typed in the other keyboard layout
+ * (ЙЦУКЕН and QWERTY) or the other alphabet (Cyrillic and Latin): `"combobx"` finds `"Combobox"`
+ * and `"ещфые"` finds `"Toast"`. Options whose `detail` alone holds the query come last. The input
+ * order breaks ties, and an empty query matches every option.
+ *
+ * @param options The options to search.
+ * @param query What the reader typed.
+ * @param limit The most results to return.
+ */
+export function matchOptions<T extends MatchableOption>(
+  options: readonly T[],
+  query: string,
+  limit = 50,
+): T[] {
+  const needle = fold(query.trim())
+  if (needle === "") return options.slice(0, limit)
+  const scored: { option: T; index: number; score: number }[] = []
+  options.forEach((option, index) => {
+    const match = matchEntry(query, option)
+    if (match) scored.push({ option, index, score: match.score })
+    else if (detailHolds(needle, option)) scored.push({ option, index, score: -1 })
+  })
+  return scored
+    .sort((a, b) => b.score - a.score || a.index - b.index)
+    .slice(0, limit)
+    .map((match) => match.option)
+}
+
 /**
  * The options under their headings: the unheaded ones first, then each group in the order it first
  * appears, each keeping its options' order.
@@ -195,6 +490,12 @@ export function groupOptions<T extends CommandPaletteOption>(
   }))
 }
 
+/** One submenu or text mode the reader entered, and the query the level above had then. */
+interface Level<T> {
+  option: T
+  query: string
+}
+
 /** Where a `search` call stands. */
 enum Status {
   IDLE = 1,
@@ -209,55 +510,160 @@ enum Status {
 interface Remote<T> {
   status: Status
   options: readonly T[]
+  /** The options are an early answer the current call gave through `show`. */
+  early?: boolean
 }
 
 /**
  * A search trigger and the dialog it opens: one field and a list of results that the arrow keys
  * move through, as `Combobox` does. Home and End jump to either end, Enter picks the highlighted
  * result, and Escape, the close button or a click on the backdrop closes it, with focus back on the
- * trigger. When the trigger is hidden, such as when an app opens the palette from controls of its
- * own by clicking it, focus goes back to the element that had it before the palette opened. `/` and ⌘K (Ctrl+K off Apple platforms) open it unless `hotkeys` says otherwise. The page
- * behind does not scroll while it is open.
+ * trigger. `trigger` can be a function that draws a trigger of its own, or none, and opens the
+ * palette with text already typed. When the trigger is hidden, or a custom one gives no ref, focus
+ * goes back to the element that had it before the palette opened. `/` and ⌘K (Ctrl+K off Apple
+ * platforms) open it unless `hotkeys` says otherwise, whatever trigger is drawn. The page behind
+ * does not scroll while it is open.
  *
  * Give `options` to have it filter a list itself, or `search` to ask a server, which it calls after
- * a pause in typing, cancelling a stale call. Results with a `group` are listed under headings. On
- * a phone the trigger is an icon button and the dialog fills the screen.
+ * a pause in typing, cancelling a stale call. The default filter forgives typos, word order, the
+ * other keyboard layout and the other alphabet ({@link matchOptions}), and each result carries how
+ * it matched in `data-match`, shown in words with `showMatch`. Results with a `group` are listed
+ * under headings. On a phone the trigger is an icon button unless `trigger` is `"field"`, and the
+ * dialog fills the screen. `defaultQuery` opens it with a query already typed.
+ *
+ * An option can be a command: an `icon`, a `state` badge, its `kbd` shortcut, a `run` that Enter or
+ * a click calls in place of `onSelect`, and `keepOpen` for a toggle whose badge changes in place
+ * and is announced. An option with a `disabledReason` stays listed, dimmed, and runs nothing.
+ *
+ * Ctrl+Enter (⌘Enter on a Mac), a middle click and a Ctrl/⌘+click pick a row the alternative way,
+ * such as in a new tab. PageUp and PageDown jump between groups. Tab or Enter enters a row with
+ * `children` or one that `takesText`, and Backspace in the empty field goes back. A query that
+ * starts with ">" lists only commands. A pick that moves focus, such as a command opening a dialog,
+ * keeps it there once the palette closes.
+ *
+ * A command whose name or alias starts with the query is pinned on top under "Best match". With
+ * `recent` the empty query lists the last picks under "Recent". Once typing pauses for 250 ms,
+ * a polite live region says how many results there are. From `sm`, for a fine pointer, a line
+ * under the list shows the keys.
  *
  * @param props See {@link CommandPaletteProps}.
  */
 export function CommandPalette<T extends CommandPaletteOption>(
   props: CommandPaletteProps<T>,
 ): JSX.Element {
-  const { hotkeys = DEFAULT_HOTKEYS, kbdLabels, dataE2E, class: className } = props
-  const labels = { ...defaultCommandPaletteLabels, ...props.labels }
+  const {
+    hotkeys = DEFAULT_HOTKEYS,
+    kbdLabels,
+    dataE2E,
+    class: className,
+    trigger: triggerShape = "button",
+    showMatch = false,
+  } = props
+  const labels = useLabels("CommandPalette", defaultCommandPaletteLabels, props.labels, {
+    stateChanged: ["label", "state"],
+    withText: ["label", "text"],
+    results: ["count"],
+  })
+  const matchLabels = useLabels(
+    "CommandPalette.match",
+    defaultCommandPaletteMatchLabels,
+    props.matchLabels,
+  )
+  const field = triggerShape === "field"
+  const iconOnly = triggerShape === "icon"
   const dialog = useRef<HTMLDialogElement>(null)
   const input = useRef<HTMLInputElement>(null)
   const trigger = useRef<HTMLButtonElement>(null)
+  // The link the trigger is until hydration, under `triggerHref`.
+  const link = useRef<HTMLAnchorElement>(null)
+  const hydrated = useSignal(false)
+  // A custom trigger's element, from the ref its function was handed.
+  const custom = useRef<HTMLElement | null>(null)
+  const attachCustom = useCallback((element: HTMLElement | null) => {
+    custom.current = element
+  }, [])
+  /** The trigger focus goes back to: the custom one's element, or the palette's own button. */
+  const triggerElement = () => typeof triggerShape === "function" ? custom.current : trigger.current
   // What had focus when the palette opened: where focus goes back to while the trigger is hidden.
   const before = useRef<HTMLElement | null>(null)
   const id = useId()
-  const [query, setQuery] = useState("")
-  const [activeIndex, setActiveIndex] = useState(0)
-  const [remote, setRemote] = useState<Remote<T>>({ status: Status.IDLE, options: [] })
+  const query = useSignal(props.defaultQuery ?? "")
+  const activeIndex = useSignal(0)
+  const remote = useSignal<Remote<T>>({ status: Status.IDLE, options: [] })
   const timer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined)
   const slowTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined)
   // Enter was pressed while a search ran: pick the answer's first result when it lands.
-  const pickWhenAnswered = useRef(false)
+  const pickWhenAnswered = useRef<CommandPaletteSelectDetails | null>(null)
   const call = useRef<AbortController | null>(null)
   const lock = useRef<ScrollLock | null>(null)
   const latest = useRef(props)
   latest.current = props
+  // What the status region says after Enter on a disabled row, or after a kept-open command changed
+  // its state. The next keystroke or opening clears it.
+  const notice = useSignal("")
+  // The kept-open command that ran last and the state it had then, until a render shows a new one.
+  const ranKeptOpen = useRef<{ id: string; state: string | undefined } | null>(null)
+  // The recent picks, newest first, as storage had them when the palette last opened.
+  const recent = useSignal<readonly string[]>([])
+  // The result count the live region says, once typing has paused; `null` while it has not.
+  const counted = useSignal<number | null>(null)
   // A click on the backdrop lands on the dialog element itself; the press has to begin there too.
   const backdrop = useBackdropPress((event) => event.target === dialog.current)
 
+  // The submenus and text mode entered, outermost first; empty at the top level.
+  const path = useSignal<Level<T>[]>([])
+  // Each level as this render's options have it, found by id, so a re-rendered submenu shows its
+  // rows' new `state`; one that is gone stays as it was entered.
+  const levels: T[] = []
+  for (const entry of path.value) {
+    const above = levels.length === 0
+      ? props.search === undefined ? props.options : remote.value.options
+      : levels[levels.length - 1].children ?? []
+    levels.push(above.find((option) => option.id === entry.option.id) ?? entry.option)
+  }
+  const level = levels.at(-1)
+  const textMode = level?.takesText === true
   const remoteMode = props.search !== undefined
-  const busy = remoteMode && (remote.status === Status.LOADING || remote.status === Status.SLOW)
+  const busy = remoteMode && level === undefined &&
+    (remote.value.status === Status.LOADING || remote.value.status === Status.SLOW)
   // While an input method composes, the results stay those of the text from before it began.
-  const composedQuery = useComposedQuery(input, query, (text) => onTyped(text))
-  const results = props.search !== undefined
-    ? remote.options
-    : (props.filter ?? rankOptions)(props.options, composedQuery)
-  const groups = groupOptions(results)
+  const composedQuery = useComposedQuery(input, query.value, (text) => onTyped(text))
+
+  /** What the filter matches for `text` at `at`: nothing in a text mode, the rest after a ">". */
+  const needleFor = (at: T | undefined, text: string) =>
+    at?.takesText ? "" : !at && !remoteMode && text.startsWith(">") ? text.slice(1).trim() : text
+  /** The options listed at `at` (the top level when `undefined`) for `text`, ungrouped. */
+  const listFor = (at: T | undefined, text: string): readonly T[] => {
+    const current = latest.current
+    const filter = (current.search === undefined && current.filter) || matchOptions
+    if (at?.takesText) return [at]
+    if (at) return filter(at.children ?? [], text)
+    if (current.search !== undefined) return remote.value.options
+    const commands = text.startsWith(">")
+    return filter(
+      commands ? current.options.filter((option) => option.run !== undefined) : current.options,
+      needleFor(at, text),
+    )
+  }
+  /**
+   * The groups listed at `at` for `text`. At the top level one group is pinned above the rest: the
+   * Best match for a query, or the Recent picks on the empty query. Its rows leave their own group,
+   * so no option is listed twice.
+   */
+  const groupsFor = (at: T | undefined, text: string): CommandPaletteGroup<T>[] => {
+    const listed = listFor(at, text)
+    if (at !== undefined) return groupOptions(listed)
+    const best = bestMatch(listed, needleFor(at, text))
+    const pinned: CommandPaletteGroup<T> | undefined = best !== undefined
+      ? { label: labels.bestMatch, options: [best] }
+      : text === "" && latest.current.recent !== undefined
+      ? { label: labels.recent, options: recentOptions(recent.value, listed) }
+      : undefined
+    if (pinned === undefined || pinned.options.length === 0) return groupOptions(listed)
+    return [pinned, ...groupOptions(listed.filter((option) => !pinned.options.includes(option)))]
+  }
+  const needle = needleFor(level, composedQuery)
+  const groups = groupsFor(level, composedQuery)
   const flat = groups.flatMap((group) => group.options)
 
   /**
@@ -269,9 +675,11 @@ export function CommandPalette<T extends CommandPaletteOption>(
     timer.current = undefined
     clearTimeout(slowTimer.current)
     slowTimer.current = undefined
-    pickWhenAnswered.current = false
-    call.current?.abort()
+    pickWhenAnswered.current = null
+    // Forgotten before the abort, so a `show` that the abort itself sets off is already stale.
+    const stale = call.current
     call.current = null
+    stale?.abort()
   }
 
   /** Asks `search` for `text` after `delay` milliseconds, replacing any earlier call. */
@@ -281,38 +689,65 @@ export function CommandPalette<T extends CommandPaletteOption>(
     if (search === undefined) return
     // The previous query's answer stays listed, so the list does not blink on every keystroke. Enter
     // waits for the new answer instead of picking from it (see `onKeyDown`).
-    setRemote((current) => ({ status: Status.LOADING, options: current.options }))
+    remote.value = { status: Status.LOADING, options: remote.value.options }
     slowTimer.current = setTimeout(() => {
       slowTimer.current = undefined
-      setRemote((current) =>
-        current.status === Status.LOADING ? { ...current, status: Status.SLOW } : current
-      )
+      if (remote.value.status === Status.LOADING) {
+        remote.value = { ...remote.value, status: Status.SLOW }
+      }
     }, SLOW_SEARCH_MS)
     timer.current = setTimeout(() => {
       timer.current = undefined
       const controller = new AbortController()
       call.current = controller
+      /** The top-level rows `text` lists now, as the reader sees them. */
+      const rows = () => groupsFor(undefined, text).flatMap((group) => group.options)
+      /**
+       * Lists `next`. A second answer for this query keeps the highlighted option by its id, and
+       * the first starts on the first row; a submenu entered meanwhile keeps its own highlight.
+       */
+      const list = (next: Remote<T>) => {
+        const before = rows()
+        const kept = remote.value.early
+          ? before[Math.min(activeIndex.value, before.length - 1)]
+          : undefined
+        remote.value = next
+        if (path.value.length === 0) {
+          activeIndex.value = kept === undefined
+            ? 0
+            : Math.max(0, rows().findIndex((option) => option.id === kept.id))
+        }
+        // An Enter that waited picks the first row the reader sees, the Best match one included.
+        // An early answer with no rows leaves it waiting for the next.
+        const first = rows()[0]
+        const waiting = pickWhenAnswered.current
+        if (waiting && first !== undefined) {
+          pickWhenAnswered.current = null
+          choose(first, waiting.alternative)
+        }
+      }
       const settle = (next: Remote<T>) => {
         if (call.current !== controller) return
         call.current = null
         clearTimeout(slowTimer.current)
         slowTimer.current = undefined
-        setRemote(next)
-        setActiveIndex(0)
-        if (pickWhenAnswered.current) {
-          pickWhenAnswered.current = false
-          choose(next.options[0])
-        }
+        list(next)
+        pickWhenAnswered.current = null
+      }
+      const show = (options: readonly T[]) => {
+        if (call.current !== controller) return
+        list({ status: remote.value.status, options, early: true })
       }
       let answer: Promise<readonly T[]>
       try {
-        answer = Promise.resolve(search(text, controller.signal))
+        answer = Promise.resolve(search(text, controller.signal, show))
       } catch (error) {
         answer = Promise.reject(error)
       }
       answer.then(
         (options) => settle({ status: Status.IDLE, options }),
-        () => settle({ status: Status.ERROR, options: [] }),
+        () =>
+          settle({ status: Status.ERROR, options: remote.value.early ? remote.value.options : [] }),
       )
     }, delay)
   }
@@ -323,18 +758,36 @@ export function CommandPalette<T extends CommandPaletteOption>(
     lock.current = null
   }
 
-  useEffect(() => () => {
-    cancel()
-    unlock()
+  useEffect(() => {
+    // The link becomes the button; focus on the link moves to the button with it.
+    if (link.current !== null) {
+      const focused = document.activeElement === link.current
+      hydrated.value = true
+      if (focused) requestAnimationFrame(() => trigger.current?.focus())
+    }
+    return () => {
+      cancel()
+      unlock()
+    }
   }, [])
 
-  const open = () => {
+  /**
+   * Opens the palette with `typed` in the field, the caret after it, or else with `defaultQuery`
+   * selected.
+   */
+  const open = (typed?: string) => {
     if (dialog.current?.open) return
-    setQuery("")
-    setActiveIndex(0)
+    const text = typed ?? latest.current.defaultQuery ?? ""
+    query.value = text
+    activeIndex.value = 0
+    notice.value = ""
+    path.value = []
+    ranKeptOpen.current = null
+    const kept = latest.current.recent
+    recent.value = kept === undefined ? [] : readRecent(kept.storageKey, kept.storage)
     if (latest.current.search !== undefined) {
-      setRemote({ status: Status.IDLE, options: [] })
-      ask("", 0)
+      remote.value = { status: Status.IDLE, options: [] }
+      ask(text, 0)
     }
     // The page behind stays put, as it does behind `Modal`, padded by the scrollbar it loses. The
     // lock is the one `Modal` holds too, counted: a page something else has already locked, such as
@@ -343,34 +796,134 @@ export function CommandPalette<T extends CommandPaletteOption>(
     lock.current ??= acquireScrollLock()
     before.current = focusBefore(document.activeElement as HTMLElement | null, document.body)
     dialog.current?.showModal()
-    input.current?.focus()
+    latest.current.onOpenChange?.(true)
+    const box = input.current
+    if (!box) return
+    // The signal renders the text on the next frame; the field needs it now, to select it.
+    box.value = text
+    box.focus()
+    if (typed === undefined) box.select()
+    else box.setSelectionRange(text.length, text.length)
+  }
+
+  /** A printable key on a focused field-shaped trigger opens the palette with that key typed. */
+  const onTriggerKeyDown = (event: JSX.TargetedKeyboardEvent<HTMLButtonElement>) => {
+    if (!field || event.ctrlKey || event.metaKey || event.altKey || event.isComposing) return
+    // A space presses the button, and a hotkey opens the palette the hotkey's way.
+    if ([...event.key].length !== 1 || event.key === " " || hotkeys.includes(event.key)) return
+    event.preventDefault()
+    open(event.key)
   }
   const close = () => dialog.current?.close()
-  const choose = (option: T | undefined) => {
+
+  /** Opens `option`'s submenu or text mode, with the field emptied. */
+  const enter = (option: T) => {
+    path.value = [...path.value, { option, query: query.value }]
+    query.value = ""
+    activeIndex.value = 0
+    notice.value = ""
+  }
+
+  /** Goes back a level, with the query typed there and the row that was entered highlighted. */
+  const back = () => {
+    const left = path.value.at(-1)
+    if (!left) return
+    path.value = path.value.slice(0, -1)
+    query.value = left.query
+    notice.value = ""
+    const rows = groupsFor(levels.at(-2), left.query).flatMap((group) => group.options)
+    activeIndex.value = Math.max(0, rows.findIndex((option) => option.id === left.option.id))
+    input.current?.focus()
+  }
+
+  /**
+   * Picks `option`: a disabled one only says why, one with `children` or `takesText` is entered, a
+   * text mode's row with nothing typed does nothing, a kept-open command runs with the palette
+   * still open, and any other closes the palette, then runs its `run` or hands it to `onSelect`.
+   */
+  const choose = (option: T | undefined, alternative = false) => {
     if (!option) return
+    if (option.disabledReason !== undefined) {
+      notice.value = option.disabledReason
+      return
+    }
+    if (option !== level && (option.children !== undefined || option.takesText)) {
+      return enter(option)
+    }
+    const text = query.value.trim()
+    if (option.takesText && text === "") return
+    const details: CommandPaletteSelectDetails = option.takesText
+      ? { alternative, text }
+      : { alternative }
+    // A top-level pick, a text row's included, joins the recent ones. The list on screen keeps its
+    // order until the next opening, so a kept-open command stays where it is.
+    const kept = latest.current.recent
+    if (kept !== undefined && (levels.length === 0 || (levels.length === 1 && option === level))) {
+      const { storageKey, storage } = kept
+      writeRecent(storageKey, addRecent(readRecent(storageKey, storage), option.id), storage)
+    }
+    if (option.run !== undefined && option.keepOpen) {
+      notice.value = ""
+      ranKeptOpen.current = { id: option.id, state: option.state }
+      option.run(details)
+      return
+    }
     close()
+    if (option.run !== undefined) option.run(details)
     // The latest `onSelect`: a pick that waited for a search runs after later renders.
-    latest.current.onSelect(option)
+    else latest.current.onSelect(option, details)
   }
 
   useHotkeys(
-    // A button's `hotkey` binding on the trigger: a Control, Command or `mod` chord opens the
-    // palette from a text field too, unless it is one of the field's editing chords.
-    hotkeys.map((keys) => hotkeyClickBinding(keys, () => trigger.current)),
+    // Opens the palette whatever trigger is drawn: a Control, Command or `mod` chord opens it from
+    // a text field too, unless it is one of the field's editing chords.
+    hotkeys.map((keys) => hotkeyActionBinding(keys, () => open(), triggerElement)),
     { enabled: hotkeys.length > 0 },
   )
   const apple = useApplePlatform()
 
   /** Follow a finished keystroke: highlight the first result, and ask `search` after the pause. */
   const onTyped = (text: string) => {
-    setQuery(text)
-    setActiveIndex(0)
-    if (remoteMode) ask(text, latest.current.debounce ?? 200)
+    query.value = text
+    activeIndex.value = 0
+    notice.value = ""
+    ranKeptOpen.current = null
+    if (remoteMode && path.value.length === 0) ask(text, latest.current.debounce ?? 200)
   }
 
   const onKeyDown = (event: JSX.TargetedKeyboardEvent<HTMLInputElement>) => {
     // An input method confirms or cancels a word with Enter and Escape; the word is not finished.
     if (isImeKeyPress(event)) return
+    const modified = event.ctrlKey || event.metaKey || event.altKey
+    if (event.key === "Backspace" && event.currentTarget.value === "" && level !== undefined) {
+      event.preventDefault()
+      return back()
+    }
+    const highlighted = flat[active]
+    if (
+      event.key === "Tab" && !event.shiftKey && !modified && highlighted !== undefined &&
+      highlighted !== level && (highlighted.children !== undefined || highlighted.takesText)
+    ) {
+      event.preventDefault()
+      return enter(highlighted)
+    }
+    if ((event.key === "PageUp" || event.key === "PageDown") && !modified) {
+      // The first row of the previous or next group, the unheaded rows counting as one; the ends
+      // stop at the first and the last group.
+      event.preventDefault()
+      const starts: number[] = []
+      let count = 0
+      for (const group of groups) {
+        starts.push(count)
+        count += group.options.length
+      }
+      const current = starts.filter((start) => start <= active).length - 1
+      const next = current + (event.key === "PageDown" ? 1 : -1)
+      if (starts.length > 0) {
+        activeIndex.value = starts[Math.min(Math.max(next, 0), starts.length - 1)]
+      }
+      return
+    }
     const key = comboboxKey(event)
     if (key === undefined) return
     if (key === "Escape") {
@@ -378,23 +931,37 @@ export function CommandPalette<T extends CommandPaletteOption>(
       close()
       return
     }
-    if (key === "Enter" && busy) {
-      // The highlighted row belongs to the previous query: wait for this one's answer instead.
+    if (key === "Enter" && busy && !remote.value.early) {
+      // The highlighted row belongs to the previous query: wait for this one's answer instead. An
+      // early answer is this query's, so Enter picks from it at once.
       event.preventDefault()
-      pickWhenAnswered.current = true
+      pickWhenAnswered.current = { alternative: event.ctrlKey || event.metaKey }
       return
     }
-    const action = comboboxKeyAction(key, { activeIndex, isOpen: true }, flat.length)
+    const action = comboboxKeyAction(
+      key,
+      { activeIndex: activeIndex.value, isOpen: true },
+      flat.length,
+    )
     if (action.preventDefault) event.preventDefault()
-    if (action.select >= 0) return choose(flat[action.select])
-    setActiveIndex(action.state.activeIndex)
+    if (action.select >= 0) return choose(flat[action.select], event.ctrlKey || event.metaKey)
+    activeIndex.value = action.state.activeIndex
   }
 
   const listbox = `${id}-results`
+  const crumbId = `${id}-path`
+  const hintId = `${id}-hint`
+  // "Searching…" or the error beside the field takes the hint's place: two quiet labels side by
+  // side read as one phrase and squeeze the field on a phone.
+  const sideLabel = flat.length > 0 &&
+    (remote.value.status === Status.SLOW || remote.value.status === Status.ERROR)
+  const showHint = level === undefined && query.value === "" && !(remoteMode && sideLabel) &&
+    (props.search === undefined ? props.options : remote.value.options)
+      .some((option) => option.run !== undefined)
   // Keyed by the option's own id, not its row: when an answer puts another option in the
   // highlighted row, the active descendant changes and a screen reader announces the new one.
   const optionId = (option: T) => `${id}-result-${encodeURIComponent(option.id)}`
-  const active = flat.length === 0 ? -1 : Math.min(activeIndex, flat.length - 1)
+  const active = flat.length === 0 ? -1 : Math.min(activeIndex.value, flat.length - 1)
 
   // Keep the highlighted result on screen, as `Combobox` does: the list scrolls by just the row
   // that went past its edge, and a row already in view does not move it.
@@ -402,80 +969,295 @@ export function CommandPalette<T extends CommandPaletteOption>(
     if (active < 0 || !dialog.current?.open) return
     document.getElementById(optionId(flat[active]))?.scrollIntoView({ block: "nearest" })
   }, [active, flat.length, flat[active]?.id])
-  const status = !remoteMode || remote.status === Status.IDLE
+  // A kept-open command's caller re-renders with its new state: announce it once it shows.
+  useEffect(() => {
+    const ran = ranKeptOpen.current
+    if (ran === null) return
+    const now = flat.find((option) => option.id === ran.id)
+    if (now === undefined || now.state === ran.state) return
+    ranKeptOpen.current = null
+    if (now.state !== undefined) notice.value = labels.stateChanged(now.label, now.state)
+  })
+  const status = notice.value !== ""
+    ? notice.value
+    : !remoteMode || remote.value.status === Status.IDLE
     ? flat.length === 0 ? labels.empty : ""
-    : remote.status === Status.SLOW
+    : remote.value.status === Status.SLOW
     ? labels.loading
-    : remote.status === Status.ERROR
+    : remote.value.status === Status.ERROR
     ? labels.error
+    : ""
+  // The count is said once typing pauses, so a screen reader is not told it on every keystroke.
+  // Emptied on each change, so the same count is said again after the next pause.
+  const countFor = `${needle}\n${flat.length}\n${remote.value.status}\n${path.value.length}`
+  const mounted = useRef(false)
+  useEffect(() => {
+    counted.value = null
+    // Nothing is said for what the palette shows when it mounts: nobody has typed yet, and a count
+    // drawn a moment after the page loaded made it differ from the server's page.
+    if (!mounted.current) {
+      mounted.current = true
+      return
+    }
+    const pause = setTimeout(() => counted.value = flat.length, COUNT_PAUSE_MS)
+    return () => clearTimeout(pause)
+  }, [countFor])
+  const countText = status === "" && counted.value !== null && counted.value > 0
+    ? labels.results(counted.value)
     : ""
   const firstHotkey = hotkeys[0]
   const shortcuts = hotkeys.length === 0
     ? undefined
     : hotkeys.map((keys) => ariaKeyShortcuts(keys, apple)).join(" ")
+  const triggerApi: CommandPaletteTrigger = {
+    // A string only: `onClick={open}` hands over the click event.
+    open: (typed) => open(typeof typed === "string" ? typed : undefined),
+    ref: attachCustom,
+    shortcuts,
+    hotkey: firstHotkey,
+  }
 
-  const row = (option: T, index: number) => (
-    <li
-      key={option.id}
-      id={optionId(option)}
-      role="option"
-      aria-selected={index === active}
-      onClick={() => choose(option)}
-      onMouseMove={() => index !== active && setActiveIndex(index)}
-      class={cn(
-        "flex cursor-pointer items-baseline justify-between gap-4 rounded-lg px-3 py-2",
-        // A touch target on a phone, however short its text.
-        "max-sm:min-h-11 max-sm:items-center",
-        index === active && "bg-selected-soft text-selected",
-      )}
-    >
-      <span class="min-w-0">
-        {
-          /* A long name stops at two lines and a long detail at one, so one result cannot push the
-        rest off the screen. */
-        }
-        <span class="line-clamp-2 text-sm font-medium [overflow-wrap:anywhere]">
-          {option.label}
-        </span>
-        {option.detail !== undefined && (
-          <span class="line-clamp-1 text-xs text-muted [overflow-wrap:anywhere]">
-            {option.detail}
+  /**
+   * One result row: its icon (or the group's empty icon slot), its label over its detail or its
+   * disabled reason, then the match words, the state badge, the hint and the shortcut's keys.
+   */
+  const row = (option: T, index: number, iconSlot: boolean) => {
+    const how = matchOption(needle, option)
+    const shownMatch = showMatch && how !== undefined ? matchLabels[how] : undefined
+    const rowId = optionId(option)
+    const isActive = index === active
+    const disabled = option.disabledReason !== undefined
+    const second = option.disabledReason ?? option.detail
+    // A disabled row shows neither its state nor its shortcut: neither can be used now.
+    const state = disabled ? undefined : option.state
+    const kbd = disabled ? undefined : option.kbd
+    // The name is the label alone; the rest of the row describes it, in the order it is drawn.
+    const described = [
+      second !== undefined && `${rowId}-detail`,
+      shownMatch !== undefined && `${rowId}-match`,
+      state !== undefined && `${rowId}-state`,
+      option.hint !== undefined && `${rowId}-hint`,
+    ].filter(Boolean).join(" ")
+    const Icon = option.icon
+    // A text mode's row says what it will do with the text typed so far.
+    const label = textMode && query.value.trim() !== ""
+      ? labels.withText(option.label, query.value.trim())
+      : option.label
+    const opens = option !== level && (option.children !== undefined || option.takesText)
+    return (
+      <li
+        key={option.id}
+        id={rowId}
+        role="option"
+        aria-selected={isActive}
+        aria-disabled={disabled ? "true" : undefined}
+        aria-labelledby={`${rowId}-label`}
+        aria-describedby={described === "" ? undefined : described}
+        aria-keyshortcuts={kbd === undefined ? undefined : ariaKeyShortcuts(kbd, apple)}
+        data-match={how}
+        // Focus stays in the field, as in `Combobox`: a kept-open or disabled row leaves the palette
+        // open, and the keys go on working.
+        onMouseDown={(event) => event.preventDefault()}
+        onClick={(event) => choose(option, event.ctrlKey || event.metaKey)}
+        // A middle click is the alternative pick, as it opens a link in a new tab.
+        onAuxClick={(event) => {
+          if (event.button !== 1) return
+          event.preventDefault()
+          choose(option, true)
+        }}
+        // No pointer handler moves the highlight, as in `Combobox`: `aria-activedescendant` is where a
+        // screen reader is reading, and a pointer its user is not holding must not drag it around.
+        // The row under the pointer still lights up, in CSS, announcing nothing; a disabled one
+        // does not.
+        class={join(
+          "flex items-center gap-3 rounded-lg px-3 py-2",
+          // A touch target on a phone, however short its text.
+          "max-sm:min-h-11",
+          disabled ? "cursor-default" : "cursor-pointer",
+          isActive ? "bg-selected-soft text-selected" : !disabled && "hover:bg-hover",
+        )}
+      >
+        {iconSlot && (
+          <span
+            aria-hidden="true"
+            class={join(
+              "flex size-4 shrink-0",
+              isActive && !disabled ? "text-selected" : "text-muted",
+            )}
+          >
+            {Icon !== undefined && <Icon class="size-4" />}
           </span>
         )}
-      </span>
-      {option.hint !== undefined && <span class="shrink-0 text-xs text-muted">{option.hint}</span>}
-    </li>
+        <span class="min-w-0 flex-1">
+          {
+            /* A long name stops at two lines and a long detail at one, so one result cannot push the
+        rest off the screen. */
+          }
+          <span
+            id={`${rowId}-label`}
+            class={join(
+              "line-clamp-2 text-sm font-medium [overflow-wrap:anywhere]",
+              disabled && "text-muted",
+            )}
+          >
+            {label}
+          </span>
+          {second !== undefined && (
+            <span
+              id={`${rowId}-detail`}
+              class="line-clamp-1 text-xs text-muted [overflow-wrap:anywhere]"
+            >
+              {second}
+            </span>
+          )}
+        </span>
+        {(shownMatch !== undefined || state !== undefined || option.hint !== undefined ||
+          kbd !== undefined || (opens && option.children !== undefined)) && (
+          <span class="flex shrink-0 items-center gap-3">
+            {shownMatch !== undefined && (
+              // How the query found the result, in words: a typo fixed, the other layout.
+              <span
+                id={`${rowId}-match`}
+                class="rounded-md border border-subtle px-2 text-xs text-muted"
+              >
+                {shownMatch}
+              </span>
+            )}
+            {state !== undefined && (
+              // One short word; a longer one is cut at about twelve letters.
+              <span id={`${rowId}-state`} class={join(BADGE_BASE, BADGE_FILLED_GRAY, "max-w-24")}>
+                <span class="truncate">{state}</span>
+              </span>
+            )}
+            {option.hint !== undefined && (
+              <span
+                id={`${rowId}-hint`}
+                // On a phone the badge or the reason says enough; the hint makes room for them.
+                class={join(
+                  "text-xs text-muted",
+                  (state !== undefined || disabled) && "max-sm:hidden",
+                )}
+              >
+                {option.hint}
+              </span>
+            )}
+            {kbd !== undefined && (
+              // A phone has no keys to press: the keys show from `sm`, for a fine pointer only.
+              <span class="hidden sm:contents">
+                <HotkeyHint keys={kbd} apple={apple} labels={kbdLabels} />
+              </span>
+            )}
+            {opens && option.children !== undefined && (
+              // Sub-rows behind it, as a menu item with a submenu shows.
+              <IconChevronRight class="size-4 text-muted" />
+            )}
+          </span>
+        )}
+      </li>
+    )
+  }
+
+  const triggerClass = join(
+    field
+      // A field-shaped button at every width, as wide as its container.
+      ? "flex h-9 w-full items-center gap-2 rounded-lg border border-subtle bg-surface px-3 text-sm text-muted hover:border-control hover:text-foreground max-sm:min-h-11"
+      : iconOnly
+      // An icon button at every width: 36 px square, 44 px on a phone. Its own cursor, so it does
+      // not take the tooltip wrapper's help cursor.
+      ? "flex size-9 shrink-0 cursor-default items-center justify-center rounded-lg text-muted hover:bg-hover hover:text-foreground max-sm:min-h-11 max-sm:min-w-11"
+      // An icon button on a phone; a field-shaped button with its placeholder and hotkey from `sm`.
+      : "flex h-9 items-center gap-2 rounded-lg border border-transparent px-2 text-sm text-muted hover:text-foreground max-sm:min-h-11 max-sm:min-w-11 max-sm:justify-center sm:w-56 sm:border-subtle sm:bg-surface sm:px-3 sm:hover:border-control lg:w-72",
+    // The library's focus ring, as on the chips, never the browser's outline; a phone gets a
+    // 44 px touch target either way.
+    "focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2 focus-visible:ring-offset-focus focus-visible:outline-hidden",
+    className,
+  )
+  // The same inside for the button and for the link it is until hydration.
+  const triggerBody = (
+    <>
+      <IconSearch
+        class={field ? "size-4 shrink-0" : iconOnly ? "size-5" : "size-5 shrink-0 sm:size-4"}
+      />
+      {!iconOnly && (
+        <span
+          class={field
+            ? "min-w-0 flex-1 truncate text-start"
+            : "hidden flex-1 text-start sm:inline"}
+        >
+          {labels.placeholder}
+        </span>
+      )}
+      {firstHotkey !== undefined && !iconOnly && (
+        // The hint is a button hotkey's own, which shows only for a fine pointer; the wrapper
+        // also keeps it off the icon-only trigger a narrow screen gets.
+        <span class={field ? "contents" : "hidden sm:contents"}>
+          <HotkeyHint keys={firstHotkey} apple={apple} labels={kbdLabels} />
+        </span>
+      )}
+    </>
   )
 
-  let index = 0
-  return (
-    <>
+  // A link to `triggerHref` until hydration, then the button.
+  const asLink = props.triggerHref !== undefined && !hydrated.value
+  const ownTrigger = asLink
+    ? (
+      <a
+        ref={link}
+        href={props.triggerHref}
+        aria-label={labels.placeholder}
+        data-e2e={dataE2E === undefined ? undefined : `${dataE2E}-open`}
+        class={triggerClass}
+      >
+        {triggerBody}
+      </a>
+    )
+    : (
       <button
         ref={trigger}
         type="button"
-        onClick={open}
+        onClick={() => open()}
+        onKeyDown={onTriggerKeyDown}
         aria-haspopup="dialog"
         aria-label={labels.placeholder}
         aria-keyshortcuts={shortcuts}
         data-e2e={dataE2E === undefined ? undefined : `${dataE2E}-open`}
-        class={cn(
-          // An icon button on a phone; a field-shaped button with its placeholder and hotkey from
-          // `sm`.
-          "flex h-9 items-center gap-2 rounded-lg border border-transparent px-2 text-sm text-muted hover:text-foreground",
-          "sm:w-56 sm:border-subtle sm:bg-surface sm:px-3 sm:text-muted sm:hover:border-control lg:w-72",
-          className,
-        )}
+        class={triggerClass}
       >
-        <IconSearch class="size-5 shrink-0 sm:size-4" />
-        <span class="hidden flex-1 text-left sm:inline">{labels.placeholder}</span>
-        {firstHotkey !== undefined && (
-          // The hint is a button hotkey's own, which shows only for a fine pointer; the wrapper
-          // also keeps it off the icon-only trigger a narrow screen gets.
-          <span class="hidden sm:contents">
-            <HotkeyHint keys={firstHotkey} apple={apple} labels={kbdLabels} />
-          </span>
-        )}
+        {triggerBody}
       </button>
+    )
+
+  let index = 0
+  /** Whether a row of `group` has an icon, so that every row of it keeps the icon's space. */
+  const hasIcon = (group: CommandPaletteGroup<T>) =>
+    group.options.some((option) => option.icon !== undefined)
+  return (
+    <>
+      {typeof triggerShape === "function" ? triggerShape(triggerApi) : iconOnly
+        ? (
+          // The magnifier alone gets the house tooltip, its name and hotkey, below it since a
+          // header holds it. `join`, not `cn`, keeps tailwind-merge out of the bundle. Keyed on the
+          // link-to-button swap, so the description moves to the button that replaces the link.
+          <TooltipCore
+            merge={join}
+            key={asLink ? "link" : "button"}
+            label={labels.placeholder}
+            content={
+              <span class="inline-flex items-center gap-2 whitespace-nowrap">
+                {labels.placeholder}
+                {firstHotkey !== undefined && (
+                  <HotkeyHint keys={firstHotkey} apple={apple} labels={kbdLabels} />
+                )}
+              </span>
+            }
+            focusable={false}
+            placement="bottom"
+            class="w-fit shrink-0"
+          >
+            {ownTrigger}
+          </TooltipCore>
+        )
+        : ownTrigger}
       <dialog
         ref={dialog}
         aria-label={labels.search}
@@ -483,14 +1265,21 @@ export function CommandPalette<T extends CommandPaletteOption>(
         onClose={() => {
           cancel()
           unlock()
-          focusOnClose(trigger.current, before.current, input.current)
+          // The browser has already put focus back where it was before the palette opened. A pick
+          // that moved it on since, such as a command that opened a dialog or a navigation that
+          // focused the new page, keeps it there.
+          const now = document.activeElement
+          const moved = now !== null && now !== document.body && now !== before.current &&
+            now !== triggerElement() && !dialog.current?.contains(now)
+          if (!moved) focusOnClose(triggerElement(), before.current, input.current)
           before.current = null
+          latest.current.onOpenChange?.(false)
         }}
         onPointerDown={backdrop.onPointerDown}
         onClick={(event) => {
           if (backdrop.isBackdropClick(event)) close()
         }}
-        class={cn(
+        class={join(
           "inset-x-0 top-16 bottom-auto mx-auto my-0 w-[min(36rem,calc(100vw-2rem))] max-w-none rounded-xl border border-subtle bg-surface p-0 text-foreground shadow-2xl",
           "backdrop:bg-scrim backdrop:backdrop-blur-sm",
           // A full-screen sheet on a phone.
@@ -498,7 +1287,35 @@ export function CommandPalette<T extends CommandPaletteOption>(
         )}
       >
         <div class="flex items-center gap-2 border-b border-subtle px-4">
-          <IconSearch class="size-4 shrink-0 text-muted" />
+          {
+            /* Inside a submenu or a text mode the back button takes the search icon's place. */
+          }
+          {level === undefined ? <IconSearch class="size-4 shrink-0 text-muted" /> : (
+            <>
+              <button
+                type="button"
+                aria-label={labels.back}
+                data-e2e={dataE2E === undefined ? undefined : `${dataE2E}-back`}
+                // Focus stays in the field, as on a row.
+                onMouseDown={(event) => event.preventDefault()}
+                onClick={back}
+                class="-ms-2 flex size-11 shrink-0 items-center justify-center rounded-md text-muted hover:bg-hover hover:text-foreground sm:size-9"
+              >
+                <IconChevronLeft class="size-4" />
+              </button>
+              {
+                /* The path entered, which also names the field: what the reader is choosing in, or
+                typing for. */
+              }
+              <span
+                id={crumbId}
+                data-e2e={dataE2E === undefined ? undefined : `${dataE2E}-path`}
+                class="max-w-[50%] shrink-0 truncate rounded-md bg-selected-soft px-2 py-1 text-sm font-medium text-selected"
+              >
+                {levels.map((option) => option.label).join(" › ")}
+              </span>
+            </>
+          )}
           <input
             ref={input}
             // A text field rather than `type="search"`, whose own clear button Chromium draws
@@ -513,15 +1330,18 @@ export function CommandPalette<T extends CommandPaletteOption>(
             aria-autocomplete="list"
             aria-activedescendant={active >= 0 ? optionId(flat[active]) : undefined}
             aria-label={labels.search}
-            placeholder={labels.placeholder}
+            aria-labelledby={level === undefined ? undefined : crumbId}
+            aria-describedby={showHint ? hintId : undefined}
+            // The path before the field says what it is for; the placeholder would only crowd it.
+            placeholder={level === undefined ? labels.placeholder : undefined}
             autocomplete="off"
             spellcheck={false}
-            value={query}
+            value={query.value}
             onInput={(event) => {
               const text = event.currentTarget.value
               // A step of a word an input method is still building is only shown: the results
               // and the search wait for the composition to end.
-              if (isComposingInput(event)) setQuery(text)
+              if (isComposingInput(event)) query.value = text
               else onTyped(text)
             }}
             onKeyDown={onKeyDown}
@@ -531,7 +1351,7 @@ export function CommandPalette<T extends CommandPaletteOption>(
             /* A slow search over results still listed says so here, beside the field, so the rows
             neither move nor fade. Hidden from screen readers: the status line below tells them. */
           }
-          {remote.status === Status.SLOW && flat.length > 0 && (
+          {remote.value.status === Status.SLOW && flat.length > 0 && (
             <span
               aria-hidden="true"
               data-e2e={dataE2E === undefined ? undefined : `${dataE2E}-searching`}
@@ -539,6 +1359,21 @@ export function CommandPalette<T extends CommandPaletteOption>(
             >
               {labels.loading}
             </span>
+          )}
+          {
+            /* The same for a search that failed after its early answer, whose rows stay listed. */
+          }
+          {remote.value.status === Status.ERROR && flat.length > 0 && (
+            <span
+              aria-hidden="true"
+              data-e2e={dataE2E === undefined ? undefined : `${dataE2E}-failed`}
+              class="shrink-0 text-xs text-danger"
+            >
+              {labels.error}
+            </span>
+          )}
+          {showHint && (
+            <span id={hintId} class="shrink-0 text-xs text-muted">{labels.commandsHint}</span>
           )}
           {
             /* Escape and a backdrop click close it too, but a phone has neither a key nor much
@@ -549,7 +1384,7 @@ export function CommandPalette<T extends CommandPaletteOption>(
             aria-label={labels.close}
             data-e2e={dataE2E === undefined ? undefined : `${dataE2E}-close`}
             onClick={close}
-            class="-mr-2 flex size-11 shrink-0 sm:size-9 items-center justify-center rounded-md text-muted hover:bg-hover hover:text-foreground"
+            class="-me-2 flex size-11 shrink-0 sm:size-9 items-center justify-center rounded-md text-muted hover:bg-hover hover:text-foreground"
           >
             <IconXMark class="size-5" />
           </button>
@@ -572,35 +1407,67 @@ export function CommandPalette<T extends CommandPaletteOption>(
           >
             {status}
           </p>
+          <p
+            role="status"
+            data-e2e={dataE2E === undefined ? undefined : `${dataE2E}-count`}
+            class="sr-only"
+          >
+            {countText}
+          </p>
           <ul
             id={listbox}
             role="listbox"
             aria-label={labels.search}
             aria-busy={busy ? "true" : undefined}
-            class={cn(
+            class={join(
               "max-h-96 overflow-y-auto max-sm:max-h-none max-sm:min-h-0 max-sm:flex-1",
               flat.length > 0 && "p-2",
             )}
           >
             {groups.map((group, groupIndex) =>
-              group.label === undefined ? group.options.map((option) => row(option, index++)) : (
-                // A listbox holds options and groups of options; the `<li>` around the group is
-                // only there for the HTML list, so it has no role.
-                <li key={`group ${group.label}`} role="none">
-                  <ul role="group" aria-labelledby={`${id}-group-${groupIndex}`}>
-                    <li
-                      id={`${id}-group-${groupIndex}`}
-                      role="presentation"
-                      class="px-3 pb-1 pt-3 text-xs font-medium text-muted"
-                    >
-                      {group.label}
-                    </li>
-                    {group.options.map((option) => row(option, index++))}
-                  </ul>
-                </li>
-              )
+              group.label === undefined
+                ? group.options.map((option) => row(option, index++, hasIcon(group)))
+                : (
+                  // A listbox holds options and groups of options; the `<li>` around the group is
+                  // only there for the HTML list, so it has no role.
+                  <li key={`group ${group.label}`} role="none">
+                    <ul role="group" aria-labelledby={`${id}-group-${groupIndex}`}>
+                      <li
+                        id={`${id}-group-${groupIndex}`}
+                        role="presentation"
+                        class="px-3 pb-1 pt-3 text-xs font-medium text-muted"
+                      >
+                        {group.label}
+                      </li>
+                      {group.options.map((option) => row(option, index++, hasIcon(group)))}
+                    </ul>
+                  </li>
+                )
             )}
           </ul>
+        </div>
+        {
+          /* The keys, for a reader with a mouse and a keyboard: from `sm`, where the main pointer
+          is fine. Hidden from screen readers, which hear the listbox's own keys. */
+        }
+        <div
+          aria-hidden="true"
+          data-e2e={dataE2E === undefined ? undefined : `${dataE2E}-keys`}
+          class="hidden flex-wrap items-center gap-x-4 gap-y-1 border-t border-subtle px-4 py-2 text-xs text-muted sm:pointer-fine:flex"
+        >
+          <span class="inline-flex items-center gap-1">
+            <HotkeyHint keys="arrowup" apple={apple} labels={kbdLabels} />
+            <HotkeyHint keys="arrowdown" apple={apple} labels={kbdLabels} />
+            {labels.keysMove}
+          </span>
+          <span class="inline-flex items-center gap-1">
+            <HotkeyHint keys="enter" apple={apple} labels={kbdLabels} />
+            {labels.keysOpen}
+          </span>
+          <span class="inline-flex items-center gap-1">
+            <HotkeyHint keys="mod+enter" apple={apple} labels={kbdLabels} />
+            {labels.keysAlternative}
+          </span>
         </div>
       </dialog>
     </>

@@ -161,6 +161,21 @@ describe("createInstallPrompt", () => {
     expect(writes).toEqual([true])
   })
 
+  it("reads the stored flag on first use, not when it is created", () => {
+    let reads = 0
+    const store = createInstallPrompt({
+      target: null,
+      navigator: IPHONE,
+      matchMedia: notStandalone,
+      dismissed: { read: () => (reads++, true), write: () => {} },
+    })
+
+    expect(reads).toBe(0)
+    expect(store.visible.value).toBe(false)
+    expect(store.dismissed.value).toBe(true)
+    expect(reads).toBe(1)
+  })
+
   it("starts hidden when the port says the offer was dismissed before", () => {
     const store = createInstallPrompt({
       target: null,
@@ -275,6 +290,19 @@ describe("createStoredInstallPrompt", () => {
       if (original) Object.defineProperty(globalThis, "localStorage", original)
       else delete (globalThis as { localStorage?: unknown }).localStorage
     }
+  })
+
+  it("reads no storage when it is created, as a module-level store on a server would be", () => {
+    const storage = fakeStorage({ [INSTALL_DISMISSED_KEY]: "1" })
+    let reads = 0
+    const store = createStoredInstallPrompt({
+      ...IOS,
+      storage: { ...storage, getItem: (key) => (reads++, storage.getItem(key)) },
+    })
+
+    expect(reads).toBe(0)
+    expect(store.visible.value).toBe(false)
+    expect(reads).toBe(1)
   })
 
   it("uses localStorage when no storage is given", () => {

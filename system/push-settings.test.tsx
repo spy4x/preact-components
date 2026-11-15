@@ -72,7 +72,7 @@ describe("PushSettings", () => {
   it("says the browser cannot show notifications, with no button", () => {
     const markup = html({ status: "unsupported" })
 
-    expect(markup).toContain("This browser cannot show notifications.")
+    expect(markup).toContain("This browser can't show notifications.")
     expect(buttons(markup)).toEqual([])
   })
 
@@ -86,7 +86,7 @@ describe("PushSettings", () => {
   it("says notifications are not set up on this server, with no button", () => {
     const markup = html({ status: "unavailable" })
 
-    expect(markup).toContain("Notifications are not set up on this server.")
+    expect(markup).toContain("Notifications aren't set up for this app yet.")
     expect(buttons(markup)).toEqual([])
   })
 
@@ -94,7 +94,7 @@ describe("PushSettings", () => {
     const markup = html({ status: "blocked", onTest: noop })
 
     expect(markup).toContain(
-      "open your browser's settings for this site, or your device's notification settings for this app, set Notifications to Allow",
+      "open your browser's settings for this site (or your device's notification settings), set Notifications to Allow",
     )
     expect(markup).not.toContain("address bar")
     expect(buttons(markup)).toEqual([])
@@ -159,17 +159,17 @@ describe("PushSettings", () => {
       markup.match(/<p id="([^"]+)" aria-hidden="true" data-push-message/)?.[1]
 
     const enable = html({ status: "off", failed: "enable" })
-    expect(enable).toContain(">Notifications could not be turned on. Try again.</p>")
+    expect(enable).toContain(">Couldn't turn on notifications. Try again.</p>")
     expect(describedBy(enable, "toggle")).toBe(messageId(enable))
     expect(messageId(enable)).toBeTruthy()
 
     const disable = html({ status: "on", failed: "disable", onTest: noop })
-    expect(disable).toContain(">Notifications could not be turned off. Try again.</p>")
+    expect(disable).toContain(">Couldn't turn off notifications. Try again.</p>")
     expect(describedBy(disable, "toggle")).toBe(messageId(disable))
     expect(describedBy(disable, "test")).toBe(undefined)
 
     const test = html({ status: "on", failed: "test", onTest: noop })
-    expect(test).toContain(">The test notification could not be sent. Try again.</p>")
+    expect(test).toContain(">Couldn't send the test notification. Try again.</p>")
     expect(describedBy(test, "test")).toBe(messageId(test))
     expect(describedBy(test, "toggle")).toBe(undefined)
   })

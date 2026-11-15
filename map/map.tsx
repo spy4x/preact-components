@@ -52,6 +52,7 @@
 import { cn } from "@spy4x/preact-cn"
 import type { JSX } from "preact"
 import { useEffect, useRef, useState } from "preact/hooks"
+import { useLabels } from "@spy4x/preact-ui/i18n"
 import {
   DEFAULT_STATUS_LABELS,
   leafletFromImport,
@@ -131,6 +132,14 @@ const DEFAULT_SIZE = "h-80 w-full"
 const BOX_BASE =
   "relative overflow-hidden rounded-primary border border-subtle bg-canvas dark:bg-surface"
 
+/** The map's English words, each a key `LeafletMap.<field>` of the catalog. */
+const MAP_LABELS = {
+  label: "Map",
+  listLabel: "Places",
+  zoomInLabel: "Zoom in",
+  zoomOutLabel: "Zoom out",
+}
+
 /**
  * Markers on a Leaflet tile layer, with a plain-text list of the same places beside it. Leaflet
  * loads in a browser only; see this file's own doc for the details.
@@ -144,15 +153,21 @@ export function LeafletMap(
     tileUrl,
     attribution,
     class: className,
-    label = "Map",
-    listLabel = "Places",
+    label: labelProp,
+    listLabel: listLabelProp,
     listHeadingLevel = 3,
     statusLabels,
-    zoomInLabel = "Zoom in",
-    zoomOutLabel = "Zoom out",
+    zoomInLabel: zoomInLabelProp,
+    zoomOutLabel: zoomOutLabelProp,
     onLoadError = logLoadError,
   }: LeafletMapProps,
 ): JSX.Element {
+  const { label, listLabel, zoomInLabel, zoomOutLabel } = useLabels("LeafletMap", MAP_LABELS, {
+    label: labelProp,
+    listLabel: listLabelProp,
+    zoomInLabel: zoomInLabelProp,
+    zoomOutLabel: zoomOutLabelProp,
+  })
   const containerRef = useRef<HTMLDivElement>(null)
   const handleRef = useRef<LeafletMapHandle | null>(null)
   const [ready, setReady] = useState(false)
@@ -210,7 +225,7 @@ export function LeafletMap(
     handleRef.current?.setView(center, zoom)
   }, [ready, center.lat, center.lng, zoom])
 
-  const words = { ...DEFAULT_STATUS_LABELS, ...statusLabels }
+  const words = useLabels("MapStatus", DEFAULT_STATUS_LABELS, statusLabels)
   useEffect(() => {
     if (!ready) return
     handleRef.current?.setMarkers(markers, (id) => onMarkerClickRef.current(id), words)

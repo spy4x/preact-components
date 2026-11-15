@@ -220,14 +220,27 @@ function interfaceNames(def: any, file: string, context: WalkContext): PropNames
   return all
 }
 
-/** The property and method names of an interface or type literal, or `null` with an index signature. */
+/**
+ * The property and method names of an interface or type literal, or `null` with an index signature.
+ * A signature keyed by a hyphenated template (`` `data-${string}` ``) admits only hyphenated names,
+ * which every component allows already, so it keeps the type closed.
+ */
 // deno-lint-ignore no-explicit-any
 function membersOf(def: any): Set<string> | null {
-  if ((def.indexSignatures ?? []).length > 0) return null
+  if ((def.indexSignatures ?? []).some((signature: unknown) => !hyphenatedKey(signature))) {
+    return null
+  }
   return new Set([
     ...(def.properties ?? []).map((p: { name: string }) => p.name),
     ...(def.methods ?? []).map((m: { name: string }) => m.name),
   ])
+}
+
+/** Whether an index signature's key is a template literal whose fixed start has a hyphen. */
+// deno-lint-ignore no-explicit-any
+function hyphenatedKey(signature: any): boolean {
+  const key = signature.params?.[0]?.tsType?.value
+  return key?.kind === `template` && String(key.tsTypes?.[0]?.value?.string ?? ``).includes(`-`)
 }
 
 /** One JSX opening tag in a snippet: its component name and the attribute names it writes. */

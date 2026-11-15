@@ -4,6 +4,22 @@ import { render } from "preact-render-to-string"
 import { Input, Select, Textarea } from "./input.tsx"
 
 describe("Input", () => {
+  it("writes an e-mail, URL or password left to right in any page, unless dir says otherwise", () => {
+    for (const type of ["email", "url", "password"]) {
+      expect(render(<Input type={type} />), type).toContain('dir="ltr"')
+    }
+    expect(render(<Input type="text" />)).not.toContain("dir=")
+    expect(render(<Input />)).not.toContain("dir=")
+    expect(render(<Input type="email" dir="auto" />)).toContain('dir="auto"')
+  })
+
+  it("keeps a shown password left to right by its autocomplete, after its type becomes text", () => {
+    expect(render(<Input type="text" autocomplete="current-password" />)).toContain('dir="ltr"')
+    expect(render(<Input type="text" autoComplete="new-password" />)).toContain('dir="ltr"')
+    expect(render(<Input type="text" autocomplete="section-a username" />)).toContain('dir="ltr"')
+    expect(render(<Input type="text" autocomplete="name" />)).not.toContain("dir=")
+  })
+
   it("renders the shipped input class", () => {
     const html = render(<Input />)
 

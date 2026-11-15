@@ -2,6 +2,7 @@ import { cn } from "@spy4x/preact-cn"
 import type { SpacingGap } from "@spy4x/preact-theme/spacing"
 import type { ComponentChildren, JSX } from "preact"
 import { useId } from "preact/hooks"
+import { GRID_COLUMNS_MD } from "./plain-classes.ts"
 
 /**
  * Layout components: the only way this library puts space between siblings.
@@ -139,7 +140,7 @@ export type GridColumnWidth = "sm" | "md" | "lg"
  */
 const COLUMN_CLASSES: Record<GridColumnWidth, string> = {
   sm: "grid-cols-[repeat(auto-fit,minmax(min(100%,12rem),1fr))]",
-  md: "grid-cols-[repeat(auto-fit,minmax(min(100%,16rem),1fr))]",
+  md: GRID_COLUMNS_MD,
   lg: "grid-cols-[repeat(auto-fit,minmax(min(100%,20rem),1fr))]",
 }
 

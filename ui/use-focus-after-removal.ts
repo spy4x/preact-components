@@ -1,5 +1,5 @@
 import type { RefObject } from "preact"
-import { useEffect, useRef } from "preact/hooks"
+import { useEffect, useLayoutEffect, useRef } from "preact/hooks"
 
 /** The id of a row: what the caller's list of ids holds. */
 export type RowId = string | number
@@ -96,6 +96,63 @@ export function useFocusAfterRemoval(
     }
     fallback?.()?.focus()
   }, [key, removingId])
+}
+
+/**
+ * Keeps focus on the page when the focused control inside `container` leaves it, or when the whole
+ * container leaves.
+ *
+ * A button that a render removes takes focus with it, and focus falls to the page's body: a
+ * keyboard user starts again from the top. When focus was inside `container` before a render and
+ * is on the body once that render is in the page, this hook focuses what `fallback()` returns. It
+ * runs in a layout effect, in the same commit that removed the control, so focus never rests on the
+ * body in between.
+ *
+ * Focus the person moved somewhere else is left alone, and so is a render that kept focus inside
+ * the container. `fallback()` may return `null` to move nothing, such as when the control left for
+ * a reason the caller does not answer.
+ *
+ * When the component unmounts with focus inside `container`, it focuses `fallback()` too, unless
+ * that element is inside the container that is leaving. That holds for a container first drawn
+ * after the mount, such as a card that mounted hidden: the element is looked up as it leaves.
+ *
+ * @param container The element focus is kept for. Read before each render, after its commit, and
+ *   at unmount.
+ * @param fallback Where focus goes, read only when it is needed.
+ */
+export function useFocusFallback(
+  container: RefObject<HTMLElement>,
+  fallback: () => HTMLElement | null | undefined,
+): void {
+  const latest = useRef(fallback)
+  /** The container as the last commit left it: it may first appear after the mount. */
+  const shown = useRef<HTMLElement | null>(null)
+  // Read while rendering, before the render reaches the page: once a focused control is gone, focus
+  // has already fallen to the body. A server render has no document.
+  const hadFocus = Boolean(container.current?.contains(globalThis.document?.activeElement ?? null))
+
+  useLayoutEffect(() => {
+    latest.current = fallback
+    const element = container.current
+    shown.current = element
+    const active = globalThis.document?.activeElement ?? null
+    if (!hadFocus || element?.contains(active)) return
+    if (active && active !== active.ownerDocument.body) return
+    fallback()?.focus()
+  })
+
+  // The caller may unmount the container instead of changing it. Effect cleanups run while its
+  // markup is still in the page, so focus can still be asked about there. The element is looked up
+  // then, not at mount: a container rendered only later, such as a card shown after it mounted
+  // hidden, is the one leaving.
+  useLayoutEffect(() => {
+    return () => {
+      const element = container.current ?? shown.current
+      if (!element?.isConnected || !element.contains(element.ownerDocument.activeElement)) return
+      const target = latest.current()
+      if (target && !element.contains(target)) target.focus()
+    }
+  }, [])
 }
 
 /**

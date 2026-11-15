@@ -8,8 +8,12 @@
 
 import { cn } from "@spy4x/preact-cn"
 import { Button } from "@spy4x/preact-ui/button"
+import { useFocusFallback } from "@spy4x/preact-ui/use-focus-after-removal"
 import type { ComponentChildren, JSX } from "preact"
 import { useEffect, useId, useRef, useState } from "preact/hooks"
+import { useT } from "@spy4x/preact-ui/i18n"
+import { translate } from "./i18n.ts"
+import type { Translator } from "@spy4x/platform/universal/i18n"
 
 /**
  * Why a change was not taken, the same three words `ConflictReason` in `@spy4x/realtime/outbox`
@@ -59,12 +63,12 @@ export const DEFAULT_CONFLICT_CHOOSER_LABELS: ConflictChooserLabels = {
   explanation: {
     version: "Changed elsewhere while you were offline.",
     gone: "Deleted elsewhere while you were offline.",
-    rejected: "The server refused this change.",
+    rejected: "The server didn't accept this change.",
   },
   keepMine: { version: "Keep mine", gone: "Restore mine", rejected: "Keep mine" },
   useTheirs: { version: "Use theirs", gone: "Discard mine", rejected: "Discard mine" },
   resolved: "All conflicts resolved",
-  failed: "Your choice was not saved. Try again.",
+  failed: "Couldn't save your choice. Try again.",
 }
 
 /** The words a caller replaces: any of them, and per reason inside the records. */
@@ -93,8 +97,25 @@ export interface ConflictChooserProps {
 }
 
 /** The labels with the caller's replacements merged in, per reason where the field is a record. */
-function mergeLabels(labels: ConflictChooserLabelOverrides = {}): ConflictChooserLabels {
-  const base = DEFAULT_CONFLICT_CHOOSER_LABELS
+function mergeLabels(
+  labels: ConflictChooserLabelOverrides = {},
+  translator: Translator<string>,
+): ConflictChooserLabels {
+  const english = DEFAULT_CONFLICT_CHOOSER_LABELS
+  const perReason = (field: "explanation" | "keepMine" | "useTheirs") => ({
+    version: translate(translator, `ConflictChooser.${field}.version`, english[field].version),
+    gone: translate(translator, `ConflictChooser.${field}.gone`, english[field].gone),
+    rejected: translate(translator, `ConflictChooser.${field}.rejected`, english[field].rejected),
+  })
+  const base: ConflictChooserLabels = {
+    heading: (count) =>
+      translate(translator, "ConflictChooser.heading", english.heading(count), { count }),
+    explanation: perReason("explanation"),
+    keepMine: perReason("keepMine"),
+    useTheirs: perReason("useTheirs"),
+    resolved: translate(translator, "ConflictChooser.resolved", english.resolved),
+    failed: translate(translator, "ConflictChooser.failed", english.failed),
+  }
   return {
     heading: labels.heading ?? base.heading,
     explanation: { ...base.explanation, ...labels.explanation },
@@ -124,7 +145,7 @@ export function ConflictChooser(
   { conflicts, onKeepMine, onUseTheirs, labels, headingLevel = 2, class: className }:
     ConflictChooserProps,
 ): JSX.Element {
-  const words = mergeLabels(labels)
+  const words = mergeLabels(labels, useT())
   const headingId = useId()
   const root = useRef<HTMLElement>(null)
   const heading = useRef<HTMLHeadingElement>(null)
@@ -134,36 +155,38 @@ export function ConflictChooser(
   const [failedId, setFailedId] = useState<string | null>(null)
   /** The position of the item whose button was pressed, while its removal is awaited. */
   const chosenAt = useRef<number | null>(null)
+  /** What the last focus move after a choice went to, so the live region does not repeat it. */
+  const movedTo = useRef<HTMLElement | null>(null)
   /** How many conflicts the last effect saw, to tell the moment the list becomes empty. */
   const seenCount = useRef(conflicts.length)
   /** Whether the live region says the list is empty: only when focus did not move to the heading. */
   const [announceResolved, setAnnounceResolved] = useState(false)
 
+  // After a choice removed its item and focus fell to the body, focus the item now in its place,
+  // else the one before it, else the heading. A removal nobody chose here moves nothing.
+  useFocusFallback(root, () => {
+    const index = chosenAt.current
+    if (index === null || !root.current) return null
+    const items = root.current.querySelectorAll<HTMLElement>("[data-conflict-id]")
+    const next = items[Math.min(index, items.length - 1)]
+    movedTo.current = next?.querySelector<HTMLElement>("button") ?? heading.current
+    return movedTo.current
+  })
+
   useEffect(() => {
     const emptied = conflicts.length === 0 && seenCount.current > 0
     seenCount.current = conflicts.length
-    const focused = moveFocus()
+    // A changed list ends the wait for the chosen item, whether it left or stayed.
+    chosenAt.current = null
+    const moved = movedTo.current
+    movedTo.current = null
+    const onHeading = moved !== null && moved === heading.current &&
+      moved.ownerDocument.activeElement === moved
     if (conflicts.length > 0) setAnnounceResolved(false)
     // The focused heading already reads "All conflicts resolved"; the live region saying it too
     // would announce it twice.
-    else if (emptied) setAnnounceResolved(focused !== heading.current)
+    else if (emptied) setAnnounceResolved(!onHeading)
   }, [conflicts])
-
-  /** After a choice removed its item, focus what follows it, and return what got focus. */
-  const moveFocus = (): HTMLElement | null => {
-    const index = chosenAt.current
-    if (index === null || !root.current) return null
-    chosenAt.current = null
-    const document = root.current.ownerDocument
-    // Only when the pressed button is gone and focus fell to the body: anything else the person did
-    // in the meantime wins.
-    if (document.activeElement && document.activeElement !== document.body) return null
-    const items = root.current.querySelectorAll<HTMLElement>("[data-conflict-id]")
-    const next = items[Math.min(index, items.length - 1)]
-    const target = next?.querySelector<HTMLElement>("button") ?? heading.current
-    target?.focus()
-    return target && document.activeElement === target ? target : null
-  }
 
   const choose = (id: string, index: number, run: (id: string) => void | Promise<unknown>) => {
     if (busy.has(id)) return

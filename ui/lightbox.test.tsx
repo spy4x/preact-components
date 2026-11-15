@@ -67,6 +67,12 @@ describe("counterText", () => {
 })
 
 describe("swipeStep", () => {
+  it("swaps the swipe directions in a right-to-left page, where the next image is on the left", () => {
+    expect(swipeStep(80, 10, true)).toBe(1)
+    expect(swipeStep(-80, 10, true)).toBe(-1)
+    expect(swipeStep(20, 0, true)).toBe(0)
+  })
+
   it("answers the next image for a leftward swipe", () => {
     expect(swipeStep(-80, 10)).toBe(1)
   })

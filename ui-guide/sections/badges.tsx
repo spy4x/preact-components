@@ -1,3 +1,4 @@
+import { useSignal } from "@preact/signals"
 import {
   Badge,
   type BadgeColor,
@@ -52,23 +53,43 @@ function BadgeMatrix() {
 
 /**
  * Element content: a whole-pill link holding a word and a `StatusMark`, and a static pill with a
- * link inside it. The link points at this repository's public CI runs.
+ * link inside it. The link points at this repository's public CI runs. Then a linked badge with a
+ * `navigate` port that only records where it was asked to go, so a plain click shows its href below
+ * instead of leaving the page.
  */
 function BadgeContentRow() {
+  const navigated = useSignal<string | null>(null)
   return (
-    <Cluster align="baseline" class="flex-nowrap">
-      <span class="w-16 shrink-0 text-xs text-muted">content</span>
-      <Cluster>
-        <Badge color="gray" href={CI_RUNS}>
-          <span>CI</span>
-          <StatusMark status="ready" label="Passing" />
-        </Badge>
-        <Badge color="gray" type="outline">
-          <StatusMark status="beta" />
-          <a href={CI_RUNS} class="underline underline-offset-4">notes</a>
-        </Badge>
+    <Stack gap="sm">
+      <Cluster align="baseline" class="flex-nowrap">
+        <span class="w-16 shrink-0 text-xs text-muted">content</span>
+        <Cluster>
+          <Badge color="gray" href={CI_RUNS}>
+            <span>CI</span>
+            <StatusMark status="ready" label="Passing" />
+          </Badge>
+          <Badge color="gray" type="outline">
+            <StatusMark status="beta" />
+            <a href={CI_RUNS} class="underline underline-offset-4">notes</a>
+          </Badge>
+        </Cluster>
       </Cluster>
-    </Cluster>
+      <Cluster align="baseline" class="flex-nowrap">
+        <span class="w-16 shrink-0 text-xs text-muted">routed</span>
+        <Cluster>
+          <Badge
+            text="system page"
+            color="blue"
+            type="outline"
+            href="#/system"
+            navigate={(href) => navigated.value = href}
+          />
+          <span class="text-sm text-muted" data-e2e="badge-navigated">
+            {navigated.value === null ? "navigate not called yet" : `navigate(${navigated.value})`}
+          </span>
+        </Cluster>
+      </Cluster>
+    </Stack>
   )
 }
 
@@ -86,19 +107,47 @@ const statuses: Record<StatusMarkStatus, string> = {
   outcome: "outcome",
   live: "live",
   offline: "offline",
+  running: "running",
+  done: "done",
+  parked: "parked",
+  blocked: "blocked",
+  waiting: "waiting",
+  failed: "failed",
+  "out-of-time": "out-of-time",
+  "out-of-budget": "out-of-budget",
+  "out-of-turns": "out-of-turns",
+  stopped: "stopped",
+  queued: "queued",
+  claimed: "claimed",
 }
 
-/** The ten statuses in rows of at most three, so no row wraps a lone status at half width. */
+/**
+ * The ten project statuses, then the twelve job and queue statuses, in rows of at most three, so no
+ * row wraps a lone status at half width. `data-e2e="status-mark-jobs"` holds the job set, which
+ * `pages/e2e/ui/status-mark.spec.ts` reads.
+ */
 function StatusMarkRow() {
   const all = entries(statuses)
-  const rows = [all.slice(0, 3), all.slice(3, 6), all.slice(6, 8), all.slice(8)]
+  const project = all.slice(0, 10)
+  const jobs = all.slice(10)
+  const rows = [project.slice(0, 3), project.slice(3, 6), project.slice(6, 8), project.slice(8)]
+  const jobRows = [0, 3, 6, 9].map((start) => jobs.slice(start, start + 3))
   return (
-    <Stack gap="sm">
-      {rows.map((row) => (
-        <Cluster key={row[0][0]} gap="md">
-          {row.map(([status]) => <StatusMark key={status} status={status} />)}
-        </Cluster>
-      ))}
+    <Stack gap="md">
+      <Stack gap="sm">
+        {rows.map((row) => (
+          <Cluster key={row[0][0]} gap="md">
+            {row.map(([status]) => <StatusMark key={status} status={status} />)}
+          </Cluster>
+        ))}
+      </Stack>
+      <Stack gap="sm" data-e2e="status-mark-jobs">
+        {jobRows.map((row) => (
+          <Cluster key={row[0][0]} gap="md">
+            {row.map(([status]) => <StatusMark key={status} status={status} />)}
+          </Cluster>
+        ))}
+      </Stack>
     </Stack>
   )
 }
@@ -127,6 +176,13 @@ export const badgeDemos = {
           "link's name.",
       },
       {
+        name: "navigate",
+        type: "(href: string) => void",
+        description: "With `href`: called on a plain click instead of the browser following the " +
+          "link, as on `Link` and `Button`. A modified click, or a link to another site, stays " +
+          "the browser's.",
+      },
+      {
         name: "color",
         type: "BadgeColor",
         default: `"purple"`,
@@ -145,7 +201,8 @@ export const badgeDemos = {
 <Badge color="gray" href="https://ci.example.com/my-repo">
   <span>CI</span>
   <StatusMark status="ready" label="Passing" />
-</Badge>`,
+</Badge>
+<Badge text="system page" href="/system" navigate={router.navigate} />`,
     render: () => (
       <Stack gap="sm">
         <BadgeMatrix />
@@ -155,11 +212,13 @@ export const badgeDemos = {
   },
   StatusMark: {
     summary:
-      "A project's or a feature's lifecycle state, as a shape and a word that read without colour.",
+      "A project's, a feature's or a job's state, as a shape and a word that read without colour.",
     wide: false,
     snippet: `<StatusMark status="ready" />
 <StatusMark status="known-issue" label="Flaky on Safari" />
-<StatusMark status="outcome" label="Acquired 2023" />`,
+<StatusMark status="outcome" label="Acquired 2023" />
+<StatusMark status="running" />
+<StatusMark status="out-of-budget" />`,
     render: () => <StatusMarkRow />,
   },
 } satisfies DemoFragment

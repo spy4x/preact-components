@@ -1,12 +1,13 @@
-import type { JSX } from "preact"
+import type { ComponentChildren, JSX } from "preact"
 import { Kbd, type KbdLabels } from "./kbd.tsx"
 import { Modal } from "./modal.tsx"
+import { useLabels } from "./i18n.tsx"
 
 /** One row of {@link ShortcutsDialog}. A `HotkeyBinding` from `useHotkeys` is one already. */
 export interface Shortcut {
   /**
    * The combination, such as `"mod+k"`, or a sequence of presses, such as `"g t"`, drawn with
-   * `Kbd`. `useHotkeys` takes one press only, so a sequence row is bound by another matcher.
+   * `Kbd`, the way `useHotkeys` binds it.
    */
   keys: string
   /** What it does. A shortcut without one is not listed. */
@@ -64,13 +65,29 @@ export interface ShortcutsDialogProps {
   apple?: boolean
   /** The words `Kbd` shows or reads out for a key. */
   kbdLabels?: Partial<KbdLabels>
+  /**
+   * Content below the list, such as a note on when the shortcuts work or a switch that turns them
+   * off. Drawn in `Modal`'s footer, below a divider.
+   */
+  footer?: ComponentChildren
   /** Extra classes for the dialog element. */
   class?: string
+}
+
+/** The English words of `ShortcutsDialog`, each one a prop of its own. */
+const SHORTCUTS_DIALOG_LABELS: Required<
+  Pick<ShortcutsDialogProps, "title" | "closeLabel" | "defaultGroup">
+> = {
+  title: "Keyboard shortcuts",
+  closeLabel: "Close",
+  defaultGroup: "General",
 }
 
 /**
  * A dialog that lists keyboard shortcuts, each with what it does and its keys, under group
  * headings. Headings show only when there is more than one group.
+ *
+ * `footer` goes below the list, in `Modal`'s footer.
  *
  * Built on `Modal`, so Escape, the close button and a backdrop click close it, focus moves into
  * it and returns to where it was. It is controlled: open it from a `useHotkeys` binding and close
@@ -81,17 +98,30 @@ export function ShortcutsDialog(
     open,
     onClose,
     shortcuts,
-    title = "Keyboard shortcuts",
-    closeLabel = "Close",
-    defaultGroup = "General",
+    title: titleProp,
+    closeLabel: closeLabelProp,
+    defaultGroup: defaultGroupProp,
     apple,
     kbdLabels,
+    footer,
     class: className,
   }: ShortcutsDialogProps,
 ): JSX.Element {
+  const { title, closeLabel, defaultGroup } = useLabels(
+    "ShortcutsDialog",
+    SHORTCUTS_DIALOG_LABELS,
+    { title: titleProp, closeLabel: closeLabelProp, defaultGroup: defaultGroupProp },
+  )
   const groups = groupShortcuts(shortcuts, defaultGroup)
   return (
-    <Modal open={open} onClose={onClose} title={title} cancelLabel={closeLabel} class={className}>
+    <Modal
+      open={open}
+      onClose={onClose}
+      title={title}
+      cancelLabel={closeLabel}
+      footer={footer}
+      class={className}
+    >
       <div class="flex flex-col gap-6">
         {groups.map((group) => (
           <section key={group.title} class="flex flex-col gap-2">
