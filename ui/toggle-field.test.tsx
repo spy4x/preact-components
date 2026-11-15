@@ -95,6 +95,22 @@ describe("ToggleField", () => {
     expect(seen).toEqual([false, false])
   })
 
+  it("refuses onChange with onToggle, and calls onChange when an untyped caller passes both", () => {
+    const seen: string[] = []
+    // @ts-expect-error: the value port is `onChange` or the deprecated `onToggle`, never both.
+    const vnode = field({
+      id: "archive",
+      label: "Archive",
+      value: true,
+      onChange: () => seen.push("onChange"),
+      onToggle: () => seen.push("onToggle"),
+    })
+
+    clickLabel(vnode)
+
+    expect(seen).toEqual(["onChange"])
+  })
+
   it("puts the label id and the switch id on different elements", () => {
     const html = render(<ToggleField id="archive" label="Archive" value onChange={onChange} />)
 

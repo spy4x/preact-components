@@ -100,6 +100,20 @@ describe("ToggleSwitch", () => {
     expect(seen).toEqual([true])
   })
 
+  it("refuses onChange with onToggle, and calls onChange when an untyped caller passes both", () => {
+    const seen: string[] = []
+    // @ts-expect-error: the value port is `onChange` or the deprecated `onToggle`, never both.
+    const both = ToggleSwitch({
+      value: false,
+      onChange: () => seen.push("onChange"),
+      onToggle: () => seen.push("onToggle"),
+    }) as VNode
+
+    onClickOf(both)()
+
+    expect(seen).toEqual(["onChange"])
+  })
+
   it("still takes its name from the deprecated label, and prefers ariaLabel", () => {
     expect(render(<ToggleSwitch value onChange={() => {}} label="Archive" />))
       .toContain('aria-label="Archive"')

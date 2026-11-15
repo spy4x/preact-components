@@ -19,6 +19,17 @@ describe("OnOffButtons", () => {
     expect(seen).toEqual([true, false])
   })
 
+  it("refuses onChange with onSwitch, and calls onChange when an untyped caller passes both", () => {
+    const seen: string[] = []
+    // @ts-expect-error: the value port is `onChange` or the deprecated `onSwitch`, never both.
+    pressHalves({
+      onChange: () => seen.push("onChange"),
+      onSwitch: () => seen.push("onSwitch"),
+    })
+
+    expect(seen).toEqual(["onChange", "onChange"])
+  })
+
   it("still takes the group's name from the deprecated label, and prefers ariaLabel", () => {
     expect(render(<OnOffButtons onChange={() => {}} label="Old" />)).toContain('aria-label="Old"')
     expect(render(<OnOffButtons onChange={() => {}} label="Old" ariaLabel="New" />))
