@@ -446,6 +446,9 @@ function useSearchText(search: FilterBarSearch | undefined): {
   const [text, setText] = useState(value)
   const sent = useRef(value)
   const timer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined)
+  // The timer calls the newest `onChange`, so a filter changed during the pause is not undone.
+  const latest = useRef(search)
+  latest.current = search
   useEffect(() => {
     if (value === sent.current) return
     sent.current = value
@@ -458,7 +461,7 @@ function useSearchText(search: FilterBarSearch | undefined): {
     setText(next)
     if (next === sent.current) return
     sent.current = next
-    search?.onChange(next)
+    latest.current?.onChange(next)
   }
   const type = (next: string) => {
     if (search?.delay === undefined) return send(next)
@@ -573,7 +576,7 @@ export function FilterBar(props: FilterBarProps): JSX.Element {
             ? undefined
             : ariaKeyShortcuts(search.hotkeyHint, apple)}
           onInput={(event) => searchText.type((event.currentTarget as HTMLInputElement).value)}
-          onKeyDown={(event) => {
+          onKeyDown={search.delay === undefined ? undefined : (event) => {
             if (event.key === "Enter") {
               searchText.send(
                 (event.currentTarget as HTMLInputElement).value,
