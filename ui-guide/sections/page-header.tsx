@@ -3,9 +3,10 @@
  * of, with the `FilterBar` that sits under a list page's header. Spread into the Display section,
  * right after `PageTitle`.
  *
- * What only a browser shows — the title and subtitle cut short at two lines with the actions beside
- * them at 375 px and at one line at 1440 px, the 44 px touch targets, the accessible name of every icon button — is driven by
- * `pages/checks/ui.ts`.
+ * What only a browser shows is checked there: `pages/e2e/ui/page-header.spec.ts` measures the title
+ * and subtitle cut short at two lines with the actions beside them at 375 px and at one line at
+ * 1440 px, and the 44 px touch targets; `pages/checks/ui.ts` checks the accessible name of every
+ * icon button.
  */
 
 import {
