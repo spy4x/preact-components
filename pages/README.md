@@ -182,7 +182,7 @@ together run every spec exactly once. Each shard is a run of its own: its own br
 limits, the static phase and startup checks again, and a `SHARDED:` line after its `FILTERED:`
 line. A value that is not a shard, a shard passed to a run without the `e2e` block, and a shard
 with no spec are each a failed check. `pages/e2e/shard.test.ts`, part of `deno task check`, fails
-when `.woodpecker.yml` leaves a shard out, lists one twice, or runs `e2e` anywhere unsharded.
+when `.woodpecker/woodpecker.yml` leaves a shard out, lists one twice, or runs `e2e` anywhere unsharded.
 
 Why: as one step the `e2e` part took 506 to 732 seconds on a quiet agent and ran past its
 900-second ceiling whenever other pipelines shared the agent (pipelines 2696, 2797, 2807, 2819).
@@ -235,7 +235,7 @@ specs that many times, four at once as always, and records each run as its own c
 `--cpu-throttle` to repeat them under load. The last line says the run was filtered and repeated.
 A text that matches no spec, or `--grep` with `--only` or `--except`, is a failed check.
 
-This is also the repository's browser test path, and CI runs it. `.woodpecker.yml` runs
+This is also the repository's browser test path, and CI runs it. `.woodpecker/woodpecker.yml` runs
 `deno task check`, `deno task publish:dry`, the build and `verify` on every pull request into
 `main` and on every push to `main`. The build and `verify` run in Playwright's image, which ships
 Chromium. `verify` runs there as six steps: `ui`, four shards of `e2e` and the other nine blocks
@@ -553,7 +553,8 @@ is the number to trust, not one typed here.
 
 `.github/workflows/pages.yml` — a GitHub workflow, because Pages can only be deployed by one. It
 deploys and checks nothing: every check, the build and the parts of `verify` run in
-Woodpecker (`.woodpecker.yml`) on every pull request and every push to `main`.
+Woodpecker (`.woodpecker/woodpecker.yml`) on every pull request (only `check` while its title
+starts with `[WIP]`) and every push to `main`.
 
 The workflow starts on a `status` event. When Woodpecker's push build of `main` ends, Woodpecker
 posts the commit status `ci/woodpecker/push/woodpecker`; only a `success` for a commit on `main`

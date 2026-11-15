@@ -1,0 +1,15 @@
+# A pull request whose title starts with `[WIP]` runs only `check`, reported as
+# `ci/woodpecker/pr/wip`. Branch protection does not require that context, so a `[WIP]` head cannot
+# merge; removing `[WIP]` starts `woodpecker.yml` in full (see its `when` block). The step is a copy
+# of `woodpecker.yml`'s `check`, because YAML anchors do not cross files;
+# `infra/scripts/woodpecker-wip.test.ts` fails when the two drift apart.
+when:
+  - event: pull_request
+    branch: main
+    evaluate: 'CI_COMMIT_MESSAGE startsWith "[WIP]"'
+
+steps:
+  check:
+    image: denoland/deno:2.9.7
+    commands:
+      - deno task check
