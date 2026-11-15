@@ -31,9 +31,14 @@ import type { DemoFragment } from "../registry.ts"
 /** The long title the checks cut short: more than two lines at 375 px, more than one at 1440. */
 export const LONG_PAGE_TITLE = "Groceries for the long weekend at the lake house with everyone"
 
-/** The long subtitle the checks cut short: more than two lines at 375 px, more than one at 1440. */
+/**
+ * The long subtitle the checks cut short: more than two lines at 375 px, more than one at 1440 in
+ * any font, since CI's narrower font fit a shorter one on one line at 1440.
+ */
 const LONG_PAGE_SUBTITLE =
-  "Personal, shared with Ada, Grace and Linus, restocked every Friday before the drive to the lake"
+  "Personal, shared with Ada, Grace, Linus, Margaret and Edsger, restocked every Friday before " +
+  "the drive to the lake, with the ice, the charcoal and the sunscreen picked up at the last " +
+  "stop before the turn-off"
 
 function PageHeaderDemo() {
   const last = useSignal("nothing yet")
