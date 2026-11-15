@@ -53,7 +53,9 @@ const ISLAND_CEILINGS: Readonly<Record<string, number>> = {
   // Recent picks, the best match, the result count and the key hints: 58.1 KB (#1235).
   // The icon trigger's tooltip, `Tooltip`'s behaviour without tailwind-merge, and the link the
   // trigger is until hydration: 61.6 KB (#940).
-  "island-command-palette.tsx": 62_000,
+  // Early answers through `show`, the highlight they keep, and a failure beside the field: 62.1 KB
+  // (#1298).
+  "island-command-palette.tsx": 63_000,
   // A modal over a combobox, with the modal's `Button` and its hotkey code: 46.6 KB (#943, #524).
   // The forgiving matcher the palette already carries, groups and Create: 53.0 KB (#1164).
   "island-modal-combobox.tsx": 54_000,
