@@ -140,7 +140,7 @@ Each line: the component, its subpath, then its ports and key props.
 - `OrderBar` (`order-bar`): `message`, `actions` (one or two `{ label, shortLabel?, icon?, href?, name?, value?, attributes? }`), `secondary?`, `status?`, `note?`, `form?`, `labels?` — sticky bar on a phone, sticky panel from `lg`; links or submit buttons
 - `Page` (`layout`): `as?`, `class?` — the content column: max width, page gutter, `xl` between sections
 - `PageAction` (`page-header`): `label` (always its name), `Icon`, `href?` (a link) or `onClick?`, `navigate?`, `variant?`, `disabled?`, `dataE2E?`; the icon alone on a phone; `hotkey?`
-- `PageHeader` (`page-header`): `title` (one line, truncated), `headingLevel?` (1–6), `heading?` (in place of the title; truncates itself), `subtitle?`, `mark?`, `back?` + `navigate?`, `action?`, `menu?` + `menuLabel?`, `menuDataE2E?`, `titleDataE2E?`, `subtitleDataE2E?`
+- `PageHeader` (`page-header`): `title` (two lines on a phone, one from `sm`, then an ellipsis), `headingLevel?` (1–6), `heading?` (in place of the title; truncates itself), `subtitle?`, `mark?`, `back?` + `navigate?`, `action?`, `menu?` + `menuLabel?`, `menuDataE2E?`, `titleDataE2E?`, `subtitleDataE2E?`
 - `PageHero` (`page-hero`): `title` (the page's `<h1>`), `eyebrow?`, `lead?`, `children?` (buttons), `author?` (`name`, `href?`), `updated?` (`YYYY-MM-DD`, a `<time datetime>` counted in UTC), `note?` (a caveat under the byline), `labels?` (`by`, `updated`), `class?` (the band's background) — the top band of a public inner page, with a quiet byline under the buttons, no JavaScript
 - `PageTitle` (`page-title`): `children`, `headingLevel?` (default 1), `class`
 - `Pagination` (`pagination`): `page`, `pageCount`, `onChange`, `label`, `previousLabel`, `nextLabel`, `pageLabel`

@@ -4,7 +4,7 @@
 
 /**
  * Every Tailwind class the published `@spy4x/preact-*` components can render, separated by
- * spaces, for an app's `@source inline("…")` (1446 classes). See README.md →
+ * spaces, for an app's `@source inline("…")` (1449 classes). See README.md →
  * "Install".
  */
 export const COMPONENT_CLASSES: string = [
@@ -88,6 +88,7 @@ export const COMPONENT_CLASSES: string = [
   "[&::-webkit-slider-thumb]:size-5",
   "[&:dir(rtl)]:-translate-x-5",
   "[&:dir(rtl)]:[&::-webkit-slider-runnable-track]:bg-[image:linear-gradient(to_left,var(--color-muted-foreground,oklch(0.446_0.03_256.802))_var(--pc-slider-fill),transparent_0)]",
+  "[&:dir(rtl)]:[text-align-last:right]",
   "[&:dir(rtl)]:[transform:scaleX(-1)]",
   "[&:dir(rtl)]:origin-bottom-left",
   "[&:dir(rtl)]:origin-bottom-right",
@@ -144,7 +145,7 @@ export const COMPONENT_CLASSES: string = [
   "[mask-image:linear-gradient(transparent,#000)]",
   "[overflow-wrap:anywhere]",
   "[scrollbar-width:thin]",
-  "[text-align:-webkit-match-parent]",
+  "[text-align-last:left]",
   "[text-align:match-parent]",
   "absolute",
   "absolute!",
@@ -1186,6 +1187,7 @@ export const COMPONENT_CLASSES: string = [
   "sm:[--toastr-max:20rem]",
   "sm:[--toastr-width:100%]",
   "sm:bg-surface",
+  "sm:block",
   "sm:border-subtle",
   "sm:col-span-2",
   "sm:col-span-3",
@@ -1251,6 +1253,7 @@ export const COMPONENT_CLASSES: string = [
   "sm:text-xl",
   "sm:top-2",
   "sm:top-4",
+  "sm:truncate",
   "sm:w-2/3",
   "sm:w-48",
   "sm:w-56",

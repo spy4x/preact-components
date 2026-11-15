@@ -10,7 +10,10 @@ export { TOUCH_TARGET }
 
 /** What {@link PageHeader} takes. */
 export interface PageHeaderProps {
-  /** The page's heading. It stays on one line and truncates; the full text is its tooltip. */
+  /**
+   * The page's heading. On a phone it wraps to at most two lines, from `sm` up it keeps to one; a
+   * longer one ends in an ellipsis, and the full text is its tooltip.
+   */
   title: string
   /**
    * Level of the heading, `<h1>` to `<h6>`. Defaults to `1`. Pick another when the page already
@@ -22,7 +25,10 @@ export interface PageHeaderProps {
    * not truncate it: give it `min-w-0` and truncate inside, as `InlineEdit` does.
    */
   heading?: ComponentChildren
-  /** One quiet line under the title, such as the group a list belongs to. */
+  /**
+   * Quiet text under the title, such as the group a list belongs to. Like the title, it wraps to at
+   * most two lines on a phone and keeps to one from `sm` up, ending in an ellipsis when cut.
+   */
   subtitle?: ComponentChildren
   /** A small picture before the title, such as a group's mark. Decoration: name it in `title`. */
   mark?: ComponentChildren
@@ -56,8 +62,9 @@ const PAGE_HEADER_LABELS: Required<Pick<PageHeaderProps, "menuLabel">> = {
  * The header a page starts with: an optional back arrow, the title (and a subtitle) on the left,
  * the primary action and an optional "More actions" menu on the right.
  *
- * On a phone the title keeps to one line and the actions stay beside it, so a long title never
- * pushes them under it. The root carries no margin: the space under it is the parent's gap.
+ * On a phone the title wraps to at most two lines and the actions stay beside it, so a long title
+ * never pushes them under it; from `sm` up it keeps to one line. A cut title ends in an ellipsis.
+ * The root carries no margin: the space under it is the parent's gap.
  *
  * @param props See {@link PageHeaderProps}.
  */
@@ -100,14 +107,17 @@ export function PageHeader(
         </Button>
       )}
       {mark}
-      <div class="flex min-w-0 flex-1 flex-col gap-1 [text-align:-webkit-match-parent]">
+      <div class="flex min-w-0 flex-1 flex-col gap-1 [text-align-last:left] [&:dir(rtl)]:[text-align-last:right]">
         {
-          /* The plain title truncates in its own span: `truncate` on the heading would clip the focus
+          /* The plain title is cut short in its own span: clipping on the heading would clip the focus
             ring of whatever the heading slot puts there. `dir="auto"` gives the span the direction
-            of its own words, so a long Latin title in an Arabic page keeps its start and loses its
-            end to the ellipsis, and a short one still lines up with the page's start: Firefox reads
-            the span's `match-parent`; Chromium drops it, and the span inherits the left or right
-            this column's `-webkit-match-parent` resolves from the page's direction. */
+            of its own words and `text-start` lines its lines up with their start, so a long Latin
+            title in an Arabic page keeps its start and loses its end to the ellipsis. Chromium draws
+            the two-line clamp's ellipsis just past the last line's end: a line pushed against its
+            end edge, as aligning it to the page's start does when the words run the other way,
+            leaves no room there and the ellipsis is clipped away. This column's `text-align-last`
+            sets the last line, so a short title's only one, at the page's start, left or right;
+            the clamp's last visible line is not the text's last, so it keeps its own start. */
         }
         <Heading
           class="min-w-0 text-xl font-semibold text-foreground sm:text-2xl"
@@ -146,10 +156,13 @@ export interface MoreMenuProps {
 }
 
 /**
- * A line of text in its own direction that truncates at its own end, lined up with the page's start
- * whatever that direction is.
+ * Text in its own direction, set from its own start and cut short at its own end with an ellipsis:
+ * at most two lines on a phone, where a long word breaks rather than overflows, and one line from
+ * `sm` up, where `white-space: nowrap` leaves the clamp nothing to clamp. Its last line follows the
+ * header column's `text-align-last`, the page's start: a short text lines up with the page, and so
+ * does the second line of one that runs against the page's direction and fits in two lines uncut.
  */
-const OWN_DIRECTION = "block truncate [text-align:match-parent]"
+const OWN_DIRECTION = "line-clamp-2 break-words text-start sm:block sm:truncate"
 
 /**
  * A three-dots button that opens a menu of `DropdownItem`s: the overflow menu of a page header or
