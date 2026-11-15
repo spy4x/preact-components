@@ -107,14 +107,17 @@ export function PageHeader(
         </Button>
       )}
       {mark}
-      <div class="flex min-w-0 flex-1 flex-col gap-1 [text-align:-webkit-match-parent]">
+      <div class="flex min-w-0 flex-1 flex-col gap-1 [text-align-last:left] [&:dir(rtl)]:[text-align-last:right]">
         {
           /* The plain title is cut short in its own span: clipping on the heading would clip the focus
             ring of whatever the heading slot puts there. `dir="auto"` gives the span the direction
-            of its own words, so a long Latin title in an Arabic page keeps its start and loses its
-            end to the ellipsis, and a short one still lines up with the page's start: Firefox reads
-            the span's `match-parent`; Chromium drops it, and the span inherits the left or right
-            this column's `-webkit-match-parent` resolves from the page's direction. */
+            of its own words and `text-start` lines its lines up with their start, so a long Latin
+            title in an Arabic page keeps its start and loses its end to the ellipsis. Chromium draws
+            the two-line clamp's ellipsis just past the last line's end: a line pushed against its
+            end edge, as aligning it to the page's start does when the words run the other way,
+            leaves no room there and the ellipsis is clipped away. This column's `text-align-last`
+            sets the last line, so a short title's only one, at the page's start, left or right;
+            the clamp's last visible line is not the text's last, so it keeps its own start. */
         }
         <Heading
           class="min-w-0 text-xl font-semibold text-foreground sm:text-2xl"
@@ -153,12 +156,13 @@ export interface MoreMenuProps {
 }
 
 /**
- * Text in its own direction, cut short at its own end with an ellipsis and lined up with the page's
- * start whatever that direction is: at most two lines on a phone, where a long word breaks rather
- * than overflows, and one line from `sm` up, where `white-space: nowrap` leaves the clamp nothing
- * to clamp.
+ * Text in its own direction, set from its own start and cut short at its own end with an ellipsis:
+ * at most two lines on a phone, where a long word breaks rather than overflows, and one line from
+ * `sm` up, where `white-space: nowrap` leaves the clamp nothing to clamp. Its last line follows the
+ * header column's `text-align-last`, the page's start: a short text lines up with the page, and so
+ * does the second line of one that runs against the page's direction and fits in two lines uncut.
  */
-const OWN_DIRECTION = "line-clamp-2 break-words [text-align:match-parent] sm:block sm:truncate"
+const OWN_DIRECTION = "line-clamp-2 break-words text-start sm:block sm:truncate"
 
 /**
  * A three-dots button that opens a menu of `DropdownItem`s: the overflow menu of a page header or

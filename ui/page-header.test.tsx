@@ -70,7 +70,7 @@ describe("PageHeader", () => {
   })
 
   it("cuts the title and the subtitle at two lines on a phone and at one line from sm up", () => {
-    // `pages/checks/ui/page-header.ts` measures the lines and the cut in a browser.
+    // `pages/e2e/ui/page-header.spec.ts` measures the lines and the cut in a browser.
     const html = render(<PageHeader title="Notes" subtitle="Personal" />)
     const classes = [...html.matchAll(/<(?:span|p) dir="auto" class="([^"]*)"/g)]
       .map((match) => match[1].split(" "))
@@ -93,13 +93,13 @@ describe("PageHeader", () => {
   })
 
   it("sets the title and the subtitle in the direction of their own words", () => {
-    // A Latin title in an Arabic page keeps its start and loses its end to the ellipsis, and still
-    // lines up with the page's start: `pages/e2e/ui.spec.ts` measures both in a browser.
+    // A Latin title in an Arabic page keeps its start and loses its end to a visible ellipsis, and a
+    // short one lines up with the page's start through the column's `text-align-last`:
+    // `pages/e2e/ui/right-to-left.spec.ts` measures all three in a browser.
     const html = render(<PageHeader title="Notes" subtitle="Personal" />)
-    expect(html).toMatch(/<span dir="auto" class="[^"]*\[text-align:match-parent\][^"]*">Notes</)
-    expect(html).toMatch(
-      /<p dir="auto" class="[^"]*\[text-align:match-parent\][^"]*"[^>]*>Personal</,
-    )
+    expect(html).toMatch(/<span dir="auto" class="[^"]*\btext-start\b[^"]*">Notes</)
+    expect(html).toMatch(/<p dir="auto" class="[^"]*\btext-start\b[^"]*"[^>]*>Personal</)
+    expect(html).toContain("[text-align-last:left] [&amp;:dir(rtl)]:[text-align-last:right]")
   })
 
   it("draws the title at the level the caller picks, and no h1 then", () => {
