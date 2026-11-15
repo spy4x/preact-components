@@ -338,6 +338,14 @@ describe("CommandPalette", () => {
     void <CommandPalette onSelect={() => {}} />
     void <CommandPalette search={search} debounce={50} onSelect={() => {}} />
   })
+
+  it("hands search a show function for an early answer, typed as the options", () => {
+    const early = (_query: string, _signal: AbortSignal, show: (found: typeof options) => void) => {
+      show(options)
+      return Promise.resolve(options)
+    }
+    void <CommandPalette search={early} onSelect={() => {}} />
+  })
 })
 
 describe("CommandPalette command rows", () => {

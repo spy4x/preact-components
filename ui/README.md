@@ -73,7 +73,7 @@ Each line: the component, its subpath, then its ports and key props.
 - `Cluster` (`layout`): `gap?` (default `sm`), `align?`, `justify?`, `as?`, `class?` — a wrapping row
 - `ColorField` (`color-field`): `value` (`#rrggbb` or `null`), `onChange`, `presets?` (`COLOR_PRESETS`, 16 swatches), `allowNone?`, `noneLabel?`, `legend?`, `hint?`, `error?`, `preview?(color, textColor)`, `labels?` — round swatches on native radios, plus "Custom" with a colour input and a hex field
 - `Combobox` (`combobox`): `items`, `value`, `onChange`, `getLabel?`, `aliasesOf?`, `filter?` (default: `searchEntries` over label and aliases), `groupOf?`, `isGroupLead?`, `onCreate?` (may return a promise), `loading?`, `loadingMessage?`, `ariaLabel?`, `aria-labelledby?`, `id?`, `required?`, `requiredMessage?`, `autoFocus?`
-- `CommandPalette` (`command-palette`): `options` (filtered locally; an option may be a command with `icon`, `kbd`, `state`, `disabledReason`, `run` and `keepOpen`) or `search(query, signal)` (debounced, stale calls aborted), `onSelect(option, { alternative, text? })` (Ctrl/⌘+Enter, a Ctrl/⌘-click or a middle click asks for the alternative, such as a new tab), `onOpenChange?(open)`, `filter?` (default `matchOptions`: typos, word order, the other layout and alphabet, `aliases`), `trigger?` (`"button"`, `"field"`, `"icon"`, or a function drawing a trigger of its own from `CommandPaletteTrigger`), `triggerHref?` (a link until hydration), `defaultQuery?`, `showMatch?`, `matchLabels?`, `recent?` (`{ storageKey, storage }`, the recent picks; `clearCommandPaletteRecent(storageKey, storage)` forgets them), `hotkeys?`, `kbdLabels?`, `debounce?`, `labels?`, `dataE2E?`
+- `CommandPalette` (`command-palette`): `options` (filtered locally; an option may be a command with `icon`, `kbd`, `state`, `disabledReason`, `run` and `keepOpen`) or `search(query, signal, show?)` (debounced, stale calls aborted; `show(options)` lists an early answer that the final one replaces, keeping the highlighted option), `onSelect(option, { alternative, text? })` (Ctrl/⌘+Enter, a Ctrl/⌘-click or a middle click asks for the alternative, such as a new tab), `onOpenChange?(open)`, `filter?` (default `matchOptions`: typos, word order, the other layout and alphabet, `aliases`), `trigger?` (`"button"`, `"field"`, `"icon"`, or a function drawing a trigger of its own from `CommandPaletteTrigger`), `triggerHref?` (a link until hydration), `defaultQuery?`, `showMatch?`, `matchLabels?`, `recent?` (`{ storageKey, storage }`, the recent picks; `clearCommandPaletteRecent(storageKey, storage)` forgets them), `hotkeys?`, `kbdLabels?`, `debounce?`, `labels?`, `dataE2E?`
 - `ComparisonTable` (`comparison-table`): `caption`, `products` (first is yours, highlighted), `rows` of `{ capability, values, note? }` (`"yes"`, `"partial"`, `"no"`), `checkedOn`, `method`, `fit?`, `locale?`, `timeZone?`, `labels?` — scrolls inside itself, first column held
 - `ConfirmDialog` (`confirm-dialog`): `title`, `message?`, `onConfirm`, `onCancel`, `confirmLabel?`, `cancelLabel?`, `closeLabel?`, `tone?`, `busy?` and `busyLabel?` (no cancel while busy), `confirmDataE2E?`, `cancelDataE2E?`
 - `CopyBlock` (`copy-block`): `text`, `singleLine?`, `textLabel?` (names `singleLine` text that overflows), `copy?` (clipboard port), `copyLabel?`, `copiedLabel?`, `failedLabel?` — built on `CopyButton`
@@ -2249,8 +2249,17 @@ It takes its results one of two ways, never both:
   the previous results stay listed, so the list does not blink on every keystroke; once the reader
   has waited 300 ms, "Searching…" shows beside the field (or in the list, when it is empty) and
   is announced; the rows neither move nor fade. Enter pressed while a call runs
-  waits for its answer and picks the answer's first result, never a row of the previous query. A
+  waits for its answer and picks the first row it lists, never a row of the previous query. A
   rejection says the search failed.
+- `search(query, signal, show)`: `show(options)` lists an early answer for the same query at once,
+  such as the commands that match, before the server's results arrive; the promise's answer then
+  replaces it. A later answer for the same query keeps the highlighted option, found by its `id`,
+  and falls back to the first row only when that option is gone; a new query starts on the first
+  row. Once an early answer is listed, Enter picks the highlighted row at once, while "Searching…"
+  may still show for the rest. A `show` after the promise settled, or from a stale call, is
+  ignored, and a rejection keeps the early rows, with the error beside the field. The palette does not read ">" in
+  this mode: listing only the commands for it is `search`'s job. The "> for commands" hint shows on
+  the empty query whenever the listed answer holds an option with `run`, except while "Searching…" or the error shows beside the field.
 
 An option is `{ id, label, detail?, hint?, group?, aliases? }`, and `onSelect` receives the same
 object, so it can carry whatever the app needs, such as an `href`. Every result row carries how the
@@ -2325,7 +2334,8 @@ it opens. A site supplies only its index and its commands.
 - **Loading.** The index is fetched when the pointer reaches the trigger, when it takes focus, and
   when the palette opens, then kept. A failed fetch shows "Search couldn't load. Check your
   connection and type again.", and the next keystroke fetches again. Each query lists at most ten
-  entries, then the `commands` it matches; an empty query lists every command.
+  entries, then the `commands` it matches; an empty query lists every command, and a query
+  starting with ">" lists only the commands, as the "> for commands" hint beside the field says.
 - **Opening a result.** An entry opens with `location.assign`, or in a new tab on the palette's
   alternative (Ctrl/⌘+Enter, a Ctrl/⌘-click, a middle click). An entry that is a heading on the
   current page sets the hash and focuses the heading (`tabindex="-1"`), so the `:target` tint
