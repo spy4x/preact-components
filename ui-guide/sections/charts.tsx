@@ -22,9 +22,7 @@ import { Kpi, type KpiTone } from "@spy4x/preact-charts/kpi"
 import { KpiGrid } from "@spy4x/preact-charts/kpi"
 import { LineChart, type LineSeries } from "@spy4x/preact-charts/line-chart"
 import { type RankedBarColumns, RankedBars } from "@spy4x/preact-charts/ranked-bars"
-import { useInView } from "@spy4x/preact-charts/use-in-view"
 import { useSignal } from "@preact/signals"
-import { useEffect } from "preact/hooks"
 import { entries } from "../record.ts"
 import type { DemoFragment } from "../registry.ts"
 
@@ -233,42 +231,6 @@ const revenue: LineSeries[] = [
   },
 ]
 
-/**
- * A chart behind a loading state, drawn once it scrolls into view: the element `useInView` watches
- * only exists after the loading bar is gone, which is the case the browser check for #863 guards.
- * Neither state has text of its own, so the served card reads the same as the hydrated one.
- */
-function DeferredDonut() {
-  const loaded = useSignal(false)
-  const { ref, inView } = useInView<HTMLDivElement>()
-  // Stands in for data arriving after hydration; the server render shows the loading bar.
-  useEffect(() => {
-    loaded.value = true
-  }, [])
-  if (!loaded.value) {
-    return (
-      <div
-        aria-hidden="true"
-        class="h-4 w-32 animate-pulse rounded bg-track motion-reduce:animate-none"
-      />
-    )
-  }
-  return (
-    <div ref={ref} data-e2e="chart-deferred" class="min-h-16">
-      {inView
-        ? (
-          <DonutChart
-            data={traffic}
-            showLegend={false}
-            ariaLabel="Traffic sources, drawn when scrolled into view"
-            valueFormat={(value) => `${value * 124} sessions`}
-          />
-        )
-        : null}
-    </div>
-  )
-}
-
 /** Monthly spending split into three series, for the stacked `Bars` demo. */
 const spending: StackedBarDatum[] = [
   {
@@ -356,7 +318,7 @@ export const chartsDemos = {
         description: "The value the longest bar stands for, to compare two lists.",
       },
       {
-        name: "format",
+        name: "valueFormat",
         type: "(value: number) => string",
         default: "String",
         description: "How the trailing number is printed.",
@@ -429,19 +391,13 @@ export const chartsDemos = {
   title="Traffic sources"
 />`,
     render: () => (
-      <div class="flex flex-col gap-6">
-        <DonutChart
-          data={traffic}
-          centerValue="12.4k"
-          centerLabel="sessions"
-          title="Traffic sources"
-          valueFormat={(value) => `${value * 124} sessions`}
-        />
-        <div class="flex flex-col gap-3">
-          <p class="text-xs text-muted">the same donut, drawn once it scrolls into view</p>
-          <DeferredDonut />
-        </div>
-      </div>
+      <DonutChart
+        data={traffic}
+        centerValue="12.4k"
+        centerLabel="sessions"
+        title="Traffic sources"
+        valueFormat={(value) => `${value * 124} sessions`}
+      />
     ),
   },
   DependencyGraph: {
@@ -523,7 +479,7 @@ export const chartsDemos = {
         description: "A rule at zero, when zero is inside the domain.",
       },
       {
-        name: "format",
+        name: "valueFormat",
         type: "(value: number) => string",
         default: "String",
         description: "How a value and the scale's ends print.",
@@ -535,7 +491,7 @@ export const chartsDemos = {
   rows={[{ id: "18-24", label: "18 to 24", value: 7.6, detail: "1,204 people" }]}
   summary={{ id: "all", label: "Everyone", value: 7 }}
   bands={[{ from: 7, to: 9, label: "Recommended, 7 to 9 hours", strength: 1 }]}
-  format={(value) => \`\${value} h\`}
+  valueFormat={(value) => \`\${value} h\`}
 />`,
     render: () => (
       <DotPlot
@@ -544,7 +500,7 @@ export const chartsDemos = {
         rows={sleep}
         summary={{ id: "all", label: "Everyone", value: 7 }}
         bands={[{ from: 7, to: 9, label: "Recommended, 7 to 9 hours", strength: 1 }]}
-        format={(value) => `${value} h`}
+        valueFormat={(value) => `${value} h`}
       />
     ),
   },
@@ -561,7 +517,7 @@ export const chartsDemos = {
         description: "Evenly spaced labels, or instants placed by time with round ticks.",
       },
       {
-        name: "yFormat",
+        name: "valueFormat",
         type: "(value: number) => string",
         default: "at most two decimals",
         description: "How a Y tick and a tooltip value are printed.",
@@ -602,21 +558,21 @@ export const chartsDemos = {
           title="Revenue, k€"
           referenceValue={12}
           referenceLabel="Target"
-          yFormat={(value) => value.toFixed(1)}
+          valueFormat={(value) => value.toFixed(1)}
         />
         <LineChart
           series={orders}
           title="Orders per month"
           height={180}
           yDomain={[0, 60]}
-          yFormat={(value) => value.toFixed(0)}
+          valueFormat={(value) => value.toFixed(0)}
         />
         <div data-e2e="chart-30-days">
           <LineChart
             series={signups}
             title="Sign-ups per day"
             height={160}
-            yFormat={(value) => value.toFixed(0)}
+            valueFormat={(value) => value.toFixed(0)}
           />
         </div>
       </div>
@@ -703,7 +659,7 @@ export const chartsDemos = {
           "The headers of the label, the bar's number and one to three `extra` columns, each with an optional `format`.",
       },
       {
-        name: "format",
+        name: "valueFormat",
         type: "(value: number) => string",
         default: "String",
         description: "How the bar's own number is printed.",

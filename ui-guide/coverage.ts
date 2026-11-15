@@ -44,7 +44,13 @@ export interface AllowedExport {
 export const COMPONENTS_WITHOUT_CARD: Record<PackageId, readonly AllowedExport[]> = {
   ui: [],
   charts: [],
-  map: [],
+  map: [
+    {
+      name: "Map",
+      reason:
+        "The deprecated former name of `LeafletMap`, the same component; the LeafletMap card shows it.",
+    },
+  ],
   system: [
     {
       name: "AccountTag",

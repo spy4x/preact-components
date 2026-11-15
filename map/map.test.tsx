@@ -1,7 +1,7 @@
 import { expect } from "@std/expect"
 import { describe, it } from "@std/testing/bdd"
 import { render } from "preact-render-to-string"
-import { Map } from "./map.tsx"
+import { LeafletMap, Map } from "./map.tsx"
 import type { MapMarker } from "./types.ts"
 
 const markers: MapMarker[] = [
@@ -10,16 +10,16 @@ const markers: MapMarker[] = [
 ]
 
 /**
- * `Map` loads Leaflet with a dynamic `import()` inside an effect, and `useEffect` bodies never run
+ * `LeafletMap` loads Leaflet with a dynamic `import()` inside an effect, and `useEffect` bodies never run
  * under `preact-render-to-string` — so every assertion here is about what the component renders
  * before that import resolves, which is also exactly what a server render produces. What happens
  * after hydration (Leaflet mounting into the box, the markers becoming live pins) is proven in
  * `pages/checks/map.ts`, in a real browser; see that file and issue #143.
  */
-describe("Map", () => {
+describe("LeafletMap", () => {
   it("renders an empty box at its default size, with no Leaflet markup and no throw", () => {
     const html = render(
-      <Map
+      <LeafletMap
         center={{ lat: 0, lng: 0 }}
         zoom={3}
         markers={markers}
@@ -36,7 +36,7 @@ describe("Map", () => {
 
   it("lets the caller's class win over the default height", () => {
     const html = render(
-      <Map
+      <LeafletMap
         center={{ lat: 0, lng: 0 }}
         zoom={3}
         markers={[]}
@@ -53,7 +53,7 @@ describe("Map", () => {
 
   it("shows the attribution text unconditionally, before any hydration could have run", () => {
     const html = render(
-      <Map
+      <LeafletMap
         center={{ lat: 0, lng: 0 }}
         zoom={3}
         markers={[]}
@@ -69,7 +69,7 @@ describe("Map", () => {
 
   it("renders attribution containing markup as literal text, never as an element", () => {
     const html = render(
-      <Map
+      <LeafletMap
         center={{ lat: 0, lng: 0 }}
         zoom={3}
         markers={[]}
@@ -90,7 +90,7 @@ describe("Map", () => {
 
   it("names the map region with an English default, and a caller's own in its place", () => {
     const defaultHtml = render(
-      <Map
+      <LeafletMap
         center={{ lat: 0, lng: 0 }}
         zoom={3}
         markers={[]}
@@ -102,7 +102,7 @@ describe("Map", () => {
     expect(defaultHtml).toContain('aria-label="Map"')
 
     const namedHtml = render(
-      <Map
+      <LeafletMap
         center={{ lat: 0, lng: 0 }}
         zoom={3}
         markers={[]}
@@ -117,7 +117,7 @@ describe("Map", () => {
 
   it("renders the plain, non-interactive list of the same markers beside the box", () => {
     const html = render(
-      <Map
+      <LeafletMap
         center={{ lat: 0, lng: 0 }}
         zoom={3}
         markers={markers}
@@ -136,7 +136,7 @@ describe("Map", () => {
 
   it("passes the listLabel prop through to the list heading", () => {
     const html = render(
-      <Map
+      <LeafletMap
         center={{ lat: 0, lng: 0 }}
         zoom={3}
         markers={markers}
@@ -152,7 +152,7 @@ describe("Map", () => {
 
   it("passes listHeadingLevel and statusLabels through to the list", () => {
     const html = render(
-      <Map
+      <LeafletMap
         center={{ lat: 0, lng: 0 }}
         zoom={3}
         markers={markers}
@@ -167,5 +167,11 @@ describe("Map", () => {
     expect(html).toMatch(/<h2 class="[^"]*">Places<\/h2>/)
     expect(html).toContain(`London office<span class="sr-only">, open</span>`)
     expect(html).toContain(`Paris office<span class="sr-only">, status unknown</span>`)
+  })
+})
+
+describe("Map", () => {
+  it("is the deprecated name of LeafletMap, the same component", () => {
+    expect(Map).toBe(LeafletMap)
   })
 })
