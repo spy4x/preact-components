@@ -20,7 +20,7 @@ export function AccountTag({ tag }: { tag: string }): JSX.Element {
   return (
     <Badge
       text={tag}
-      color="gray"
+      tone="neutral"
       class="rounded-[var(--radius-control,0.375rem)] px-1 py-0 leading-4"
     />
   )

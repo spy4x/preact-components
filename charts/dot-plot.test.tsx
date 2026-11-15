@@ -119,8 +119,29 @@ describe("DotPlot", () => {
     expect(count(render(<DotPlot rows={rows} domain={[0, 100]} zero />), rule)).toBe(0)
   })
 
-  it("prints the scale's ends with the value format", () => {
+  it("prints the scale's ends and each value through valueFormat", () => {
+    const html = render(
+      <DotPlot rows={rows} domain={[0, 100]} valueFormat={(value) => `${value}%`} />,
+    )
+    expect(html).toContain("<span>0%</span><span>100%</span>")
+    expect(html).toContain(">25%<")
+  })
+
+  it("still prints through the deprecated format prop", () => {
     const html = render(<DotPlot rows={rows} domain={[0, 100]} format={(value) => `${value}%`} />)
     expect(html).toContain("<span>0%</span><span>100%</span>")
+  })
+
+  it("prefers valueFormat when format is passed too", () => {
+    const html = render(
+      <DotPlot
+        rows={rows}
+        domain={[0, 100]}
+        valueFormat={(value) => `${value}%`}
+        format={(value) => `${value} pts`}
+      />,
+    )
+    expect(html).toContain("<span>0%</span><span>100%</span>")
+    expect(html).not.toContain(" pts")
   })
 })

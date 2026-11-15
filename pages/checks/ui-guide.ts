@@ -407,7 +407,7 @@ const TEXT_DRAWN_IN_BROWSER: Record<string, DrawnInBrowser> = {
       "after hydration: the served card is the still alone. The card's unplayable loop fails at " +
       "once in the browser and draws no button",
   },
-  "demo-Map": {
+  "demo-LeafletMap": {
     selector: `[data-e2e="map-slot"]`,
     parts: 1,
     reason: "@spy4x/preact-map, and Leaflet with it, loads when the map page opens: the served " +

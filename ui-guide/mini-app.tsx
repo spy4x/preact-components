@@ -26,7 +26,7 @@ import { Kpi } from "@spy4x/preact-charts/kpi"
 import { LineChart, type LineSeries } from "@spy4x/preact-charts/line-chart"
 import { IconPlus, IconRocket } from "@spy4x/preact-icons"
 import { createToastStore } from "@spy4x/preact-signals/toast"
-import { Badge, type BadgeColor } from "@spy4x/preact-ui/badge"
+import { Badge, type BadgeTone } from "@spy4x/preact-ui/badge"
 import { Button } from "@spy4x/preact-ui/button"
 import { DataTable } from "@spy4x/preact-ui/data-table"
 import { Field } from "@spy4x/preact-ui/field"
@@ -51,11 +51,11 @@ export interface MiniProject {
 }
 
 /** Each status's word and badge colour. A status with no entry does not compile. */
-const STATUS: Record<ProjectStatus, { label: string; color: BadgeColor }> = {
-  healthy: { label: "Healthy", color: "green" },
-  building: { label: "Building", color: "blue" },
-  failing: { label: "Failing", color: "red" },
-  paused: { label: "Paused", color: "gray" },
+const STATUS: Record<ProjectStatus, { label: string; tone: BadgeTone }> = {
+  healthy: { label: "Healthy", tone: "success" },
+  building: { label: "Building", tone: "info" },
+  failing: { label: "Failing", tone: "danger" },
+  paused: { label: "Paused", tone: "neutral" },
 }
 
 /** The rows the app starts with. */
@@ -149,7 +149,7 @@ export function MiniApp(): JSX.Element {
             <IconRocket class="size-4" />
           </span>
           <span class="font-semibold text-foreground">Orbit</span>
-          <Badge text="Demo" color="purple" type="outline" />
+          <Badge text="Demo" tone="primary" variant="outline" />
         </div>
         <Cluster>
           <Button
@@ -219,7 +219,7 @@ export function MiniApp(): JSX.Element {
                 ariaLabel="Builds this week"
                 height={220}
                 yDomain={[0, 40]}
-                yFormat={(value) => value.toFixed(0)}
+                valueFormat={(value) => value.toFixed(0)}
               />
             </div>
             <div class="min-w-0">
@@ -233,7 +233,7 @@ export function MiniApp(): JSX.Element {
                     header: COLUMN_HEADERS.status,
                     sortable: true,
                     render: (row) => (
-                      <Badge text={STATUS[row.status].label} color={STATUS[row.status].color} />
+                      <Badge text={STATUS[row.status].label} tone={STATUS[row.status].tone} />
                     ),
                   },
                   { key: "builds", header: COLUMN_HEADERS.builds, sortable: true, align: "right" },

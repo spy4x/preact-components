@@ -11,19 +11,23 @@ Preact + Tailwind primitives extracted from earlier source applications.
   glyphs come from `@spy4x/preact-icons`.
 - **Server-renderable.** `document`, `navigator` and timers are touched inside effects or event
   handlers only.
-- **A `class` is merged, except on thirty-three exports.** Most components pass a caller's
-  `class` through `cn` from `@spy4x/preact-cn`, so a caller's utility replaces the component's own
-  of the same group. `Button`, `buttonClasses`, `ImageGallery`, `Lightbox` (#471), `Input`,
-  `Textarea`, `Select`, `EnhancedForm` (#511), `DemoVideo`, `DialogActions`, `YouTubeVideo`,
-  `ScreenTour`, `PricingTable`, `PlanCard`, `ThemePreview`, `ThemeToggle`, `RadioChips` (its
-  `optionsClass`), `CommandPalette`, `LanguagePicker`,
-  `Combobox` (with its `inputClass` and `listboxClass`), `Modal`, `Toastr` (#943), `Explorable` and
-  `Slider` (#958), `LookTile`, `LookGrid`, `SwatchChips`, `OrderBar` and `LoopVideo` use `join`
-  instead; `ConfirmDialog` and `ShortcutsDialog` hand their `class` to `Modal`, `SiteSearch` hands its to `CommandPalette`, and `CopyButton` and
-  `ZoomableImages` hand theirs to `Button` and `Lightbox`, so a browser bundle that renders them carries no
-  `tailwind-merge`, about 28 KB minified. `Field` puts its `class` on its wrapper unchanged, as
-  before. Their `class` is appended after their own classes, and replaces one of them only when
-  it is marked important, `<Button class="px-8!">`. Every component the library renders keeps one utility per group on an
+- **A `class` is merged, except on twenty-eight exports.** Components pass a caller's `class`
+  through `cn` from `@spy4x/preact-cn`, so a caller's utility replaces the component's own of the
+  same group: `<Button class="px-8">` replaces the size's padding. `Button`, `buttonClasses`,
+  `Input`, `Textarea`, `Select`, `EnhancedForm` and `CopyButton` merge too since #861, so a browser
+  bundle that renders one of them carries `tailwind-merge`, about 28 KB minified. `ImageGallery`,
+  `Lightbox` (#471), `DemoVideo`, `DialogActions`, `YouTubeVideo`, `ScreenTour`, `PricingTable`,
+  `PlanCard`, `ThemePreview`, `ThemeToggle`, `RadioChips` (its `optionsClass`), `CommandPalette`,
+  `LanguagePicker`, `Combobox` (with its `inputClass` and `listboxClass`), `Modal`, `Toastr`
+  (#943), `Explorable` and `Slider` (#958), `LookTile`, `LookGrid`, `SwatchChips`, `OrderBar` and
+  `LoopVideo` use `join` instead; `ConfirmDialog` and `ShortcutsDialog` hand their `class` to
+  `Modal`, `SiteSearch` hands its to `CommandPalette`, `ZoomableImages` hands its to `Lightbox`, and
+  `Field` puts its `class` on its wrapper unchanged. Their `class` is appended after their own
+  classes, and replaces one of them only when it is marked important, `<Lightbox class="p-8!">`.
+  Their own classes bring no `tailwind-merge`, but one that renders a `Button` or an `Input` brings
+  it through that. `tailwind-merge` sees `pc-input` and the other theme classes as one opaque class
+  each, so `pc-input` stays beside a caller's `h-10`, and the stylesheet's order decides which
+  height applies. Every component the library renders keeps one utility per group on an
   element; `ui-guide/class-conflicts.test.tsx` holds that for every card in the guide.
 - **One Preact option hook, for four components' refs.** `./forward-ref.ts`'s hook, installed on
   Preact's shared `options` object, is what lets `Input`, `Button`, `Checkbox` and `Radio` forward
@@ -59,10 +63,10 @@ Each line: the component, its subpath, then its ports and key props.
 - `AttachmentList` (`attachment-list`): `id`, `items` (`{ id, name, size, type?, status, progress?, thumbnailSrc?, src?, detail?, error? }[]`), `onDownload?`, `onRemove?`, `onCancel?`, `onRetry?`, `removingId?`, `focusAfterLast?`, `labels?`, `lightboxLabels?` — a ready image opens in `Lightbox`
 - `Avatar` (`avatar`): `name`, `src`, `alt`, `size`
 - `AvatarGroup` (`avatar`): `items`, `max`, `label`, `size` (a `role="group"`, not a list)
-- `Badge` (`badge`): `text` or `children`, `color`, `type`, `href?` (the whole pill becomes a link), `navigate?`
+- `Badge` (`badge`): `text` or `children`, `tone?` (deprecated `color`), `variant?` (deprecated `type`), `href?` (the whole pill becomes a link), `navigate?`
 - `BrandMark` (`brand-mark`): `Icon` (any icon component, such as `IconSprout`), `name` — a tile at `--radius-card` in the accent, then the name; for a public site's header
 - `Breadcrumbs` (`breadcrumbs`): `items` (`{ label, href? }`; the last one without `href` is the current page, `aria-current="page"`), `label?` ("Breadcrumb"), `class?` — a named `<nav>` with an ordered list, chevrons between steps that turn around right to left
-- `Button` (`button`): `variant`, `size` (`"none"` leaves sizing to `class`), `busy`, `busyLabel`, native button attrs; `href?` and `navigate?` (router port) render a link; `hotkey?`, `hotkeyHint?`, `kbdLabels?`
+- `Button` (`button`): `variant`, `size` (`"none"` leaves sizing to `class`), `busy`, `busyLabel`, `class` (merged: a caller's utility wins), native button attrs; `href?` and `navigate?` (router port) render a link; `hotkey?`, `hotkeyHint?`, `kbdLabels?`
 - `Card` (`card`): `children`, `class` — a bordered surface; forwards `ref` to its `<div>`
 - `CardBody` (`card`): `children`, `class`
 - `CardFooter` (`card`): `children`, `class`
@@ -77,7 +81,7 @@ Each line: the component, its subpath, then its ports and key props.
 - `ComparisonTable` (`comparison-table`): `caption`, `products` (first is yours, highlighted), `rows` of `{ capability, values, note? }` (`"yes"`, `"partial"`, `"no"`), `checkedOn`, `method`, `fit?`, `locale?`, `timeZone?`, `labels?` — scrolls inside itself, first column held
 - `ConfirmDialog` (`confirm-dialog`): `title`, `message?`, `onConfirm`, `onCancel`, `confirmLabel?`, `cancelLabel?`, `closeLabel?`, `tone?`, `busy?` and `busyLabel?` (no cancel while busy), `confirmDataE2E?`, `cancelDataE2E?`
 - `CopyBlock` (`copy-block`): `text`, `singleLine?`, `textLabel?` (names `singleLine` text that overflows), `copy?` (clipboard port), `copyLabel?`, `copiedLabel?`, `failedLabel?` — built on `CopyButton`
-- `CopyButton` (`copy-button`): `textToCopy` (string, or function read on click), `title?` (visible label; without it, the icon alone), `copy?` (port; `false` or a throw is a failure), `variant?` (`"outline"` or `"primary"`, for a button with a `title`), `copiedLabel?`, `failedLabel?`, `data-*`, `hotkey?`
+- `CopyButton` (`copy-button`): `textToCopy` (string, or function read on click), `text?` (visible text; without it, the icon alone; deprecated `title`), `copy?` (port; `false` or a throw is a failure), `variant?` (`"outline"` or `"primary"`, for a button with `text`), `copiedLabel?`, `failedLabel?`, `data-*`, `hotkey?`
 - `CurrencyField` (`currency-field`): `value` (code or `null`), `onChange`, `options` (ts-libs `currencyOptions`), `recent?`, `id?`, `ariaLabel?` or `aria-labelledby?`, `required?`, `placeholder?`, `autoFocus?`, `optionLabel?`, `emptyMessage?`, `countMessage?`, `clearLabel?`, `requiredMessage?`, `class?`
 - `DashboardGrid` (`widget-card`): `items` (`{ id, size: "stat" | "full", content }[]`), `label`, `minStatWidth?` — consecutive stats share a row
 - `DataTable` (`data-table`): `columns`, `rows`, `rowKey`, `sort`, `onSortChange`, `caption`, `captionHidden?`, `empty?`, `paging?`, `mode?` (`"client"` default, or `"server"` with `paging.total`), `rowDataE2E?`, `cursor?` (`{ onOpen(row), enabled? }`: `j`/`k` highlight a row, Enter opens it, through `useRowCursor`), `class?`
@@ -91,7 +95,7 @@ Each line: the component, its subpath, then its ports and key props.
 - `DropdownItem` (`dropdown`): `href`, `navigate?` (a router port), `onClick`, `type`, `disabled` (dims, drops `danger`'s red), `danger`, `class`, `hotkey?`, `hotkeyHint?`, `kbdLabels?`, `checked?`, `multiple?`, `keepOpen?` — a `role="menuitem"` out of the tab order once hydrated, a plain link or button before
 - `Elapsed` (`format`): `start`, `end?` (left out or `null`: still running, ticks each second), `now?` (epoch milliseconds; given, nothing ticks), `labels?` (`duration`, `missing`), `class?` — `02:05` in a `<time datetime="PT2M5S">`
 - `EmptyState` (`empty-state`): `icon?`, `title?`, `headingLevel?` (`1`–`4`, `3` default; same look at every level), `description?`, `action?`, `inset?` (no box, a card body's padding, for an empty section inside a `Card`)
-- `EnhancedForm` (`enhanced-form`): `action?`, `method?`, `onSubmit?`, `sending?`/`done?`/`failed?` slots, `labels?`, `status?` — posts natively before hydration
+- `EnhancedForm` (`enhanced-form`): `action?`, `method?`, `onSubmit?`, `sending?`/`done?`/`failed?` slots, `labels?`, `status?`, `class?` (merged) — posts natively before hydration
 - `ErrorBoundary` (`error-boundary`): `onError?` (once per caught error, with `errorInfo`), `onReload?` (`location.reload()` default, read on click), `title?`, `description?`, `reloadLabel?`, `headingLevel?`, `dataE2E?`
 - `ErrorState` (`error-state`): `message` (renders nothing when empty), `focusOnAppear?` (the panel takes focus when a message appears or changes), `dataE2E?`
 - `ErrorSummary` (`error-summary`): `title` (names the region), `children?` (one line under it), `items` (`{ key, label, message }`: a button and its message per row), `onSelect(item, index)`, `countMessage?` (`"2 problems"`), `noneMessage?` (`"No problems left"`), `id?`, `data-*` — a warning panel listing problems, drawn while `items` is not empty, with a polite status line on the count
@@ -109,7 +113,7 @@ Each line: the component, its subpath, then its ports and key props.
 - `IconPicker` (`icon-picker`): `value` (an id from `@spy4x/preact-icons/registry`, or `null`), `onChange`, `icons?` (`CATEGORY_ICONS`), `allowNone?`, `noneLabel?`, `legend?`, `hint?`, `error?`, `name?`, `labels?`, `disabled?` — a search box over a grid of icon tiles on native radios; search finds names and aliases in the reader's language and in English
 - `ImageGallery` (`image-gallery`): `images` (`{ src, alt, thumbSrc?, webpSrc?, width?, height? }[]`), lightbox labels, `controls?`, `layout?`, `hero?`, `lazy?`, `captions?`, `navigation?`, `navigationVariant?`, `snap?`, `slideWidth?`
 - `ImportMapper` (`import-mapper`): `header` (`null` without one), `sample`, `fields` (`{ key, label, required?, numeric? }`), `value` (field key → column index or `null`), `onChange(key, column)`, `errors?`, `settings?` (`{ key, label, value, options, error? }`), `onSettingsChange?`, `preview` (`{ line, values, errors? }`), `rowCount?`, `pending?`, `labels?`, `id?` — the middle of an import screen: file settings, a column per field, a checked preview
-- `Input` (`input`): native input attrs, `class`; forwards `ref`; `dir="ltr"` on an e-mail, URL or password input, by `type` or `autocomplete`
+- `Input` (`input`): native input attrs, `class` (merged); forwards `ref`; `dir="ltr"` on an e-mail, URL or password input, by `type` or `autocomplete`
 - `InputButton` (`input-button`): `icon`, `iconLabel`, `onClick?`, native input attrs; forwards `ref` to the input
 - `Isolated` (`bdi`): `message` (the sentence, as a label function of the value), `value` — the value drawn in a `<bdi>`; `isolate(value)` does the same for plain text
 - `Kbd` (`kbd`): `keys` (`"mod+k"`, `"g t"`) or `children`, `apple?`, `labels?`
@@ -135,7 +139,7 @@ Each line: the component, its subpath, then its ports and key props.
 - `NumberStepper` (`number-stepper`): `value`, `onChange`, `max`, `min?` (default `0`), `step?` (default `1`), `largeStep?`, `zeroLabel?` (a word such as "Off" for `0`), `disabled?`, `locale?`, `label?` or `aria-labelledby?` (one is needed), `aria-describedby?`, `labels?`, `id?`, `class?` — "− 3 +" for a small whole number applied as it changes; a `role="spinbutton"` that owns the keys (arrows, PageUp and PageDown, Home, End, a digit)
 - `OnboardingChecklist` (`onboarding-checklist`): `steps` (`{ id, title, description?, done, action? }`; done comes from the app), `onDismiss?`, `title?`, `headingRef?`, `progressLabel?`, `dismissLabel?`, `finishLabel?`, `completeMessage?`, `actionVariant?` (`primary` default, `secondary`)
 - `OnDay` (`format`): `at` (a `Date`, epoch milliseconds or ISO string), `labels?` (`missing`, `title`), `class?` — the day in the `FormatContext` format, in a `<time datetime>`
-- `OnOffButtons` (`on-off-buttons`): `value`, `amount`, `onSwitch`, `label?` (the pair's accessible name); each half has `aria-pressed`
+- `OnOffButtons` (`on-off-buttons`): `value`, `amount`, `onChange` (deprecated `onSwitch`), `ariaLabel?` (the pair's accessible name; deprecated `label`); each half has `aria-pressed`
 - `OnThisPage` (`on-this-page`): `links` (`{ label, href }` plus any anchor attribute, such as `data-*`), `label?` ("On this page"), `openFrom?` (`lg` default, `xl`) — a named `<nav>`: a sticky list in a side column from `openFrom`, a `<details>` below it; nothing for an empty list
 - `OrderBar` (`order-bar`): `message`, `actions` (one or two `{ label, shortLabel?, icon?, href?, name?, value?, attributes? }`), `secondary?`, `status?`, `note?`, `form?`, `labels?` — sticky bar on a phone, sticky panel from `lg`; links or submit buttons
 - `Page` (`layout`): `as?`, `class?` — the content column: max width, page gutter, `xl` between sections
@@ -150,7 +154,7 @@ Each line: the component, its subpath, then its ports and key props.
 - `PostList` (`post-list`): `posts` (`{ href, title, description?, publishedAt, readMinutes?, lang?, dir?, image? }[]`; `lang` sets the title's and description's language, `dir="auto"` unless `dir` is given; `image` is a decorative `{ src, width, height, srcset?, sizes? }` cover, above the text on a phone and 192×108 beside it from 640 px), `headingLevel?` (`2` default), `label?`, `labels?`, `eagerFirst?` (the first cover loads eagerly) — the whole row is the link's target; dates in UTC; no JavaScript
 - `PrevNext` (`prev-next`): `previous?`, `next?` (`{ href, title }`), `labels?` — two whole-card links at a guide's end, next on the end side; no JavaScript
 - `PricingTable` (`billing`): `plans` (`PricingPlan[]`, smallest-unit amounts, `unit?`), `onChoose?`, `pending?`, `action?`, `fieldName?` (default `"planId"`), `defaultInterval?`, `locale?`, `labels?` — one posting form per plan
-- `Progress` (`progress`): `value`, `max`, `label`, `id` (a caption needs an `id`), `ariaLabel?` (the name when there is no caption)
+- `Progress` (`progress`): `value`, `max`, and a name: `label` with `id` (a caption), or `ariaLabel` (no caption)
 - `Prose` (`prose`): `html` (already safe rendered Markdown) or `children`, `as?` (`"div"`/`"article"`), `anchors?` (a link beside each `h2` and `h3` with an `id`), `copyCode?` (a hidden copy button beside each `<pre>`, wired by `ProseCodeCopy`), `labels?`, `class?` — article type from the tokens at about 65 characters a line; each table of `html` in a focusable scroll region named after the heading before it; code blocks scroll sideways and are Tab stops; no JavaScript
 - `ProseCodeCopy` (`prose-copy`): `copy?` (clipboard port) — renders nothing; reveals and wires the copy buttons of `Prose` with `copyCode`, as a Fresh page's one island
 - `QuickAdd` (`quick-add`): `onAdd` (gets the parsed line), `zone?`, `now?`, `label?`, `placeholder?`, `hint?` (text or a function of the parsed line), `busy?`, `labels?`, `dueLabel?`, `dataE2E?` — a one-line "add" field with a live preview of what it understood
@@ -186,10 +190,10 @@ Each line: the component, its subpath, then its ports and key props.
 - `Timeline` (`timeline`): `items` (`{ id, title, at, when, description?, tone?, dataE2E? }[]`), `label?`, `empty?` — an ordered list of events joined by a line
 - `TldrBox` (`tldr-box`): `items`, `title?` ("In short"), `headingLevel?` (`2` default), `id?`, `class?` — a named `<section>` in a hairline box; nothing for no items
 - `Toastr` (`toastr`): `toasts` (each may carry an `action`, with its own `dataE2E`), `onDismiss`, `corner`, `label`, `dismissLabel`, `dataE2E`
-- `ToggleChips` (`toggle-chips`): `options`, `value`, `onChange`, `mode?` (`multiple`/`single`), `label?`, `color?` — pressable `Badge`-look chips with `aria-pressed`
-- `ToggleField` (`toggle-field`): `id`, `label`, `value`, `onToggle`, `description?`, `error?`
-- `ToggleSwitch` (`toggle-switch`): `value`, `onToggle`, `disabled`, `label`, `aria-invalid?`; no `required`: a switch is never empty
-- `Tooltip` (`tooltip`): `content`, `label`, `placement`, `focusable`
+- `ToggleChips` (`toggle-chips`): `options`, `value`, `onChange`, `mode?` (`multiple`/`single`), `ariaLabel?` (deprecated `label`), `tone?` (deprecated `color`) — pressable `Badge`-look chips with `aria-pressed`
+- `ToggleField` (`toggle-field`): `id`, `label`, `value`, `onChange` (deprecated `onToggle`), `description?`, `error?`
+- `ToggleSwitch` (`toggle-switch`): `value`, `onChange` (deprecated `onToggle`), `disabled`, `ariaLabel` (deprecated `label`), `aria-invalid?`; no `required`: a switch is never empty
+- `Tooltip` (`tooltip`): `content`, `ariaLabel` (deprecated `label`), `placement`, `focusable`
 - `Tour` (`tour`): `steps` (`{ id, target, title, body?, placement? }`), `open`, `index`, `onIndexChange`, `onClose` (`"done"`, `"skip"` or `"escape"`), `nextLabel?`, `backLabel?`, `skipLabel?`, `doneLabel?`, `stepLabel?`, `closeLabel?`, `goToLabel?`
 - `UpgradePrompt` (`billing`): `href`, `navigate?` (router port), `labels?` (`title`, `message`, `action`) — draws no box, so it sits inside a card
 - `UnsavedGuard` (`unsaved-guard`): `when`, `navigate` (router port), `owns(url)` (which addresses the router handles), `onDiscard?`, `labels?`, `leaveGuard?` (guards navigation started from code) — asks before leaving with unsaved changes, by a link, from code, by Back or Forward, or by closing the tab
@@ -212,7 +216,7 @@ import { Badge } from "@spy4x/preact-ui/badge"
 Wiring side effects through ports, so the package stays app-agnostic:
 
 ```tsx
-<ToggleSwitch value={archived} onToggle={(next) => settings.archive.set(next)} />
+<ToggleSwitch value={archived} onChange={(next) => settings.archive.set(next)} />
 
 <CopyButton textToCopy={invoice.id} copy={(text) => app.clipboard.copy(text)} />
 
@@ -369,7 +373,7 @@ content — a `StatusMark` beside a word, say — gets a `gap-1` between its par
 your own overrides:
 
 ```tsx
-<Badge color="gray" href="https://ci.example.com/my-repo">
+<Badge tone="neutral" href="https://ci.example.com/my-repo">
   <span>CI</span>
   <StatusMark status="ready" label="Passing" />
 </Badge>
@@ -380,6 +384,12 @@ components draw, and the pill's content is the link's accessible name. That is t
 pill, where the pill is one target. For a pill with a link inside it, leave `href` out and pass the
 `<a>` among the children instead. A badge without `href` renders the same `<span>`, with the same
 classes, as before element content existed.
+
+`tone` names what a badge says, in the tone names `Notice`, `Progress` and `Timeline` use, and
+`variant` says whether it is filled or outlined. `color` and `type`, the old names, still work and
+are deprecated; `tone` and `variant` win when both are given. `BADGE_TONE_OF_COLOR` maps each old
+colour to its tone: `red` is `danger`, `orange` `warning`, `green` `success`, `gray` `neutral`,
+`blue` `info`, `purple` `primary` and `purpleNav` `primaryStrong`.
 
 ## Button
 
@@ -539,7 +549,7 @@ surface's own padding, so a pointer can travel onto the hint and rest there whil
 that cannot be dismissed covers what somebody was reading, and one that cannot be hovered cannot be
 read at all by anyone magnifying the screen.
 
-`label` is the trigger's own accessible name and the hint is only ever its description. By default
+`ariaLabel` (deprecated `label`) is the trigger's own accessible name, required, and the hint is only ever its description. By default
 the trigger is a `<button>`, because `aria-label` on an element with no role is not guaranteed to
 reach the accessibility tree at all. `focusable={false}` is for a trigger whose children are already
 interactive: the wrapper becomes a `role="group"` around that control, which keeps one tab stop for
@@ -552,7 +562,7 @@ end of the line, to the right in a left-to-right page and to the left in a right
 `"right"` and `"left"` are the old names of `"end"` and `"start"` and mirror the same way.
 
 ```tsx
-<Tooltip content="Supplements the trigger" label="Total revenue" placement="end">
+<Tooltip content="Supplements the trigger" ariaLabel="Total revenue" placement="end">
   <span>Revenue</span>
 </Tooltip>
 ```
@@ -2500,17 +2510,17 @@ one of the same name.
 
 ## ToggleChips
 
-Each chip is a `button` with `aria-pressed`, inside a `role="group"` named by `label`. A pressed
-chip is a filled badge in `color`, an unpressed one a grey outlined badge. An option with its own
-`color` (`#rrggbb`, such as a tag's) is filled with it when pressed, in black or white text, and
-shows it as a dot before its text when not. In `mode="single"`,
+Each chip is a `button` with `aria-pressed`, inside a `role="group"` named by `ariaLabel`. A
+pressed chip is a filled badge in `tone`, an unpressed one a grey outlined badge. An option with
+its own `color` (`#rrggbb`, such as a tag's) is filled with it when pressed, in black or white text,
+and shows it as a dot before its text when not. In `mode="single"`,
 pressing another chip moves the selection and pressing the pressed chip clears it to `null`.
 
 `toggleChipSelection(options, selected, pressed)` is the multiple-mode press on its own: it adds or
 removes `pressed` and returns the selection in the order of `options`.
 
-`badgeClasses(color, type, className)` is `Badge`'s class list without the element, which is how
-the chips share `Badge`'s palette.
+`badgeClasses(tone, variant, className)` is `Badge`'s class list without the element, which is how
+the chips share `Badge`'s palette. It still takes an old colour name in place of a tone.
 
 ## KanbanBoard
 

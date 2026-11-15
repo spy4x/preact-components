@@ -56,6 +56,11 @@ export interface BarsProps {
   /** Fixes the 100% mark instead of using the largest value — for comparing two lists. */
   max?: number
   /** Formats the trailing numeric column. Defaults to `String(value)`. */
+  valueFormat?: (value: number) => string
+  /**
+   * @deprecated Use `valueFormat`. Removed in the next major. Behaves the same; when both are
+   * passed, `valueFormat` wins.
+   */
   format?: (value: number) => string
   /** Label column width. Defaults to `"8rem"`. */
   labelWidth?: string
@@ -100,7 +105,8 @@ export interface BarsProps {
 export function Bars({
   data,
   max,
-  format = (value: number) => String(value),
+  valueFormat,
+  format: legacyFormat,
   labelWidth = "8rem",
   colors,
   trackColor = DEFAULT_TRACK_COLOR,
@@ -112,6 +118,7 @@ export function Bars({
   reference,
   class: className,
 }: BarsProps): JSX.Element {
+  const format = valueFormat ?? legacyFormat ?? String
   const { emptyLabel } = useLabels("Bars", { emptyLabel: "No data" }, {
     emptyLabel: emptyLabelProp,
   })

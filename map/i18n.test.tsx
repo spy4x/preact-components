@@ -5,10 +5,10 @@ import { createTranslator } from "@spy4x/platform/universal/i18n"
 import { I18nContext } from "@spy4x/preact-ui/i18n"
 import mapDe from "./i18n/de.ts"
 import mapEn from "./i18n/en.ts"
-import { Map } from "./map.tsx"
+import { LeafletMap } from "./map.tsx"
 
 const map = () => (
-  <Map
+  <LeafletMap
     center={{ lat: 0, lng: 0 }}
     zoom={3}
     markers={[{ id: "1", label: "Depot", lat: 0, lng: 0 }]}

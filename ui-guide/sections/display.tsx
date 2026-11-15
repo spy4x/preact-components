@@ -415,10 +415,10 @@ function CardHeaderDemo() {
   return (
     <Stack>
       <Card>
-        <CardHeader title="Invoices" action={<Badge text="3 open" color="gray" />} />
+        <CardHeader title="Invoices" action={<Badge text="3 open" tone="neutral" />} />
       </Card>
       <Card>
-        <CardHeader title="Payments" headingLevel={3} action={<Badge text="h3" color="gray" />} />
+        <CardHeader title="Payments" headingLevel={3} action={<Badge text="h3" tone="neutral" />} />
       </Card>
       <Card>
         <CardHeader>
@@ -931,7 +931,7 @@ function TableDemo() {
           <td class="whitespace-nowrap text-center">
             <Badge
               text={row.status ? "cleared" : "pending"}
-              color={row.status ? "green" : "gray"}
+              tone={row.status ? "success" : "neutral"}
             />
           </td>
           <td class="text-end tabular-nums">{row.amount}</td>
@@ -1436,7 +1436,7 @@ function TooltipDemo() {
           >
             <Tooltip
               content="Hint"
-              label={label}
+              ariaLabel={label}
               placement={placement}
               class="bg-hover px-2 py-1"
               contentClass="visible opacity-100"
@@ -1451,7 +1451,7 @@ function TooltipDemo() {
         <Stack gap="sm" class="items-center pt-12 text-center">
           <Tooltip
             content="Keeps its own tab stop"
-            label="Archive the invoice"
+            ariaLabel="Archive the invoice"
             focusable={false}
             contentClass="visible max-w-48 opacity-100"
           >
@@ -1465,7 +1465,7 @@ function TooltipDemo() {
         <Stack gap="sm" class="items-center text-center" data-e2e="tooltip-live">
           <Tooltip
             content="Escape hides this hint, and the pointer may rest on it while it is read"
-            label="Delivery estimate"
+            ariaLabel="Delivery estimate"
             placement="bottom"
             class="bg-hover px-2 py-1"
             contentClass="max-w-48"
@@ -1755,7 +1755,8 @@ const TIMELINE_ITEMS: TimelineItem[] = [
 
 export const displayDemos = {
   PageTitle: {
-    summary: "The page's main heading, in the library's `h1` style and with no margin of its own.",
+    summary:
+      "Deprecated, and removed in the next major: a page heading in the library's `h1` style, which `PageHeader` replaces.",
     wide: false,
     props: [
       { name: "children", type: "ComponentChildren", description: "The heading's content." },
@@ -1972,7 +1973,7 @@ const cursor = useRowCursor({ count: jobs.length, onOpen: (index) => open(jobs[i
       {
         name: "ariaLabel",
         type: "string",
-        description: "The bar's name when it has no caption.",
+        description: "The bar's name when it has no caption; a bar needs one or the other.",
       },
     ],
     snippet: `<Progress id="upload" label="Upload" value={42} tone="success" />
@@ -2449,7 +2450,11 @@ const cursor = useRowCursor({ count: jobs.length, onOpen: (index) => open(jobs[i
     wide: true,
     props: [
       { name: "content", type: "ComponentChildren", description: "The hint." },
-      { name: "label", type: "string", description: "The trigger's accessible name." },
+      {
+        name: "ariaLabel",
+        type: "string",
+        description: "The trigger's accessible name, required. `label` is its deprecated name.",
+      },
       {
         name: "placement",
         type: `"top" | "end" | "bottom" | "start" | "right" | "left"`,
@@ -2464,11 +2469,11 @@ const cursor = useRowCursor({ count: jobs.length, onOpen: (index) => open(jobs[i
         description: "Pass `false` when the trigger is already a button or a link.",
       },
     ],
-    snippet: `<Tooltip content="Supplements the trigger" label="Total revenue" placement="end">
+    snippet: `<Tooltip content="Supplements the trigger" ariaLabel="Total revenue" placement="end">
   <span>Revenue</span>
 </Tooltip>
 
-<Tooltip content="Archive the invoice" label="Archive" focusable={false}>
+<Tooltip content="Archive the invoice" ariaLabel="Archive" focusable={false}>
   <button type="button">Archive</button>
 </Tooltip>`,
     render: () => <TooltipDemo />,
@@ -3509,7 +3514,7 @@ function CommandPaletteDemo() {
         label="Show the commands trigger"
         description="Without it, Ctrl+Shift+P still opens the palette."
         value={commandsTrigger.value}
-        onToggle={(value) => commandsTrigger.value = value}
+        onChange={(value) => commandsTrigger.value = value}
       />
       <Cluster>
         <CommandPalette

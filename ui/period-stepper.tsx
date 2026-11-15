@@ -138,7 +138,7 @@ export function PeriodStepper({
       <div class="flex shrink-0">
         <Tooltip
           content={tip(previous, "[")}
-          label={previous}
+          ariaLabel={previous}
           focusable={false}
           contentClass={fromStartEdge}
         >
@@ -154,7 +154,7 @@ export function PeriodStepper({
             <IconChevronLeft class="size-4" />
           </Button>
         </Tooltip>
-        <Tooltip content={tip(next, "]")} label={next} focusable={false}>
+        <Tooltip content={tip(next, "]")} ariaLabel={next} focusable={false}>
           <Button
             ref={nextRef}
             variant="outline"

@@ -158,6 +158,32 @@ describe("RankedBars", () => {
       /Linen shirt<\/span><span class="text-xs" style="color:var\(--color-muted-foreground[^"]*"><span class="sm:hidden">Order clicks 210 · Order rate 4\.0% · <\/span>mostly Zalo A<\/span>/,
     )
   })
+
+  it("prints the bar's own number through valueFormat", () => {
+    const html = render(
+      <RankedBars data={sources} columns={columns} valueFormat={(value) => `${value} visits`} />,
+    )
+    expect(numbers(bodyRows(html)[0])[0]).toBe("480 visits")
+  })
+
+  it("still prints the bar's own number through the deprecated format prop", () => {
+    const html = render(
+      <RankedBars data={sources} columns={columns} format={(value) => `${value} visits`} />,
+    )
+    expect(numbers(bodyRows(html)[0])[0]).toBe("480 visits")
+  })
+
+  it("prefers valueFormat when format is passed too", () => {
+    const html = render(
+      <RankedBars
+        data={sources}
+        columns={columns}
+        valueFormat={(value) => `${value} visits`}
+        format={(value) => `${value} hits`}
+      />,
+    )
+    expect(numbers(bodyRows(html)[0])[0]).toBe("480 visits")
+  })
 })
 
 describe("RankedBars, empty", () => {

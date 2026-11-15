@@ -1,5 +1,5 @@
 /**
- * `Map` — markers on a Leaflet tile layer, with a plain-text list of the same places beside it.
+ * `LeafletMap` — markers on a Leaflet tile layer, with a plain-text list of the same places beside it.
  *
  * **Server-renderable.** Leaflet touches `window` the moment it is imported (issue #143), so nothing
  * here imports it at module scope: the mount effect below loads it with a dynamic `import()`, which
@@ -64,7 +64,7 @@ import type { MapCenter, MapMarker, MapMarkerStatus } from "./types.ts"
 
 export type { MapCenter, MapMarker, MapMarkerStatus } from "./types.ts"
 
-export interface MapProps {
+export interface LeafletMapProps {
   /** Point the map centres on. */
   center: MapCenter
   /** Leaflet zoom level. */
@@ -120,7 +120,7 @@ export interface MapProps {
   onLoadError?: (error: unknown) => void
 }
 
-/** {@link MapProps.onLoadError}'s default: visible in the console, silent to a visitor. */
+/** {@link LeafletMapProps.onLoadError}'s default: visible in the console, silent to a visitor. */
 function logLoadError(error: unknown): void {
   console.error("@spy4x/preact-map: Leaflet failed to load", error)
 }
@@ -132,7 +132,7 @@ const DEFAULT_SIZE = "h-80 w-full"
 const BOX_BASE =
   "relative overflow-hidden rounded-primary border border-subtle bg-canvas dark:bg-surface"
 
-/** The map's English words, each a key `Map.<field>` of the catalog. */
+/** The map's English words, each a key `LeafletMap.<field>` of the catalog. */
 const MAP_LABELS = {
   label: "Map",
   listLabel: "Places",
@@ -140,8 +140,11 @@ const MAP_LABELS = {
   zoomOutLabel: "Zoom out",
 }
 
-/** See this file's own doc. */
-export function Map(
+/**
+ * Markers on a Leaflet tile layer, with a plain-text list of the same places beside it. Leaflet
+ * loads in a browser only; see this file's own doc for the details.
+ */
+export function LeafletMap(
   {
     center,
     zoom,
@@ -157,9 +160,9 @@ export function Map(
     zoomInLabel: zoomInLabelProp,
     zoomOutLabel: zoomOutLabelProp,
     onLoadError = logLoadError,
-  }: MapProps,
+  }: LeafletMapProps,
 ): JSX.Element {
-  const { label, listLabel, zoomInLabel, zoomOutLabel } = useLabels("Map", MAP_LABELS, {
+  const { label, listLabel, zoomInLabel, zoomOutLabel } = useLabels("LeafletMap", MAP_LABELS, {
     label: labelProp,
     listLabel: listLabelProp,
     zoomInLabel: zoomInLabelProp,
@@ -250,3 +253,18 @@ export function Map(
     </div>
   )
 }
+
+/**
+ * The former name of {@link LeafletMap}, the same component.
+ *
+ * @deprecated Use `LeafletMap`; `Map` shadows the built-in `Map` in every file that imports it.
+ * Removed in the next major.
+ */
+export const Map: typeof LeafletMap = LeafletMap
+
+/**
+ * The former name of {@link LeafletMapProps}.
+ *
+ * @deprecated Use `LeafletMapProps`. Removed in the next major.
+ */
+export type MapProps = LeafletMapProps

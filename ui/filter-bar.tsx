@@ -282,7 +282,7 @@ const triggerBase =
  */
 function triggerClasses(active: boolean): string {
   return badgeClasses(
-    "gray",
+    "neutral",
     "outline",
     cn(
       triggerBase,
@@ -723,7 +723,7 @@ export function FilterBar(props: FilterBarProps): JSX.Element {
               {toggles.length > 0
                 ? (
                   <ToggleChips
-                    label={togglesLabel}
+                    ariaLabel={togglesLabel}
                     class="shrink-0 flex-nowrap"
                     options={toggles.map((toggle) => ({ value: toggle.id, label: toggle.label }))}
                     value={toggles.filter((toggle) => toggle.pressed).map((toggle) => toggle.id)}

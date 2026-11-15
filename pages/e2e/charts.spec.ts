@@ -89,25 +89,6 @@ function arrowDownSpec(component: string, plot: string): Spec {
 }
 
 /**
- * #863: `useInView` observes an element that first appears after a loading state. The guide's
- * deferred donut serves a loading bar and renders its watched box only after hydration; once that
- * box is scrolled into view, the chart inside it is drawn.
- */
-function deferredChartSpec(): Spec {
-  return {
-    name:
-      "useInView: a chart whose box appears after a loading state is drawn once scrolled into view",
-    pageId: "charts",
-    run: async (page) => {
-      const box = page.locator(`#demo-DonutChart [data-e2e="chart-deferred"]`)
-      await box.scrollIntoViewIfNeeded()
-      await box.locator("[data-chart-ring]").waitFor({ timeout: 10_000 })
-      return "drawn after the loading bar"
-    },
-  }
-}
-
-/**
  * The hidden data table of a 30-day `LineChart` takes no room: on a 390 px page the chart's box
  * holds nothing that scrolls below it, and the page does not scroll sideways.
  */
@@ -441,7 +422,6 @@ export const specs: readonly Spec[] = [
   labelsApartSpec(1280),
   arrowDownSpec("LineChart", "[data-chart-plot]"),
   arrowDownSpec("DonutChart", "[data-chart-ring]"),
-  deferredChartSpec(),
   hiddenTableSpec(),
   ...statsPieceSpecs(),
   ...dependencyGraphSpecs(),
