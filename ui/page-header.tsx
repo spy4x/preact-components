@@ -158,8 +158,7 @@ export interface MoreMenuProps {
  * than overflows, and one line from `sm` up, where `white-space: nowrap` leaves the clamp nothing
  * to clamp.
  */
-const OWN_DIRECTION =
-  "line-clamp-2 break-words [text-align:match-parent] sm:block sm:truncate"
+const OWN_DIRECTION = "line-clamp-2 break-words [text-align:match-parent] sm:block sm:truncate"
 
 /**
  * A three-dots button that opens a menu of `DropdownItem`s: the overflow menu of a page header or
