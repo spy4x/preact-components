@@ -2629,7 +2629,11 @@ full message per model and event: `note.created`, `note.createFailed` and the re
 `ModelStoreMessages`' fields, with `{issue}` in `note.malformedUpdate` and `{detail}` in
 `note.malformedResponse`. A translation is then a whole sentence, never "{model}" glued into one. An
 event the app's catalog lacks keeps its English default, and `messages` still wins over the catalog.
-Without a translator both stores say exactly what they always have.
+The model store looks every key up when it is built: the translator's `onMissing` fires then for
+each key the catalog lacks, and the messages stay in that language. The `malformedUpdate` and
+`malformedResponse` messages are filled in again each time their toast shows, so `onMissing` can
+fire again for those two keys. To switch language, build the model stores again with the new
+translator. Without a translator both stores say exactly what they always have.
 
 ---
 

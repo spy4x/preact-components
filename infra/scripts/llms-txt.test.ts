@@ -334,6 +334,17 @@ describe("buildEntries", () => {
     expect(kind([])).toBe("helper")
   })
 
+  it("lists the default export of every entry point, not only the first", () => {
+    const catalog = (language: string): DocEntryPoint => ({
+      specifier: `@spy4x/pkg/i18n/${language}`,
+      symbols: [{ name: "default", declarations: [{ kind: "variable" }] }],
+    })
+    const points = [...fixture(), catalog("ar"), catalog("de"), catalog("ru")]
+    const entries = buildEntries(points, surface("default"), "", "@spy4x/pkg", index())
+    expect(entries.filter((entry) => entry.name === "default").map((entry) => entry.specifier))
+      .toEqual(["@spy4x/pkg/i18n/ar", "@spy4x/pkg/i18n/de", "@spy4x/pkg/i18n/ru"])
+  })
+
   it("throws for a value export that has no declaration", () => {
     expect(() => buildEntries(fixture(), surface("Missing"), "", "@spy4x/pkg", index())).toThrow(
       /exports `Missing`/,
