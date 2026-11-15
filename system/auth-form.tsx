@@ -39,6 +39,12 @@
  * an app's server or by a caller flipping `step` in a demo, the effect fires on the same
  * transition, `step` becoming `"one-time-code"`, and on no other render.
  *
+ * **When `busy` ends, focus the submit button lost is handed on.** `busy` disables the submit
+ * button, which drops the focus of a reader who pressed it to the page body. So when `busy` turns
+ * off while focus is on the body or still on that button, it moves to the error the answer
+ * brought: the named field for a field error, the message itself for a form-level one, and back to
+ * the submit button when there is no error. Focus the reader put anywhere else stays there.
+ *
  * **The error live region is in the page before there is anything to announce**, the same pattern
  * `SWUpdater` and `Combobox` use and `system/README.md`'s "A live region is always present and
  * empty" section states as a library-wide rule: an element that arrives already carrying its first
@@ -75,7 +81,8 @@
  * **The show/hide control is a real, named button, not a click zone on an icon.** It never submits
  * — `type="button"` — and it reports whether the password is showing through `aria-pressed` rather
  * than through its own changing label alone, and it moves the focus to itself on activation so a
- * keyboard user does not have to find it again after the toggle re-renders.
+ * keyboard user does not have to find it again after the toggle re-renders. The field is
+ * `PasswordInput` from `@spy4x/preact-ui`, so an app's other password fields behave the same.
  *
  * **Every control carries a fixed `data-e2e`** (`auth-form-login`, `auth-form-password`, …), the
  * same convention as `Shell`'s own parts, so an app's end-to-end tests find a field whatever
@@ -91,13 +98,14 @@
  */
 
 import { cn } from "@spy4x/preact-cn"
-import { IconEye, IconEyeOff } from "@spy4x/preact-icons"
-import { Button, buttonClasses } from "@spy4x/preact-ui/button"
+import { Button, buttonClasses, type ButtonVariant } from "@spy4x/preact-ui/button"
 import { Field } from "@spy4x/preact-ui/field"
 import { Input } from "@spy4x/preact-ui/input"
+import { PasswordInput } from "@spy4x/preact-ui/password-input"
 import { followLinkClick } from "@spy4x/preact-ui/link"
 import type { ComponentChildren, JSX } from "preact"
-import { useEffect, useId, useRef, useState } from "preact/hooks"
+import { useEffect, useId, useRef } from "preact/hooks"
+import { useLabels } from "@spy4x/preact-ui/i18n"
 
 /** Which screen {@link AuthForm} draws. */
 export type AuthMode = "sign-in" | "sign-up"
@@ -162,15 +170,15 @@ const defaultLabels: AuthFormLabels = {
   login: "Email or username",
   password: "Password",
   code: "One-time code",
-  codeHint: "Enter the code you were sent.",
+  codeHint: "Enter the code we sent you.",
   showPassword: "Show password",
   hidePassword: "Hide password",
   signIn: "Sign in",
   signUp: "Sign up",
   submitCode: "Verify code",
-  switchToSignUp: "Need an account? Sign up",
-  switchToSignIn: "Have an account? Sign in",
-  busy: "Working…",
+  switchToSignUp: "New here? Sign up",
+  switchToSignIn: "Already have an account? Sign in",
+  busy: "One moment…",
 }
 
 /**
@@ -239,6 +247,31 @@ export interface AuthFormProps {
   /** Where the form posts natively before hydration, or when the matching callback is omitted. */
   action?: string
   /**
+   * In `"sign-in"` mode, sets the login field's autocomplete to `"username webauthn"`, so a browser
+   * running a conditional WebAuthn request (`mediation: "conditional"`) offers saved passkeys in
+   * that field's autofill. The caller starts that request; sign-up mode ignores this. Default off.
+   */
+  passkeyAutofill?: boolean
+  /**
+   * The login field's starting value, so a page that sends a person back to the form can hand
+   * their address back. The field stays uncontrolled: typing replaces it as usual.
+   */
+  defaultLogin?: string
+  /**
+   * Called on every input of the login field with its value as typed, so the page can offer
+   * something that needs the address before the form is submitted, such as "Email me a sign-in
+   * link". Only the login is reported, never the password: the login is not a secret, and the
+   * password still leaves only through `FormData` on submit.
+   */
+  onLoginInput?: (login: string) => void
+  /**
+   * The variant of the credentials step's submit button. Defaults to `"primary"`. Pass
+   * `"secondary"` when the page already has its one primary action outside the form, such as a
+   * "Try it now" button above a sign-up form. The one-time-code step's submit stays primary: it is
+   * the only action on that step.
+   */
+  submitVariant?: ButtonVariant
+  /**
    * Caller content drawn below everything else, inside the form — a "Back to sign in" or "Forgot
    * your password?" link, for instance — so it sits in whatever card holds the form. Wrapped in an
    * element carrying `data-e2e="auth-form-footer"`; nothing is rendered for it when this is absent.
@@ -279,11 +312,15 @@ export function AuthForm(
     labels,
     names,
     action,
+    passkeyAutofill = false,
+    defaultLogin,
+    onLoginInput,
+    submitVariant = "primary",
     footer,
     class: className,
   }: AuthFormProps,
 ): JSX.Element {
-  const copy = { ...defaultLabels, ...labels }
+  const copy = useLabels("AuthForm", defaultLabels, labels)
   const fieldNames = { ...defaultNames, ...names }
   const problem = normalizeError(error)
   const baseId = useId()
@@ -291,14 +328,30 @@ export function AuthForm(
   const passwordId = `${baseId}-password`
   const codeId = `${baseId}-code`
 
-  const [showPassword, setShowPassword] = useState(false)
   const codeRef = useRef<HTMLInputElement>(null)
+  const formRef = useRef<HTMLFormElement>(null)
+  const messageRef = useRef<HTMLParagraphElement>(null)
+  const wasBusy = useRef(busy)
 
   // The one focus move this component makes on its own initiative, and only on this one
   // transition — see the module doc for why that mirrors `Calendar`'s own rule.
   useEffect(() => {
     if (step === "one-time-code") codeRef.current?.focus()
   }, [step])
+
+  // Hands on the focus a disabled submit button dropped; see the module doc.
+  useEffect(() => {
+    const ended = wasBusy.current && !busy
+    wasBusy.current = busy
+    const form = formRef.current
+    if (!ended || !form) return
+    const submit = form.querySelector<HTMLButtonElement>(`button[type="submit"]`)
+    const active = document.activeElement
+    if (active !== null && active !== document.body && active !== submit) return
+    const field = problem?.field && form.elements.namedItem(fieldNames[problem.field])
+    const target = field instanceof HTMLElement ? field : problem ? messageRef.current : submit
+    target?.focus()
+  }, [busy])
 
   const handleSubmit = (event: JSX.TargetedEvent<HTMLFormElement, SubmitEvent>) => {
     // Checked before anything else, and before either branch below picks a callback: a busy
@@ -341,6 +394,7 @@ export function AuthForm(
     // passes one anyway has nowhere to put it — it is never destructured, so it is never spread
     // onto this element either.
     <form
+      ref={formRef}
       action={action}
       method="post"
       onSubmit={handleSubmit}
@@ -353,7 +407,16 @@ export function AuthForm(
            system/README.md's "A live region is always present and empty". */
       }
       <div role="alert" aria-live="assertive" aria-atomic="true">
-        {problem && <p class="text-sm text-danger">{problem.message}</p>}
+        {problem && (
+          <p
+            ref={messageRef}
+            tabIndex={-1}
+            class="text-sm text-danger outline-hidden"
+            data-e2e="auth-form-error"
+          >
+            {problem.message}
+          </p>
+        )}
       </div>
 
       {step === "credentials"
@@ -367,7 +430,12 @@ export function AuthForm(
             >
               <Input
                 name={fieldNames.login}
-                autocomplete="username"
+                autocomplete={passkeyAutofill && mode === "sign-in"
+                  ? "username webauthn"
+                  : "username"}
+                defaultValue={defaultLogin}
+                onInput={onLoginInput &&
+                  ((event) => onLoginInput(event.currentTarget.value))}
                 required
                 data-e2e="auth-form-login"
               />
@@ -379,46 +447,26 @@ export function AuthForm(
               error={problem?.field === "password" ? problem.message : undefined}
             >
               {(wiring) => (
-                <div class="relative">
-                  <Input
-                    id={wiring.id}
-                    aria-describedby={wiring["aria-describedby"]}
-                    aria-invalid={problem?.field === "password" ? true : undefined}
-                    name={fieldNames.password}
-                    type={showPassword ? "text" : "password"}
-                    autocomplete={mode === "sign-up" ? "new-password" : "current-password"}
-                    required
-                    class="pr-12"
-                    data-e2e="auth-form-password"
-                  />
-                  {
-                    /* An icon-only toggle, 32 px square at 4 px from the edge, so the field's
-                      `pr-12` (48 px) keeps a shown password clear of it; a word-sized button
-                      needed more room than any step on the spacing scale. */
-                  }
-                  <Button
-                    type="button"
-                    variant="icon"
-                    size="sm"
-                    aria-pressed={showPassword}
-                    aria-label={showPassword ? copy.hidePassword : copy.showPassword}
-                    class="absolute top-1/2 right-1 -translate-y-1/2"
-                    data-e2e="auth-form-password-toggle"
-                    onClick={(event) => {
-                      // Keeps the toggle itself the Tab stop after the type swap re-renders it,
-                      // rather than leaving the browser's own click-focus behaviour to decide —
-                      // that behaviour is not the same in every engine.
-                      event.currentTarget.focus()
-                      setShowPassword((value) => !value)
-                    }}
-                  >
-                    {showPassword ? <IconEyeOff class="size-5" /> : <IconEye class="size-5" />}
-                  </Button>
-                </div>
+                <PasswordInput
+                  id={wiring.id}
+                  aria-describedby={wiring["aria-describedby"]}
+                  aria-invalid={problem?.field === "password" ? true : undefined}
+                  name={fieldNames.password}
+                  autocomplete={mode === "sign-up" ? "new-password" : "current-password"}
+                  required
+                  labels={{ show: copy.showPassword, hide: copy.hidePassword }}
+                  data-e2e="auth-form-password"
+                  toggleDataE2E="auth-form-password-toggle"
+                />
               )}
             </Field>
             <div class="flex flex-wrap items-center gap-3">
-              <Button type="submit" disabled={busy} data-e2e="auth-form-submit">
+              <Button
+                type="submit"
+                variant={submitVariant}
+                disabled={busy}
+                data-e2e="auth-form-submit"
+              >
                 {mode === "sign-in" ? copy.signIn : copy.signUp}
               </Button>
               {modeHrefs

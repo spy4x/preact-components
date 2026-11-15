@@ -12,6 +12,7 @@ import { Modal } from "@spy4x/preact-ui/modal"
 import { Progress } from "@spy4x/preact-ui/progress"
 import type { JSX } from "preact"
 import { useId } from "preact/hooks"
+import { useLabels } from "@spy4x/preact-ui/i18n"
 
 /**
  * Where the dialog stands. `ask` is before the person chose; the other three are while the caller
@@ -72,7 +73,7 @@ export const DEFAULT_UNSENT_CHANGES_DIALOG_LABELS: UnsentChangesDialogLabels = {
   body:
     "You made them while offline or the connection was slow. They haven't reached the server yet.",
   kept:
-    "If you sign out now, they stay on this browser and are sent only when you sign in here again.",
+    "If you sign out now, they stay in this browser and are sent the next time you sign in here.",
   conflicts: (conflicts) =>
     englishPlurals.select(conflicts) === "one"
       ? `${conflicts} of them needs your choice before it can be sent.`
@@ -152,7 +153,13 @@ export function UnsentChangesDialog(
     class: className,
   }: UnsentChangesDialogProps,
 ): JSX.Element {
-  const words = { ...DEFAULT_UNSENT_CHANGES_DIALOG_LABELS, ...labels }
+  const words = useLabels("UnsentChangesDialog", DEFAULT_UNSENT_CHANGES_DIALOG_LABELS, labels, {
+    title: ["count"],
+    conflicts: ["count"],
+    needsChoiceTitle: ["count"],
+    needsChoiceBody: ["count"],
+    progress: ["sent", "total"],
+  })
   const id = useId()
   const bodyId = `unsent-body-${id}`
   const statusId = `unsent-status-${id}`

@@ -36,6 +36,31 @@
 @source inline("font-sans");
 
 /*
+ * Arabic type, set up the way docs/design-language.md → "Type" tells an app to (#876). The face is
+ * Noto Sans Arabic's Arabic subset, a variable woff2 copied from `@fontsource-variable/
+ * noto-sans-arabic@5.3.0` into `pages/fonts/` with its licence. `unicode-range` names the Arabic
+ * blocks only, not the punctuation the upstream range shares with Latin, so a page without an
+ * Arabic letter never downloads it; `e2e/theme.spec.ts` proves both sides on `type-demo/`. The demo
+ * draws Latin in the system font, so the Arabic face comes first: a family whose range leaves a
+ * letter out is skipped for it without a download.
+ */
+@font-face {
+  font-family: "Noto Sans Arabic";
+  font-style: normal;
+  font-weight: 100 900;
+  font-display: swap;
+  src: url("../fonts/noto-sans-arabic-arabic-wght-normal.woff2") format("woff2");
+  unicode-range: U+0600-06FF, U+0750-077F, U+0870-08FF, U+FB50-FDFF, U+FE70-FEFF, U+102E0-102FF,
+    U+10E60-10E7F, U+10EC0-10EFF, U+1EE00-1EEFF;
+}
+
+@theme {
+  --font-sans:
+    "Noto Sans Arabic", ui-sans-serif, system-ui, sans-serif, "Apple Color Emoji", "Segoe UI Emoji",
+    "Segoe UI Symbol", "Noto Color Emoji";
+}
+
+/*
  * The host page's own geometry. The guide draws its own sticky header, and anchored cards and
  * sections clear it with the guide's own scroll margin.
  */

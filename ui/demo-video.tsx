@@ -1,30 +1,24 @@
 import { join } from "@spy4x/preact-cn/join"
-import { IconPlaySolid } from "@spy4x/preact-icons"
 import { useSignal } from "@preact/signals"
 import type { JSX } from "preact"
 import { useEffect, useRef } from "preact/hooks"
+import {
+  DemoVideoClip,
+  type DemoVideoSource,
+  playClip,
+  playOneAtATime,
+} from "./demo-video-clip.tsx"
+import { isPlainClick } from "./link.tsx"
+import { playLinkClass, PlayMark, posterClass } from "./play-mark.tsx"
+import { useLabels } from "./i18n.tsx"
+import {
+  aspectRef,
+  type DemoVideoDarkPoster,
+  type DemoVideoPoster,
+  PosterPicture,
+} from "./poster-picture.tsx"
 
-/** The still frame a {@link DemoVideo} shows until it is pressed. */
-export interface DemoVideoPoster {
-  /** Where the browser loads the poster image from. */
-  src: string
-  /** Other sizes of the same image, as the `<img>`'s `srcset`. */
-  srcset?: string
-  /** The `<img>`'s `sizes`, for `srcset`. */
-  sizes?: string
-  /** The poster's intrinsic width in pixels; the clip is drawn at the same aspect. */
-  width: number
-  /** The poster's intrinsic height in pixels. */
-  height: number
-}
-
-/** One file of the clip, rendered as a `<source>`. */
-export interface DemoVideoSource {
-  /** Where the browser loads this file from. */
-  src: string
-  /** Its media type, such as `"video/webm"` or `"video/mp4"`. */
-  type: string
-}
+export type { DemoVideoDarkPoster, DemoVideoPoster, DemoVideoSource }
 
 /**
  * Props of {@link DemoVideo}. Any other attribute, such as `id` or a `data-*` attribute for
@@ -45,7 +39,10 @@ export interface DemoVideoProps extends
     | "aria-label"
     | "loop"
   > {
-  /** The still frame shown before the press, with its size so nothing shifts. */
+  /**
+   * The still frame shown before the press, with its size so nothing shifts, and optionally its
+   * dark variant.
+   */
   poster: DemoVideoPoster
   /**
    * The clip's files, the preferred one first (WebM before MP4). The first is also the link a
@@ -74,14 +71,6 @@ export interface DemoVideoProps extends
 /** The box both the poster and the clip fill, so the swap moves nothing. */
 const frameClass = "relative block w-full overflow-hidden"
 
-/** The poster link: the whole frame is the target; its focus ring is on the overlay. */
-const linkClass = join(
-  frameClass,
-  "group cursor-pointer focus-visible:outline-hidden",
-)
-
-const mediaClass = "block h-full w-full object-cover"
-
 /** The message that takes the clip's place when no source can play. */
 const failedClass =
   "flex h-full w-full flex-col items-center justify-center gap-2 bg-canvas p-4 text-center text-sm text-foreground"
@@ -95,20 +84,18 @@ type Phase =
   | { kind: "playing"; loop: boolean }
   | { kind: "failed"; hadFocus: boolean }
 
-/**
- * The layer over the poster: it centres the play mark and carries the focus ring, which the link
- * itself would paint under the image.
- */
-const overlayClass =
-  "pointer-events-none absolute inset-0 flex items-center justify-center group-focus-visible:ring-2 group-focus-visible:ring-inset group-focus-visible:ring-focus"
-
-/** The play mark: a round dark disc with a white triangle, a little larger under the pointer. */
-const discClass =
-  "flex size-16 items-center justify-center rounded-full bg-scrim text-scrim-foreground shadow-lg group-focus-visible:ring-2 group-focus-visible:ring-(--color-scrim-foreground) motion-safe:transition-transform motion-safe:group-hover:scale-110 motion-safe:group-focus-visible:scale-110"
-
 /** Whether the reader asks for reduced motion. Read in a handler, so never on the server. */
 function prefersReducedMotion(): boolean {
   return globalThis.matchMedia?.("(prefers-reduced-motion: reduce)").matches ?? false
+}
+
+/** The English words of `DemoVideo`, each one a prop of its own. */
+const DEMO_VIDEO_LABELS: Required<
+  Pick<DemoVideoProps, "playLabel" | "errorLabel" | "openFileLabel">
+> = {
+  playLabel: "Play video",
+  errorLabel: "The video didn't load.",
+  openFileLabel: "Open the video file",
 }
 
 /**
@@ -116,13 +103,19 @@ function prefersReducedMotion(): boolean {
  * clip on press.
  *
  * The server renders the poster `<img>` inside a link to the first source, so without JavaScript
- * the link opens the clip in the browser's own player. After hydration, a click, Enter or Space on
- * the link stays on the page and puts `<video controls autoplay muted playsinline>` in the
- * poster's place, at the same aspect, and focus moves to the video so a keyboard reader can pause
- * it at once. No `<video>` element exists before the press, so the browser fetches no video bytes.
- * Under `prefers-reduced-motion: reduce` the clip still plays, since the reader asked for it, but
- * `loop` is ignored. Any other attribute goes onto the play link, so `data-*` analytics attributes
- * count the press.
+ * the link opens the clip in the browser's own player. With `poster.dark` the image is a
+ * `<picture>` whose dark `<source>` shows while `poster.dark.media` matches. After hydration, a
+ * click, Enter or Space on the link stays on the page and puts
+ * `<video controls autoplay playsinline>` in the poster's place, at the same aspect, and focus
+ * moves to the video so a keyboard reader can pause it at once. The clip plays with its sound,
+ * since the press is the reader's own gesture; when the browser still refuses sound, it plays
+ * muted. The video is `object-contain`, so in full screen on a screen of another aspect the whole
+ * frame shows, with dark bars. No `<video>` element exists
+ * before the press, so the browser fetches no video bytes. Under `prefers-reduced-motion: reduce`
+ * the clip still plays, since the reader asked for it, but `loop` is ignored. One clip plays at a
+ * time: when one starts, by the press or its own controls, every other `DemoVideo` on the page
+ * pauses where it is, so two soundtracks never overlap. Any other attribute
+ * goes onto the play link, so `data-*` analytics attributes count the press.
  *
  * When no source can play (the video, or its last `<source>`, fires `error`), the box keeps its
  * size and shows `errorLabel` with a link to the first source; focus moves to that link when it was
@@ -137,15 +130,20 @@ export function DemoVideo(
     poster,
     sources,
     title,
-    playLabel = "Play video",
+    playLabel: playLabelProp,
     eager = false,
     loop = false,
-    errorLabel = "The video didn't load.",
-    openFileLabel = "Open the video file",
+    errorLabel: errorLabelProp,
+    openFileLabel: openFileLabelProp,
     class: className,
     ...rest
   }: DemoVideoProps,
 ): JSX.Element {
+  const { playLabel, errorLabel, openFileLabel } = useLabels(
+    "DemoVideo",
+    DEMO_VIDEO_LABELS,
+    { playLabel: playLabelProp, errorLabel: errorLabelProp, openFileLabel: openFileLabelProp },
+  )
   const first = sources[0]
   if (first === undefined) throw new Error("DemoVideo needs at least one source")
   const phase = useSignal<Phase>({ kind: "poster" })
@@ -157,19 +155,26 @@ export function DemoVideo(
   // own keyup or keypress on a focused `<video controls>` toggles playback and pauses the clip.
   const pressingKey = useRef<string | null>(null)
 
+  // One clip at a time: when this clip starts, every other DemoVideo on the page pauses.
   useEffect(() => {
-    // Started by the press, not by `autoplay` alone: Chromium pauses a muted video that autoplayed
-    // once it leaves the viewport, and a page that moves under it would stop a clip asked for.
-    if (current.kind === "playing") video.current?.play().catch(() => {})
+    if (current.kind !== "playing" || video.current === null) return
+    return playOneAtATime(video.current)
+  }, [current])
+
+  useEffect(() => {
+    // Started by the press, not by `autoplay` alone: Chromium pauses a video that `autoplay`
+    // started once it leaves the viewport, and a page that moves under it would stop a clip asked
+    // for. `playClip` plays with sound and falls back to muted when the browser refuses.
+    if (current.kind === "playing" && video.current !== null) playClip(video.current)
     if (current.kind === "playing" && pressingKey.current === null) video.current?.focus()
     if (current.kind === "failed" && current.hadFocus) fileLink.current?.focus()
   }, [current])
 
-  const style = { aspectRatio: `${poster.width} / ${poster.height}` }
+  const aspect = aspectRef(poster)
 
   if (current.kind === "failed") {
     return (
-      <div class={join(frameClass, className)} style={style}>
+      <div ref={aspect} class={join(frameClass, className)}>
         <div role="status" class={failedClass}>
           <p>{errorLabel}</p>
           <a ref={fileLink} href={first.src} class={fileLinkClass}>{openFileLabel}</a>
@@ -179,36 +184,21 @@ export function DemoVideo(
   }
 
   if (current.kind === "playing") {
-    // A `<video>` with `<source>` children reports a failed load on its last source, not itself.
     const fail = () => {
       const focused = video.current !== null && video.current === document.activeElement
       phase.value = { kind: "failed", hadFocus: focused }
     }
     return (
-      <div class={join(frameClass, className)} style={style}>
-        <video
-          ref={video}
-          controls
-          autoplay
-          muted
-          playsinline
-          preload="auto"
-          loop={current.loop}
+      <div ref={aspect} class={join(frameClass, className)}>
+        <DemoVideoClip
+          videoRef={video}
+          sources={sources}
+          title={title}
           width={poster.width}
           height={poster.height}
-          aria-label={title}
-          class={join(mediaClass, "bg-scrim-strong focus-visible:outline-hidden")}
-          onError={fail}
-        >
-          {sources.map((source, index) => (
-            <source
-              key={source.src}
-              src={source.src}
-              type={source.type}
-              onError={index === sources.length - 1 ? fail : undefined}
-            />
-          ))}
-        </video>
+          loop={current.loop}
+          onFail={fail}
+        />
       </div>
     )
   }
@@ -233,9 +223,12 @@ export function DemoVideo(
       {...rest}
       href={first.src}
       aria-label={`${playLabel}: ${title}`}
-      class={join(linkClass, className)}
-      style={style}
-      onClick={play}
+      class={join(playLinkClass, className)}
+      ref={aspect}
+      onClick={(event) => {
+        // Ctrl, Cmd, Shift or Alt, or another button, opens the link the browser's way.
+        if (isPlainClick(event)) play(event)
+      }}
       onKeyUp={() => {
         // Released on the link itself: the press did not play the clip, so nothing waits for it.
         pressingKey.current = null
@@ -248,27 +241,8 @@ export function DemoVideo(
         if (event.key === " ") play(event)
       }}
     >
-      <img
-        src={poster.src}
-        srcset={poster.srcset}
-        sizes={poster.sizes}
-        width={poster.width}
-        height={poster.height}
-        alt=""
-        aria-hidden="true"
-        loading={eager ? "eager" : "lazy"}
-        fetchpriority={eager ? "high" : undefined}
-        decoding={eager ? undefined : "async"}
-        class={mediaClass}
-      />
-      <span
-        aria-hidden="true"
-        class={overlayClass}
-      >
-        <span class={discClass}>
-          <IconPlaySolid class="size-8 translate-x-px" />
-        </span>
-      </span>
+      <PosterPicture poster={poster} eager={eager} class={posterClass} />
+      <PlayMark />
     </a>
   )
 }

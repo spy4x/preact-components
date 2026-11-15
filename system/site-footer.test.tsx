@@ -33,6 +33,11 @@ function footerTag(html: string): string {
 }
 
 describe("SiteFooter", () => {
+  it("is left out when the page is printed", () => {
+    const classes = footerTag(render(<SiteFooter groups={groups} />)).match(/class="([^"]*)"/)?.[1]
+    expect(classes?.split(" ")).toContain("print:hidden")
+  })
+
   it("renders each group as a nav named by its title, holding its heading and its links", () => {
     const html = render(<SiteFooter groups={groups} />)
     const [product, community] = navs(html)
@@ -64,6 +69,29 @@ describe("SiteFooter", () => {
     expect(external).not.toContain("target=")
   })
 
+  it("tells a screen reader where an external link goes, with the caller's words", () => {
+    const html = render(
+      <SiteFooter
+        groups={[{
+          title: "More",
+          links: [
+            {
+              label: "Blog",
+              href: "https://me.example",
+              external: true,
+              externalHint: "(opens me.example)",
+            },
+            { label: "Docs", href: "/docs", externalHint: "(opens docs)" },
+          ],
+        }]}
+      />,
+    )
+    expect(linkTo(html, "https://me.example")).toMatch(
+      /Blog<svg.*?<\/svg><span class="sr-only"> \(opens me\.example\)<\/span><\/a>/,
+    )
+    expect(linkTo(html, "/docs")).not.toContain("sr-only")
+  })
+
   it("draws no icon on a link that is not external", () => {
     const html = render(<SiteFooter groups={groups} />)
 
@@ -77,6 +105,12 @@ describe("SiteFooter", () => {
     expect(link).toMatch(/class="[^"]*\bpy-3\b/)
     expect(link).toMatch(/class="[^"]*\btext-sm\b/)
     expect(link).toMatch(/class="[^"]*\blg:py-1\b/)
+  })
+
+  it("breaks a long label with no spaces, such as an e-mail address, inside its column", () => {
+    const html = render(<SiteFooter groups={groups} />)
+
+    expect(linkTo(html, "/pricing")).toMatch(/class="[^"]*\bwrap-anywhere\b/)
   })
 
   it("renders the brand, aside and bottom slots as given", () => {

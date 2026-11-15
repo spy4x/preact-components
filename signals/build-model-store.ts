@@ -17,6 +17,8 @@ import {
   type SchemaOutput,
   validate,
 } from "@spy4x/validation"
+import type { Translator } from "@spy4x/platform/universal/i18n"
+import { catalogText } from "./catalog-text.ts"
 import { deleteMapEntry, setMapEntry } from "./map-entry.ts"
 import { type Model, RemoteEvent, type ToastPort } from "./types.ts"
 
@@ -202,6 +204,44 @@ export const DEFAULT_MODEL_STORE_MESSAGES: ModelStoreMessages = {
   malformedResponse: (model, detail) => `Malformed ${model} response: ${detail}`,
 }
 
+/** The outcomes whose message is one text, with nothing but the model in it. */
+const PLAIN_EVENTS = [
+  "created",
+  "updated",
+  "deleted",
+  "restored",
+  "createFailed",
+  "updateFailed",
+  "deleteFailed",
+  "restoreFailed",
+] as const
+
+/**
+ * The messages `translator`'s catalogs hold for `model`, under `<model>.<event>`; an event they
+ * lack is left out, so its English default stays.
+ */
+function catalogMessages(
+  translator: Translator<string> | undefined,
+  model: string,
+): Partial<ModelStoreMessages> {
+  if (translator === undefined) return {}
+  const found: Partial<ModelStoreMessages> = {}
+  for (const event of PLAIN_EVENTS) {
+    const text = catalogText(translator, `${model}.${event}`)
+    if (text !== undefined) found[event] = () => text
+  }
+  if (catalogText(translator, `${model}.malformedUpdate`) !== undefined) {
+    const unknown = catalogText(translator, "ModelStore.unknownIssue") ?? "unknown issue"
+    found.malformedUpdate = (_model, issue) =>
+      translator.t(`${model}.malformedUpdate`, { issue: issue ?? unknown })
+  }
+  if (catalogText(translator, `${model}.malformedResponse`) !== undefined) {
+    found.malformedResponse = (_model, detail) =>
+      translator.t(`${model}.malformedResponse`, { detail })
+  }
+  return found
+}
+
 /** Configuration for {@link buildModelStore}. */
 export interface BuildModelStoreConfig<
   F extends Type<Model>,
@@ -225,6 +265,14 @@ export interface BuildModelStoreConfig<
    * keep their English default. See {@link ModelStoreMessages}.
    */
   messages?: Partial<ModelStoreMessages>
+  /**
+   * The app's translator. Each toast then comes from the app's own catalog, one full message per
+   * model and event under the key `<model>.<event>`: `note.created`, `note.createFailed` and the rest
+   * of {@link ModelStoreMessages}' fields. `{issue}` fills `malformedUpdate` and `{detail}` fills
+   * `malformedResponse`. A key the catalogs lack keeps its English default, and `messages` still
+   * wins over the catalog.
+   */
+  translator?: Translator<string>
   /** Injected `fetch`, so a test never touches the network. Defaults to the global one. */
   fetch?: typeof fetch
   /** Row URLs, when they differ from the collection convention. */
@@ -383,7 +431,11 @@ export function buildModelStore<
 
   const { model, endpoint, schemas, sort, paths, onReset, extraOps, selectors } = config
   const toast = config.toast ?? silentToast
-  const words: ModelStoreMessages = { ...DEFAULT_MODEL_STORE_MESSAGES, ...config.messages }
+  const words: ModelStoreMessages = {
+    ...DEFAULT_MODEL_STORE_MESSAGES,
+    ...catalogMessages(config.translator, model),
+    ...config.messages,
+  }
   const isNewer = config.isNewer ?? defaultIsNewer
   const request = createRequest(model, config.fetch ?? globalThis.fetch, words.malformedResponse)
   const pathFor = paths?.one ?? ((id: number) => `${endpoint}/${id}`)

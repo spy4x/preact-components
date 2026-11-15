@@ -1,7 +1,12 @@
 import { cn } from "@spy4x/preact-cn"
 import type { ComponentChildren, JSX } from "preact"
 import { Link } from "./link.tsx"
-import { BADGE_BASE, BADGE_FILLED_ACCENT, BADGE_OUTLINE_GRAY } from "./plain-classes.ts"
+import {
+  BADGE_BASE,
+  BADGE_FILLED_ACCENT,
+  BADGE_FILLED_GRAY,
+  BADGE_OUTLINE_GRAY,
+} from "./plain-classes.ts"
 
 /**
  * What a {@link Badge} says, by meaning, in the tone names `Notice`, `Progress` and `Timeline` use.
@@ -120,7 +125,7 @@ const filledClasses: Record<BadgeTone, string> = {
   danger: "border-transparent bg-danger-fill text-danger-fill-foreground",
   warning: "border-transparent bg-warning text-(--color-warning-foreground)",
   success: "border-transparent bg-success text-(--color-success-foreground)",
-  neutral: "border-subtle bg-track text-foreground",
+  neutral: BADGE_FILLED_GRAY,
   info: "border-blue-600 bg-blue-600 text-blue-50",
   primary: BADGE_FILLED_ACCENT,
   primaryStrong: "border-accent-700 bg-accent-900 text-accent-100",

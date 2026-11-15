@@ -6,7 +6,8 @@ import { type ReadonlySignal, type Signal, useSignal } from "@preact/signals"
 import type { Type } from "arktype"
 import type { ComponentChildren, JSX } from "preact"
 import { useEffect, useRef } from "preact/hooks"
-import { timeAgo } from "@spy4x/platform/universal/time"
+import { useLabels, useT } from "@spy4x/preact-ui/i18n"
+import { agoIn } from "./ago.ts"
 import { setFieldIssue, type ValidationModel } from "@spy4x/validation/model"
 import {
   CrudEditor,
@@ -156,9 +157,9 @@ export interface AssociationEditorBaseProps<M extends CrudRow> {
   conflictMessage?: string
   /** Message for a duplicate that was removed earlier. */
   conflictRemovedMessage?: string
-  /** Question the dialog asks before removing this row. Defaults to an English sentence. */
+  /** What the dialog says before removing this row. Defaults to an English sentence. */
   confirmDelete?: string
-  /** Question the dialog asks before restoring a removed row. Defaults to an English sentence. */
+  /** What the dialog says before restoring a removed row. Defaults to an English sentence. */
   confirmRestore?: string
   /** Heading of the dialog that confirms a removal. Defaults to `Delete <entity>?`. */
   confirmDeleteTitle?: string
@@ -174,12 +175,12 @@ export interface AssociationEditorBaseProps<M extends CrudRow> {
   restoreLabel?: string
   /**
    * What a failed removal is introduced with, before the store's own message. Defaults to
-   * `"Could not delete"`.
+   * `"Couldn't delete"`.
    */
   deleteErrorLabel?: string
   /**
    * What a failed restore is introduced with, before the store's own message. Defaults to
-   * `"Could not restore"`.
+   * `"Couldn't restore"`.
    */
   restoreErrorLabel?: string
   /**
@@ -196,9 +197,9 @@ export interface AssociationEditorBaseProps<M extends CrudRow> {
   cancelLabel?: string
   /** Label of the Save button. Defaults to `"Save"`. */
   saveLabel?: string
-  /** What a failed save is introduced with. Defaults to `"Could not save"`. */
+  /** What a failed save is introduced with. Defaults to `"Couldn't save"`. */
   saveErrorLabel?: string
-  /** Shown when `mode="edit"` names a row the store does not hold. Defaults to `<entity> not found`. */
+  /** Shown when `mode="edit"` names a row the store does not hold. Defaults to `Couldn't find this <entity>`. */
   notFoundLabel?: string
   /** Level of the title's heading, `<h1>` to `<h6>`. Defaults to `1`. */
   headingLevel?: CrudEditorBaseProps<M>["headingLevel"]
@@ -217,6 +218,22 @@ export interface AssociationEditorBaseProps<M extends CrudRow> {
 export type AssociationEditorProps<M extends CrudRow> =
   & AssociationEditorBaseProps<M>
   & CrudEditorMode
+
+/** The association editor's English words, each the key `AssociationEditor.<field>`. */
+const ASSOCIATION_EDITOR_LABELS = {
+  restoreLabel: "Restore",
+  restoreErrorLabel: "Couldn't restore",
+  confirmRestoreTitle: (entity: string) => `Restore ${entity}?`,
+  confirmRestore: (entity: string) => `This ${entity} comes back as it was.`,
+  deleteLabel: "Delete",
+  deleteErrorLabel: "Couldn't delete",
+  confirmDeleteTitle: (entity: string) => `Delete ${entity}?`,
+  confirmDelete: (entity: string) => `You can restore this ${entity} later.`,
+  conflictMessage: (entity: string) => `This ${entity} already exists.`,
+  conflictRemovedMessage: (entity: string) => `This ${entity} was removed earlier.`,
+  restoreHint: "Restore it to bring back the original instead of adding a copy.",
+  removedLabel: (ago: string) => `Removed ${ago}`,
+}
 
 /**
  * Add/edit form for a row that exists only to join two entities.
@@ -245,20 +262,41 @@ export function AssociationEditor<M extends CrudRow>(
     children,
     class: className,
   } = props
+  const words = useLabels(
+    "AssociationEditor",
+    ASSOCIATION_EDITOR_LABELS,
+    {
+      restoreLabel,
+      restoreErrorLabel: props.restoreErrorLabel,
+      deleteLabel,
+      deleteErrorLabel: props.deleteErrorLabel,
+      restoreHint: props.restoreHint,
+      removedLabel: props.removedLabel,
+    },
+    {
+      confirmRestoreTitle: ["entity"],
+      confirmRestore: ["entity"],
+      confirmDeleteTitle: ["entity"],
+      confirmDelete: ["entity"],
+      conflictMessage: ["entity"],
+      conflictRemovedMessage: ["entity"],
+      removedLabel: ["ago"],
+    },
+  )
 
   const restoreWording: ConfirmWording = {
-    label: restoreLabel ?? "Restore",
-    errorLabel: props.restoreErrorLabel ?? "Could not restore",
-    title: props.confirmRestoreTitle ?? `Restore ${entity}?`,
-    message: props.confirmRestore ?? `Are you sure you want to restore this ${entity}?`,
+    label: words.restoreLabel,
+    errorLabel: words.restoreErrorLabel,
+    title: props.confirmRestoreTitle ?? words.confirmRestoreTitle(entity),
+    message: props.confirmRestore ?? words.confirmRestore(entity),
     cancelLabel: props.confirmCancelLabel,
     closeLabel: props.confirmCloseLabel,
   }
   const deleteWording: ConfirmWording = {
-    label: deleteLabel ?? "Delete",
-    errorLabel: props.deleteErrorLabel ?? "Could not delete",
-    title: props.confirmDeleteTitle ?? `Delete ${entity}?`,
-    message: props.confirmDelete ?? `Are you sure you want to delete this ${entity}?`,
+    label: words.deleteLabel,
+    errorLabel: words.deleteErrorLabel,
+    title: props.confirmDeleteTitle ?? words.confirmDeleteTitle(entity),
+    message: props.confirmDelete ?? words.confirmDelete(entity),
     cancelLabel: props.confirmCancelLabel,
     closeLabel: props.confirmCloseLabel,
   }
@@ -284,9 +322,8 @@ export function AssociationEditor<M extends CrudRow>(
         rows: store.list.all.value,
         conflict,
         field: conflictField,
-        message: conflictMessage ?? `This ${entity} already exists.`,
-        removedMessage: conflictRemovedMessage ??
-          `This ${entity} existed before and was removed.`,
+        message: conflictMessage ?? words.conflictMessage(entity),
+        removedMessage: conflictRemovedMessage ?? words.conflictRemovedMessage(entity),
       }),
     notice: ({ vm }: CrudEditorSlot<M>) => (
       <RemovedConflict
@@ -294,7 +331,7 @@ export function AssociationEditor<M extends CrudRow>(
         vm={vm}
         conflict={conflict}
         restoreWording={restoreWording}
-        hint={props.restoreHint}
+        hint={words.restoreHint}
       />
     ),
     footerSlot: ({ vm }: CrudEditorSlot<M>) =>
@@ -304,7 +341,7 @@ export function AssociationEditor<M extends CrudRow>(
           vm={vm}
           deleteWording={deleteWording}
           restoreWording={restoreWording}
-          removedLabel={props.removedLabel}
+          removedLabel={words.removedLabel}
         />
       ),
   }
@@ -403,7 +440,7 @@ function ConfirmedAction(
         >
           <Stack>
             <p class="text-sm text-muted">{wording.message}</p>
-            <ErrorState focusOnAppear message={failure.value} class="mx-0 max-w-none text-left" />
+            <ErrorState focusOnAppear message={failure.value} class="mx-0 max-w-none text-start" />
           </Stack>
         </ConfirmDialog>
       )}
@@ -425,7 +462,7 @@ function RemovedConflict<M extends CrudRow>(
     vm: Signal<M>
     conflict: (row: M, rows: M[]) => M | undefined
     restoreWording: ConfirmWording
-    hint?: string
+    hint: string
   },
 ) {
   const offer = useRef<HTMLDivElement>(null)
@@ -451,8 +488,7 @@ function RemovedConflict<M extends CrudRow>(
   return (
     <div ref={offer} class="mt-4 flex items-center gap-3">
       <p class="text-sm text-danger">
-        {hint ??
-          "Restoring it keeps the record that was there before instead of creating a second one."}
+        {hint}
       </p>
       <ConfirmedAction
         wording={restoreWording}
@@ -490,22 +526,23 @@ function AssociationFooter<M extends CrudRow>(
     vm: Signal<M>
     deleteWording: ConfirmWording
     restoreWording: ConfirmWording
-    removedLabel?: (ago: string) => string
+    removedLabel: (ago: string) => string
   },
 ) {
+  const translator = useT()
   const id = vm.value.id
   const removed = Boolean(vm.value.deletedAt)
   const inProgress = removed
     ? store.op.undelete(id).value?.inProgress === true
     : store.op.delete(id).value?.inProgress === true
   const actions = associationActions(store)
-  const ago = timeAgo(vm.value.deletedAt)
+  const ago = agoIn(translator, vm.value.deletedAt)
 
   return (
     <>
       <ConfirmedAction
         wording={removed ? restoreWording : deleteWording}
-        class={removed ? "btn btn-primary-outline mr-auto" : "btn btn-danger mr-auto"}
+        class={removed ? "btn btn-primary-outline me-auto" : "btn btn-danger me-auto"}
         inProgress={inProgress}
         danger={!removed}
         run={async () => {
@@ -517,8 +554,8 @@ function AssociationFooter<M extends CrudRow>(
         }}
       />
       {removed && (
-        <span class="text-danger mr-auto" title={vm.value.deletedAt?.toString()}>
-          {removedLabel?.(ago) ?? `Removed ${ago}`}
+        <span class="text-danger me-auto" title={vm.value.deletedAt?.toString()}>
+          {removedLabel(ago)}
         </span>
       )}
     </>

@@ -13,6 +13,7 @@ import { Button } from "@spy4x/preact-ui/button"
 import { useFocusFallback } from "@spy4x/preact-ui/use-focus-after-removal"
 import type { JSX } from "preact"
 import { useRef, useState } from "preact/hooks"
+import { useLabels } from "@spy4x/preact-ui/i18n"
 
 /** Every word {@link InstallPrompt} shows, each with an English default. */
 export interface InstallPromptLabels {
@@ -43,7 +44,7 @@ export const DEFAULT_INSTALL_PROMPT_LABELS: InstallPromptLabels = {
   iosAfter: "then Add to Home Screen.",
   install: "Install",
   dismiss: "Not now",
-  failed: "That did not work. Try again.",
+  failed: "That didn't work. Try again.",
 }
 
 export interface InstallPromptProps {
@@ -82,7 +83,7 @@ export interface InstallPromptProps {
 export function InstallPrompt(
   { mode, onInstall, onDismiss, labels, returnFocus, class: className }: InstallPromptProps,
 ): JSX.Element | null {
-  const words = { ...DEFAULT_INSTALL_PROMPT_LABELS, ...labels }
+  const words = useLabels("InstallPrompt", DEFAULT_INSTALL_PROMPT_LABELS, labels)
   const [busy, setBusy] = useState(false)
   const [failed, setFailed] = useState(false)
   const card = useRef<HTMLElement>(null)

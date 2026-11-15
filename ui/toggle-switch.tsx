@@ -116,7 +116,10 @@ export function ToggleSwitch(
         report?.(!value)
       }}
     >
-      <span aria-hidden="true" class={cn(knob, value ? "translate-x-5" : "translate-x-0")} />
+      <span
+        aria-hidden="true"
+        class={cn(knob, value ? "translate-x-5 [&:dir(rtl)]:-translate-x-5" : "translate-x-0")}
+      />
     </button>
   )
 }

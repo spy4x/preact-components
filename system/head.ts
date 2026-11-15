@@ -84,6 +84,15 @@ export interface PageHead {
   twitterCard?: TwitterCard
   /** `og:locale`, e.g. `"en_US"`. */
   locale?: string
+  /**
+   * The page in every language it is published in, `x-default` allowed, the page itself included.
+   *
+   * Each entry becomes one `<link rel="alternate" hreflang="…" href="…">`, its `url` normalised
+   * like `canonical`. With `locale` set, each entry that is not this page also becomes an
+   * `og:locale:alternate`, its `lang` written with `_` (`pt-BR` → `pt_BR`). The shape is ts-libs'
+   * `SitemapEntry.alternates`, so a site hands one list to its head and its sitemap.
+   */
+  alternates?: readonly { lang: string; url: string }[]
   /** Extra JSON-LD entities appended to the `@graph`, ahead of the breadcrumb node. */
   jsonLd?: readonly unknown[]
   /**

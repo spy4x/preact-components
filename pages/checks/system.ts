@@ -870,7 +870,7 @@ function findModeSwitchTarget(devtools: Devtools): Promise<ModeSwitchAim> {
     const card = document.querySelector('${AUTH_INTERACTIVE}')
     const button = card
       ? [...card.querySelectorAll("button")].find((candidate) =>
-        /^(Need|Have) an account\\?/.test(candidate.textContent.trim())
+        /^(New here|Already have an account)\\?/.test(candidate.textContent.trim())
       )
       : null
     if (!button) return { found: false, x: 0, y: 0, onTarget: false }
@@ -1731,6 +1731,40 @@ async function waitForLoad(devtools: Devtools, timeoutMs = 20_000): Promise<bool
 }
 
 /**
+ * Reload the page and wait for the load event of the document the reload brings, without throwing.
+ *
+ * {@link waitForLoad} after `Page.reload` takes the next load event, and until the new document
+ * commits that can still be the old one's: a page whose own load had not finished when the reload
+ * was sent fires it then, and a reading taken on it meets the commit as "Inspected target navigated
+ * or closed". So this waits for the main frame's commit first, then for the load after it.
+ *
+ * @param devtools The connected session.
+ * @param timeoutMs How long the commit and the load may take together.
+ * @returns Whether the new document's load event arrived in time.
+ */
+async function reloadAndWaitForLoad(devtools: Devtools, timeoutMs = 20_000): Promise<boolean> {
+  const deadline = Date.now() + timeoutMs
+  const committed = (async () => {
+    while (true) {
+      const { frame } = await devtools.once<{ frame: { parentId?: string } }>(
+        "Page.frameNavigated",
+        Math.max(0, deadline - Date.now()),
+      )
+      if (frame.parentId === undefined) return
+    }
+  })()
+  committed.catch(() => {})
+  await devtools.send("Page.reload", { ignoreCache: true }).catch(() => {})
+  try {
+    await committed
+    await devtools.next("Page.loadEventFired", Math.max(0, deadline - Date.now()))
+    return true
+  } catch {
+    return false
+  }
+}
+
+/**
  * Wait until `scrollY` has held the same value for a full second, bounded.
  *
  * Written for `authFormNoScriptChecks`'s restoring reload specifically: the guide shell's
@@ -1862,12 +1896,15 @@ async function authFormNoScriptChecks(devtools: Devtools): Promise<void> {
       })()`,
       null as { x: number; y: number } | null,
     )
-    if (target) await clickAt(devtools, target)
-
-    settled = await poll(
-      () => read(devtools, `document.readyState === "complete"`, false),
-      8_000,
-    )
+    // The submit replaces the document. Its load event is waited for from before the press, so
+    // `location.search` is read on the page the submit landed on. Polling `readyState` instead
+    // answered "complete" from the old document before the navigation started, and a reading
+    // that met the navigation mid-way threw "Inspected target navigated or closed" (#1067).
+    if (target) {
+      const landed = waitForLoad(devtools)
+      await clickAt(devtools, target)
+      settled = await landed
+    }
     after = await read(devtools, "location.search", "(page unreadable)")
   } finally {
     await devtools.send("Emulation.setScriptExecutionDisabled", { value: false }).catch(() => {})
@@ -1915,7 +1952,7 @@ async function authFormNoScriptChecks(devtools: Devtools): Promise<void> {
       : !target
       ? "no submit button was found on the unhydrated, prerendered page"
       : `location.search ${JSON.stringify(before)} → ${JSON.stringify(after)}` +
-        (settled ? "" : " (the page never reached readyState complete)"),
+        (settled ? "" : " (the submit never finished loading a page)"),
   )
 
   const rehydrated = await poll(
@@ -2019,7 +2056,7 @@ async function serviceWorkerChecks(devtools: Devtools): Promise<void> {
   )
   check(
     "a waiting worker makes SWUpdater's update bar appear",
-    before.bar === "" && barAppeared && staged.bar.includes("New version available"),
+    before.bar === "" && barAppeared && staged.bar.includes("A new version is ready"),
     before.bar === ""
       ? barAppeared
         ? `the bar reads "${staged.bar}" with buttons ${staged.barButtons.join(", ")}`
@@ -5004,8 +5041,8 @@ async function siteHeaderHydrationSyncChecks(devtools: Devtools): Promise<void> 
       await devtools.send("Fetch.continueRequest", { requestId }).catch(() => {})
     }
     await devtools.send("Fetch.disable").catch(() => {})
-    await devtools.send("Page.reload", { ignoreCache: true }).catch(() => {})
-    await waitForLoad(devtools)
+    // The held reload's own load event is never waited for, so it can still be due here.
+    await reloadAndWaitForLoad(devtools)
 
     const strayed = await read(devtools, `location.href !== ${JSON.stringify(restoreUrl)}`, false)
     if (strayed) {
@@ -6511,18 +6548,7 @@ async function shellUserMenuFormChecks(devtools: Devtools): Promise<void> {
         : `focus after open, then ${keys.join(", ")}: ${visited.join(" → ")}`,
     )
 
-    const items = await read(
-      devtools,
-      `[...document.querySelectorAll('${SHELL_SIGN_OUT}, ${SHELL_SIGN_OUT_EVERYWHERE}')]
-        .map((item) => item.getAttribute("role") + " " + item.getAttribute("tabindex"))
-        .join(", ")`,
-      "(page unreadable)",
-    )
-    check(
-      "after hydration Shell's form items are menu items out of the tab order (#535)",
-      items === "menuitem -1, menuitem -1",
-      `role and tabindex of sign out, sign out everywhere: ${items}`,
-    )
+    // The roles and tab stops of the form items (#535) are proven in `e2e/system.spec.ts`.
 
     // Shell names its menu through `Dropdown`'s `menuLabel`, which only the hydrated menu carries
     // (#537); the card passes no `labels`, so the name is the default.
@@ -8108,7 +8134,7 @@ async function syncStatusChecks(devtools: Devtools): Promise<void> {
   const failed = await readSync(devtools)
   check(
     "a failed sync says so and offers Retry beside the live region, not inside it",
-    syncing.text === "Syncing…" && failed.state === "failed" && failed.text === "Sync failed" &&
+    syncing.text === "Syncing…" && failed.state === "failed" && failed.text === "Couldn't sync" &&
       failed.retry === "Retry" && !failed.buttonInRegion && failed.sameRegion &&
       failed.focus === "sync-fail",
     JSON.stringify({ syncing, failed }),
@@ -8313,8 +8339,8 @@ async function conflictChooserChecks(devtools: Devtools): Promise<void> {
   check(
     "a choice whose promise rejects keeps the item, says so under it and in the live region, and leaves nothing uncaught",
     focusedFailing && failed.items.length === 3 &&
-      failed.failures["1"] === "Your choice was not saved. Try again." &&
-      failed.announced === "Your choice was not saved. Try again." &&
+      failed.failures["1"] === "Couldn't save your choice. Try again." &&
+      failed.announced === "Couldn't save your choice. Try again." &&
       failed.log.join("|") === "failed: Buy milk" && failed.focus === "1:Keep mine" &&
       uncaught === 0,
     JSON.stringify({ failed, uncaught }),
@@ -8529,7 +8555,7 @@ async function installPromptChecks(devtools: Devtools): Promise<void> {
   const uncaughtDismiss = await unhandledRejections(devtools)
   check(
     "Not now whose store write fails keeps the steps, says it did not work, and leaves nothing uncaught",
-    refused.shown === "ios" && refused.failed === "That did not work. Try again." &&
+    refused.shown === "ios" && refused.failed === "That didn't work. Try again." &&
       refused.state === "mode: ios, dismissed: false" && uncaughtDismiss === 0,
     JSON.stringify({ refused, uncaughtDismiss }),
   )

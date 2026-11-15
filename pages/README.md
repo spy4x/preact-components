@@ -23,6 +23,9 @@ Static files only. `index.html` ships the whole catalogue prerendered, so it rea
 off; the island is what makes the dropdowns open, the switches toggle, the icon filter filter, the
 usage blocks copy, the toasts fire and the deep links scroll.
 
+`?dir=rtl` before the hash, as in `/?dir=rtl#/ui`, sets `dir="rtl"` on the page once the island
+loads, so every demo can be checked mirrored, the way an Arabic page lays it out.
+
 ## Files
 
 | File                      | Contents                                                                                                  |
@@ -105,9 +108,10 @@ without anyone listing it. An unknown name, an empty list, a list that names eve
 its own limits (see "How long a run may take"), repeats the static phase and the startup checks,
 and ends with its own `FILTERED:` line. All three green is a full run; one or two are not.
 
-CI runs the three as three steps, one after another. On a workstation, use the parts when other
-browser runs share the machine: run them one after another, or side by side in three terminals. One
-command is still fine on a quiet machine.
+CI runs `ui` and the nine blocks as one step each, and `e2e` as four shards, two at a time
+(see "Shards of the e2e part" below). On a workstation, use the parts when other browser runs share
+the machine: run them one after another, or side by side in three terminals. One command is still
+fine on a quiet machine.
 
 Why the split (#696): as one command the run took 779s of the 900s ceiling in CI on 2026-10-11, and
 on a busy workstation it was stopped at 900s with `e2e` not done. In parts, measured from 2026-10-12
@@ -164,6 +168,31 @@ page's axe scan took 46 to 53 seconds alone at a load average near 40, too close
 limit once specs share the processor, and the contrast rule was about half of it; split in two,
 the longest spec took 32 seconds at a load average of 30 to 37.
 
+#### Shards of the e2e part
+
+`--e2e-shard=<index>/<count>` runs one shard of the `e2e` block's specs (#975):
+
+```bash
+deno task --cwd pages verify --only=e2e --e2e-shard=1/4   # and 2/4, 3/4, 4/4
+```
+
+The specs are dealt out by their place in the run order, one to each shard in turn
+(`pages/e2e/shard.ts`), so the split is the same on every run and the shards `1/n` to `n/n`
+together run every spec exactly once. Each shard is a run of its own: its own browser, its own
+limits, the static phase and startup checks again, and a `SHARDED:` line after its `FILTERED:`
+line. A value that is not a shard, a shard passed to a run without the `e2e` block, and a shard
+with no spec are each a failed check. `pages/e2e/shard.test.ts`, part of `deno task check`, fails
+when `.woodpecker.yml` leaves a shard out, lists one twice, or runs `e2e` anywhere unsharded.
+
+Why: as one step the `e2e` part took 506 to 732 seconds on a quiet agent and ran past its
+900-second ceiling whenever other pipelines shared the agent (pipelines 2696, 2797, 2807, 2819).
+Measured on 2026-10-23 on 16 cores at a load average of 2 to 9, with 442 specs:
+
+| Run                       | Time                | Checks                                                                             |
+| ------------------------- | ------------------- | ---------------------------------------------------------------------------------- |
+| `--only=e2e`, unsharded   | 334s                | 482: 442 specs and 40 static and startup checks                                    |
+| `--e2e-shard=1/4` … `4/4` | 88s, 100s, 97s, 97s | 151, 151, 150, 150: 111, 111, 110, 110 specs and 40 static and startup checks each |
+
 ### Running under load
 
 A check that waits a fixed time, or reads before the component has finished, passes on an idle
@@ -194,10 +223,23 @@ passed, while throttled runs found failures on the first try. A check that fails
 check to fix, not to re-run: poll on the state it asserts, read in the same evaluate as the action,
 or measure a duration with the page's own clock.
 
+To prove such a fix, run the one spec many times instead of whole blocks:
+
+```bash
+deno task --cwd pages verify --grep="user-menu link" --repeat=20
+```
+
+`--grep` keeps only the e2e specs whose name contains the text, ignoring case, and leaves every
+other block out; with `--component` it narrows that component's specs. `--repeat` runs the kept
+specs that many times, four at once as always, and records each run as its own check. Add
+`--cpu-throttle` to repeat them under load. The last line says the run was filtered and repeated.
+A text that matches no spec, or `--grep` with `--only` or `--except`, is a failed check.
+
 This is also the repository's browser test path, and CI runs it. `.woodpecker.yml` runs
 `deno task check`, `deno task publish:dry`, the build and `verify` on every pull request into
 `main` and on every push to `main`. The build and `verify` run in Playwright's image, which ships
-Chromium. `verify` runs there as three steps, one per part (see "Running a full run in parts"). The
+Chromium. `verify` runs there as six steps: `ui`, four shards of `e2e` and the other nine blocks
+(see "Running a full run in parts"). The
 Pages deploy waits for the push build to pass, so a red check, a red publish dry-run or a red part
 of `verify` blocks the publish.
 
@@ -206,8 +248,8 @@ of `verify` blocks the publish.
 `verify` stops its browser phase on either of two limits, and names the block it was in and the
 last check that finished:
 
-- **No progress for 90 seconds**: no check finished and no block started. This is the limit a hang
-  meets, so a hung run dies about 90 seconds after its last check, however many checks came
+- **No progress for 150 seconds**: no check finished and no block started. This is the limit a hang
+  meets, so a hung run dies about 150 seconds after its last check, however many checks came
   before. It bounds the gap between two checks, not the run, so adding checks does not move it.
 - **15 minutes for the whole phase**, however steadily it records checks: a backstop for a run that
   never stops. A full run as one command came to 13 of those minutes in CI and crossed them on a
@@ -230,7 +272,8 @@ running `verify` alongside, the load average noted at the start and end of each 
 
 The longest single step then, a theme contrast sweep, took 24 seconds at a throttle of 4 (it is
 seven shorter calls now, #696); 90 seconds was about fourteen times the longest unthrottled gap and
-also covers the slowest browser start (two 30-second launch attempts, then hydration). The ceiling
+also covers the slowest browser start (two 30-second launch attempts, then hydration). It became
+150 seconds when a spec's own limit grew from 60 to 120 seconds (#979). The ceiling
 was about three times the unthrottled phase under load. The `ui` block was the largest (318 checks,
 134s unthrottled, 204s at a throttle of 4), but no one check in it is slow: the KanbanBoard checks
 took 7s together, and the time is spread over real timers and smooth scrolls. The old single
@@ -240,7 +283,9 @@ Where they stand on 2026-10-17, with three parts that each get the whole ceiling
 longest part, `ui`, takes about 330s, well under half of it. At a load average of 80 to 90 the
 `ui` part took 728s, four fifths of the ceiling (2026-10-14). `e2e`, which did not fit in it at a
 load average of 20 to 31 when it ran one spec at a time, took 398s at 30 to 37 beside another part
-once it ran four at a time. The tables in "Running a full run in parts" have every time.
+once it ran four at a time. It later ran past the ceiling in CI when other pipelines shared the
+agent, and runs as four shards since (#975). The tables in "Running a full run in parts" have
+every time.
 
 When a run stops on either limit, read the named last check before raising a number: a stall
 after a check that usually takes a second is a hang to fix, not a limit to widen.
@@ -264,13 +309,13 @@ one, and then that check moves to a spec. Nothing is moved for its own sake.
 ### A Playwright spec
 
 - **Where.** `e2e/<package>.spec.ts`, one file per package, created with the package's first spec
-  — `e2e/ui.spec.ts` for a `ui/` component, `e2e/ui-guide.spec.ts` for the guide as a whole. The
-  runner reads the directory, so every `*.spec.ts` file there runs; a file that exports no spec
-  fails the `e2e` block.
+  — `e2e/ui-guide.spec.ts` for the guide as a whole. A `ui/` component's specs go in
+  `e2e/ui/<component>.spec.ts`, which `e2e/ui.spec.ts` imports. The runner reads the directory, so
+  every `*.spec.ts` file there runs; a file that exports no spec fails the `e2e` block.
 - **Shape.** A file exports `specs`, a list of `Spec` (`e2e/runner.ts`): a name that says what is proven, the
   guide page to start on, the palette, and a `run(page)` that throws when the behaviour does not
   hold. The runner opens that page in a fresh browser context, waits for hydration, and records
-  one check per spec. A spec that throws, or takes over 60 seconds, is one failed check, and the
+  one check per spec. A spec that throws, or takes over 120 seconds, is one failed check, and the
   specs after it still run.
 - **Side by side.** Four specs run at once, each in its own context, so nothing a spec leaves
   behind (storage, cookies, a service worker, a viewport, emulated media) reaches another; the
@@ -283,7 +328,15 @@ one, and then that check moves to a spec. Nothing is moved for its own sake.
 - **Accessibility.** `e2e/ui-guide.spec.ts` runs axe's default rule set on every guide page, in
   the light and the dark palette, once the page's late content is drawn (the Map's tiles). Each
   page and palette is two specs, the contrast rule and every other rule, because the whole scan of
-  the `ui` page came too close to a spec's 60 seconds under load (#696).
+  the `ui` page came too close to a spec's 60 seconds under load (#696). The `ui` page's other
+  rules are split again into `region`, the ARIA rules and the rest (`SPLIT_FURTHER`): that scan
+  alone still ran past 60 seconds in CI. The `ui` page's contrast scan is split by part of the
+  page (`CONTRAST_PARTS` in `e2e/ui-guide-parts.ts`, #1052): two runs of the display cards, two
+  pairs of sections and the rest of the page, which takes whatever no part names. With eight
+  specs at once at a fourfold CPU throttle, as two shard lanes on one agent, the whole scan took
+  55 to 58 seconds and each part 13 to 19. Each part holds its share of the page's known counts,
+  and `e2e/page-parts.test.ts` fails when a part names a section or card the page does not draw,
+  or when one falls in two parts.
   `KNOWN_VIOLATIONS` there holds, for each page, rule and palette, how many elements failed when
   axe first ran. More failing elements than that fails the spec, and so do fewer, so a fix lowers
   the number with it and the list only shrinks. axe reports what it cannot decide as
@@ -307,8 +360,9 @@ one, and then that check moves to a spec. Nothing is moved for its own sake.
 Everything from here to "How a build works" is about the existing checks under `checks/`. Read it
 to understand one of them; a new check does not use these helpers.
 
-- **Where.** A check goes in its package's own file under `checks/` — `checks/ui.ts` for a `ui/`
-  component, `checks/system.ts` for a `system/` one — never in `verify.ts`, which keeps the static
+- **Where.** A check goes in its package's own file under `checks/` — `checks/ui/<component>.ts`
+  for a `ui/` component, run in the order `checks/ui.ts` lists, `checks/system.ts` for a `system/`
+  one — never in `verify.ts`, which keeps the static
   phase and the browser startup and calls every package's file in one fixed order. Every package
   the catalogue demonstrates has a file, even an empty one, so a first check touches nobody else's
   file; `cn/` has none, as nothing in it can be driven. The shared helpers (`check`, `poll`,
@@ -498,7 +552,7 @@ is the number to trust, not one typed here.
 ## Deploy
 
 `.github/workflows/pages.yml` — a GitHub workflow, because Pages can only be deployed by one. It
-deploys and checks nothing: every check, the build and the three parts of `verify` run in
+deploys and checks nothing: every check, the build and the parts of `verify` run in
 Woodpecker (`.woodpecker.yml`) on every pull request and every push to `main`.
 
 The workflow starts on a `status` event. When Woodpecker's push build of `main` ends, Woodpecker

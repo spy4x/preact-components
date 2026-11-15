@@ -1,9 +1,10 @@
-import { cn } from "@spy4x/preact-cn"
+import { join } from "@spy4x/preact-cn/join"
 import { IconXMark } from "@spy4x/preact-icons"
 import type { ComponentChildren, JSX } from "preact"
 import { useEffect, useId, useRef, useState } from "preact/hooks"
 import { Button } from "./button.tsx"
 import { useBackdropPress } from "./backdrop-press.ts"
+import { DIALOG_ACTIONS } from "./plain-classes.ts"
 import { acquireScrollLock } from "./scroll-lock.ts"
 
 export {
@@ -104,7 +105,10 @@ export interface ModalProps {
   role?: DialogRole
   /** Body content. */
   children?: ComponentChildren
-  /** Footer content, right-aligned below the body. */
+  /**
+   * Footer buttons, below the body, laid out as `DialogActions` lays them out: Cancel first and the
+   * submit last, stacked full width on a phone and right-aligned in one row from `sm`.
+   */
   footer?: ComponentChildren
   /**
    * Accessible name of the header dismiss control, and the control's own switch.
@@ -126,7 +130,11 @@ export interface ModalProps {
   closeOnBackdrop?: boolean
   /** Stamps `data-e2e` on the dialog element. */
   dataE2E?: string
-  /** Extra utilities for the dialog element. */
+  /**
+   * Extra utilities for the dialog element, appended after its own and not merged into them, so
+   * `tailwind-merge` stays out of the bundle. To replace one of the dialog's own utilities, mark the
+   * replacement important with a trailing `!`, such as `max-w-2xl!`.
+   */
   class?: string
 }
 
@@ -443,9 +451,9 @@ export function Modal(
       aria-modal="true"
       aria-describedby={ariaDescribedBy}
       {...labelAttributes}
-      class={cn(
-        "m-auto w-full max-w-md rounded-lg border border-subtle bg-surface pc-focus-offset-surface p-0 text-foreground shadow-popover backdrop:bg-scrim backdrop:backdrop-blur-xs open:flex open:flex-col",
-        tone === "danger" ? "border-red-300 dark:border-red-800" : "",
+      class={join(
+        "m-auto w-full max-w-md rounded-lg border bg-surface pc-focus-offset-surface p-0 text-foreground shadow-popover backdrop:bg-scrim backdrop:backdrop-blur-xs open:flex open:flex-col",
+        tone === "danger" ? "border-red-300 dark:border-red-800" : "border-subtle",
         className,
       )}
       onPointerDown={backdrop.onPointerDown}
@@ -453,7 +461,14 @@ export function Modal(
     >
       {title
         ? (
-          <header class="flex items-start justify-between gap-4 border-b border-subtle px-6 py-4">
+          // `role="none"` on the header and the footer: a `Modal` opened from a page's `<header>`
+          // (a language switch, an account button) sits inside its banner, and a `<header>` or
+          // `<footer>` there is a nested banner or contentinfo landmark (axe's
+          // `landmark-banner-is-top-level`). A dialog's title row and button row are no landmarks.
+          <header
+            role="none"
+            class="flex items-start justify-between gap-4 border-b border-subtle px-6 py-4"
+          >
             <h2 id={headingId} class="text-lg font-semibold">{title}</h2>
             {cancelLabel
               ? (
@@ -474,7 +489,7 @@ export function Modal(
       <div class="px-6 py-4">{children}</div>
       {footer
         ? (
-          <footer class="flex justify-end gap-3 border-t border-subtle px-6 py-4">
+          <footer role="none" class={join(DIALOG_ACTIONS, "border-t border-subtle px-6 py-4")}>
             {footer}
           </footer>
         )

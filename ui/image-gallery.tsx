@@ -32,13 +32,9 @@ import { IconChevronLeft, IconChevronRight } from "@spy4x/preact-icons"
 import type { JSX } from "preact"
 import { useEffect, useRef, useState } from "preact/hooks"
 import { buttonClasses } from "./button.tsx"
-import {
-  counterText,
-  describedImages,
-  Lightbox,
-  type LightboxImage,
-  type LightboxProps,
-} from "./lightbox.tsx"
+import { isRightToLeft } from "./direction.ts"
+import { describedImages, Lightbox, type LightboxImage, type LightboxProps } from "./lightbox.tsx"
+import { translate, useLabels, useT } from "./i18n.tsx"
 
 /** One image a gallery's strip can show, and hand to the lightbox it opens. */
 export interface ImageGalleryImage extends LightboxImage {
@@ -103,6 +99,12 @@ export interface ImageGalleryProps {
    * one with `loading="lazy"` and `decoding="async"`. Defaults to `false`.
    */
   hero?: boolean
+  /**
+   * Strip only: the strip sits below the page's own first media (a separate hero image), so its
+   * first image loads with `loading="lazy"` like every later one, and none carries `fetchpriority`;
+   * it no longer competes with that hero for bandwidth. Ignored with `hero`. Defaults to `false`.
+   */
+  lazy?: boolean
   /**
    * Strip only: show each image's `alt` as a visible caption (`<figcaption>`) under it. The image
    * then carries the same text as its own `alt`, and that is what names its button. Defaults to
@@ -204,7 +206,7 @@ const stripButtonClass = join(thumbButtonClass, "w-full")
  * `h-auto w-full` keeps a strip image responsive. With `width` and `height` on the `<img>`, the
  * browser takes their ratio as the image's aspect ratio, so the row has its final height before any
  * image has loaded. Every image after the first is `loading="lazy"`: only the one a reader sees first
- * loads up front.
+ * loads up front, and with `lazy` not even that one.
  */
 const stripImageClass = "block h-auto w-full"
 
@@ -231,7 +233,7 @@ function revealInStrip(
 
 /** Where a strip's row has scrolled to, as {@link stripPosition} reads it. */
 export interface StripScroll {
-  /** The row's `scrollLeft`. */
+  /** How far the row is scrolled from its start edge: `scrollLeft`, with its sign turned in a right-to-left row. */
   scrollLeft: number
   /** How far the row can scroll: its `scrollWidth` minus its `clientWidth`. */
   maxScroll: number
@@ -239,6 +241,14 @@ export interface StripScroll {
   step: number
   /** How many slides the row holds. */
   total: number
+}
+
+/**
+ * How far `row` is scrolled from its start edge, in CSS pixels, from `0` up. A right-to-left row
+ * starts on the right and reports a `scrollLeft` from `0` down, so its sign is turned.
+ */
+function startOffset(row: HTMLElement): number {
+  return isRightToLeft(row) ? -row.scrollLeft : row.scrollLeft
 }
 
 /**
@@ -264,7 +274,8 @@ function stripStep(row: HTMLElement): number {
   const [first, second] = Array.from(row.children)
   if (!first) return row.clientWidth
   if (!second) return first.getBoundingClientRect().width
-  return second.getBoundingClientRect().left - first.getBoundingClientRect().left
+  // `abs`: in a right-to-left row the second slide sits left of the first.
+  return Math.abs(second.getBoundingClientRect().left - first.getBoundingClientRect().left)
 }
 
 /** What the strip's navigation shows: which slide, whether the row scrolls, and at which end. */
@@ -317,6 +328,12 @@ export function thumbnailKey(images: readonly { src: string }[], index: number):
   return `${src}#${occurrence}`
 }
 
+/** The English words of `ImageGallery`, each one a prop of its own. */
+const IMAGE_GALLERY_LABELS: Required<Pick<ImageGalleryProps, "previousLabel" | "nextLabel">> = {
+  previousLabel: "Previous image",
+  nextLabel: "Next image",
+}
+
 /**
  * Thumbnails that open the shared {@link Lightbox} on the one pressed: a wrapping grid by default,
  * or a sideways-scrolling, snapping row of large images with `layout="strip"`.
@@ -326,15 +343,16 @@ export function ImageGallery(
     images,
     label,
     closeLabel,
-    previousLabel = "Previous image",
-    nextLabel = "Next image",
-    counterLabel = counterText,
+    previousLabel: previousLabelProp,
+    nextLabel: nextLabelProp,
+    counterLabel: counterLabelProp,
     lightboxCaption,
-    stripPreviousLabel = previousLabel,
-    stripNextLabel = nextLabel,
+    stripPreviousLabel: stripPreviousLabelProp,
+    stripNextLabel: stripNextLabelProp,
     controls,
     layout = "grid",
     hero = false,
+    lazy = false,
     captions = false,
     navigation = false,
     navigationVariant,
@@ -343,6 +361,20 @@ export function ImageGallery(
     class: className,
   }: ImageGalleryProps,
 ): JSX.Element {
+  const { previousLabel, nextLabel } = useLabels(
+    "ImageGallery",
+    IMAGE_GALLERY_LABELS,
+    { previousLabel: previousLabelProp, nextLabel: nextLabelProp },
+  )
+  const translator = useT()
+  const counterLabel = counterLabelProp ??
+    ((position: number, total: number) =>
+      translate(translator, "Lightbox.counterLabel", `${position} of ${total}`, {
+        position,
+        total,
+      }))
+  const stripPreviousLabel = stripPreviousLabelProp ?? previousLabel
+  const stripNextLabel = stripNextLabelProp ?? nextLabel
   const shown = describedImages(images)
   const [openIndex, setOpenIndex] = useState<number | null>(null)
   const strip = layout === "strip"
@@ -369,16 +401,17 @@ export function ImageGallery(
     const row = rowRef.current
     if (!row) return
     const maxScroll = row.scrollWidth - row.clientWidth
+    const offset = startOffset(row)
     const next: StripNavState = {
       position: stripPosition({
-        scrollLeft: row.scrollLeft,
+        scrollLeft: offset,
         maxScroll,
         step: stripStep(row),
         total: row.children.length,
       }),
       overflows: maxScroll > 1,
-      atStart: row.scrollLeft <= 1,
-      atEnd: row.scrollLeft >= maxScroll - 1,
+      atStart: offset <= 1,
+      atEnd: offset >= maxScroll - 1,
     }
     setNav((was) =>
       was.position === next.position && was.overflows === next.overflows &&
@@ -407,9 +440,8 @@ export function ImageGallery(
     const row = rowRef.current
     if (!row) return
     const maxScroll = row.scrollWidth - row.clientWidth
-    row.scrollTo({
-      left: Math.min(maxScroll, Math.max(0, row.scrollLeft + direction * stripStep(row))),
-    })
+    const offset = Math.min(maxScroll, Math.max(0, startOffset(row) + direction * stripStep(row)))
+    row.scrollTo({ left: isRightToLeft(row) ? -offset : offset })
   }
 
   const list = (
@@ -450,7 +482,7 @@ export function ImageGallery(
                 alt={captions ? image.alt : ""}
                 width={image.width}
                 height={image.height}
-                loading={lead ? "eager" : index === 0 ? undefined : "lazy"}
+                loading={lead ? "eager" : index === 0 && !lazy ? undefined : "lazy"}
                 fetchpriority={lead ? "high" : undefined}
                 decoding={hero && !lead ? "async" : undefined}
                 class={stripImageClass}

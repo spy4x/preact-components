@@ -25,6 +25,7 @@ steps:
   # CSS-module export fails this step the same way a red `check` fails the one above.
   publish-dry:
     image: denoland/deno:2.9.7
+    depends_on: [check]
     commands:
       - deno task publish:dry
 
@@ -43,18 +44,25 @@ steps:
       DENO_DIR: /woodpecker/deno-dir
     commands:
       - |
-          curl -fsSL -o /woodpecker/deno.zip https://github.com/denoland/deno/releases/download/v2.9.7/deno-x86_64-unknown-linux-gnu.zip
+          curl -fsSL --retry 5 --retry-all-errors --retry-delay 5 -o /woodpecker/deno.zip https://github.com/denoland/deno/releases/download/v2.9.7/deno-x86_64-unknown-linux-gnu.zip
           echo "c6527f24f4b16031d3ae4fa9f658d5f11534c8d84ce7dc8502420280919c3490  /woodpecker/deno.zip" | sha256sum -c -
           python3 -m zipfile -e /woodpecker/deno.zip /woodpecker/bin
           chmod +x /woodpecker/bin/deno
       - export PATH="/woodpecker/bin:$${PATH}"
       - deno --version
       - deno task --cwd pages build
+    depends_on: [check]
 
-  # The three parts run one after another, not side by side: three browsers at once would compete
-  # with the other pipelines on the one agent host, and load slows `e2e` most (`pages/README.md`).
-  # A red part skips the parts after it. `CHROME_PATH` names the image's Chromium, so the browser
-  # `verify` drives is the one it reports.
+  # The parts run two at a time, in three pairs balanced by their usual time: `verify-ui` with
+  # `verify-rest`, then `verify-e2e-1` with `verify-e2e-2`, then `verify-e2e-3` with
+  # `verify-e2e-4`. Woodpecker runs `depends_on` as levels: a pair starts only once the whole pair
+  # before it has finished, and a red part skips every later pair. Two at a time, not six: each
+  # part already drives four browser contexts, and the agent host runs other pipelines too, so
+  # more browsers at once push the heavy checks past their limits (#1052).
+  # `e2e` runs as four shards (#975): as one step it ran past its 900-second ceiling whenever other
+  # pipelines shared the agent. `pages/e2e/shard.test.ts` fails when a shard is missing here or
+  # listed twice. `CHROME_PATH` names the image's Chromium, so the browser `verify` drives is the
+  # one it reports.
   verify-ui:
     image: mcr.microsoft.com/playwright:v1.64.0-noble@sha256:06a9939e57531807f8d5fd76ce44b53165ffb7d7501d87ab10e285c20b1e971f
     when:
@@ -64,8 +72,9 @@ steps:
     commands:
       - export PATH="/woodpecker/bin:$${PATH}" CHROME_PATH="$$(echo /ms-playwright/chromium-*/chrome-linux64/chrome)"
       - deno task --cwd pages verify --only=ui
+    depends_on: [pages-build]
 
-  verify-e2e:
+  verify-e2e-1:
     image: mcr.microsoft.com/playwright:v1.64.0-noble@sha256:06a9939e57531807f8d5fd76ce44b53165ffb7d7501d87ab10e285c20b1e971f
     when:
       event: [push, pull_request]
@@ -73,7 +82,41 @@ steps:
       DENO_DIR: /woodpecker/deno-dir
     commands:
       - export PATH="/woodpecker/bin:$${PATH}" CHROME_PATH="$$(echo /ms-playwright/chromium-*/chrome-linux64/chrome)"
-      - deno task --cwd pages verify --only=e2e
+      - deno task --cwd pages verify --only=e2e --e2e-shard=1/4
+    depends_on: [verify-ui, verify-rest]
+
+  verify-e2e-2:
+    image: mcr.microsoft.com/playwright:v1.64.0-noble@sha256:06a9939e57531807f8d5fd76ce44b53165ffb7d7501d87ab10e285c20b1e971f
+    when:
+      event: [push, pull_request]
+    environment:
+      DENO_DIR: /woodpecker/deno-dir
+    commands:
+      - export PATH="/woodpecker/bin:$${PATH}" CHROME_PATH="$$(echo /ms-playwright/chromium-*/chrome-linux64/chrome)"
+      - deno task --cwd pages verify --only=e2e --e2e-shard=2/4
+    depends_on: [verify-ui, verify-rest]
+
+  verify-e2e-3:
+    image: mcr.microsoft.com/playwright:v1.64.0-noble@sha256:06a9939e57531807f8d5fd76ce44b53165ffb7d7501d87ab10e285c20b1e971f
+    when:
+      event: [push, pull_request]
+    environment:
+      DENO_DIR: /woodpecker/deno-dir
+    commands:
+      - export PATH="/woodpecker/bin:$${PATH}" CHROME_PATH="$$(echo /ms-playwright/chromium-*/chrome-linux64/chrome)"
+      - deno task --cwd pages verify --only=e2e --e2e-shard=3/4
+    depends_on: [verify-e2e-1, verify-e2e-2]
+
+  verify-e2e-4:
+    image: mcr.microsoft.com/playwright:v1.64.0-noble@sha256:06a9939e57531807f8d5fd76ce44b53165ffb7d7501d87ab10e285c20b1e971f
+    when:
+      event: [push, pull_request]
+    environment:
+      DENO_DIR: /woodpecker/deno-dir
+    commands:
+      - export PATH="/woodpecker/bin:$${PATH}" CHROME_PATH="$$(echo /ms-playwright/chromium-*/chrome-linux64/chrome)"
+      - deno task --cwd pages verify --only=e2e --e2e-shard=4/4
+    depends_on: [verify-e2e-1, verify-e2e-2]
 
   verify-rest:
     image: mcr.microsoft.com/playwright:v1.64.0-noble@sha256:06a9939e57531807f8d5fd76ce44b53165ffb7d7501d87ab10e285c20b1e971f
@@ -84,6 +127,7 @@ steps:
     commands:
       - export PATH="/woodpecker/bin:$${PATH}" CHROME_PATH="$$(echo /ms-playwright/chromium-*/chrome-linux64/chrome)"
       - deno task --cwd pages verify --except=ui,e2e
+    depends_on: [pages-build]
 
   # Guards against an accidental release: a `v*` tag publishes to JSR with the global token, so
   # this step fails the build unless the tagged commit is already on `main` (reviewed, green CI).
@@ -92,6 +136,7 @@ steps:
   # clone is full but has no `main` ref, which is why the step fetches it.
   on-main:
     image: alpine/git:2.47.2
+    depends_on: [publish-dry]
     when:
       event: tag
       ref: refs/tags/v*
@@ -106,6 +151,7 @@ steps:
   # itself; the shell reads the secret.
   publish:
     image: denoland/deno:2.9.7
+    depends_on: [on-main]
     when:
       event: tag
       ref: refs/tags/v*

@@ -91,7 +91,7 @@ export const specs: readonly Spec[] = [
     pageId: "system",
     run: async (page) => {
       const push = pushCase(page, "allow")
-      const failure = "Notifications could not be turned on. Try again."
+      const failure = "Couldn't turn on notifications. Try again."
 
       await push.statusIs("off")
       await push.failNext.click()
@@ -146,7 +146,7 @@ export const specs: readonly Spec[] = [
 
       await push.statusIs("blocked")
       await push.announces(
-        "Notifications are blocked for this app. To allow them, open your browser's settings for this site, or your device's notification settings for this app, set Notifications to Allow, then come back here.",
+        "Notifications are blocked for this app. To allow them, open your browser's settings for this site (or your device's notification settings), set Notifications to Allow, and come back here.",
       )
     },
   },

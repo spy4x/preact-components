@@ -40,6 +40,11 @@ describe("isCurrentLink", () => {
 })
 
 describe("SiteHeader", () => {
+  it("is left out when the page is printed", () => {
+    const tag = render(<SiteHeader links={links} brand="Acme" />).match(/<header[^>]*>/)?.[0] ?? ""
+    expect(attr(tag, "class")?.split(" ")).toContain("print:hidden")
+  })
+
   it("renders every link's href, once inline and once in the mobile panel", () => {
     const html = render(<SiteHeader links={links} brand="Acme" />)
     expect(linksTo(html, "/pricing")).toHaveLength(2)
@@ -61,6 +66,47 @@ describe("SiteHeader", () => {
     const html = render(<SiteHeader links={links} brand="Acme" />)
     for (const tag of linksTo(html, "/docs")) expect(tag).toContain("<svg")
     for (const tag of linksTo(html, "/pricing")) expect(tag).not.toContain("<svg")
+  })
+
+  it("marks an external link with a hidden icon after its label, and opens it in the same tab", () => {
+    const html = render(
+      <SiteHeader
+        links={[{ label: "Hire me", href: "https://me.example", external: true }]}
+        brand="Acme"
+      />,
+    )
+    const tags = linksTo(html, "https://me.example")
+    expect(tags.length).toBe(2)
+    for (const tag of tags) {
+      expect(tag).toMatch(/Hire me<svg[^>]*aria-hidden="true"/)
+      expect(tag).not.toContain("target=")
+    }
+    for (const tag of linksTo(render(<SiteHeader links={links} brand="Acme" />), "/pricing")) {
+      expect(tag).not.toContain("<svg")
+    }
+  })
+
+  it("tells a screen reader where an external link goes, in both copies of the link", () => {
+    const html = render(
+      <SiteHeader
+        links={[
+          {
+            label: "Hire me",
+            href: "https://me.example",
+            external: true,
+            externalHint: "(opens me.example)",
+          },
+          { label: "Docs", href: "/docs", externalHint: "(opens docs)" },
+        ]}
+        brand="Acme"
+      />,
+    )
+    const tags = linksTo(html, "https://me.example")
+    expect(tags.length).toBe(2)
+    for (const tag of tags) {
+      expect(tag).toMatch(/<\/svg><span class="sr-only"> \(opens me\.example\)<\/span><\/a>$/)
+    }
+    for (const tag of linksTo(html, "/docs")) expect(tag).not.toContain("sr-only")
   })
 
   it("renders brand exactly as given, with no anchor of the component's own around it", () => {

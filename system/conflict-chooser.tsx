@@ -11,6 +11,9 @@ import { Button } from "@spy4x/preact-ui/button"
 import { useFocusFallback } from "@spy4x/preact-ui/use-focus-after-removal"
 import type { ComponentChildren, JSX } from "preact"
 import { useEffect, useId, useRef, useState } from "preact/hooks"
+import { useT } from "@spy4x/preact-ui/i18n"
+import { translate } from "./i18n.ts"
+import type { Translator } from "@spy4x/platform/universal/i18n"
 
 /**
  * Why a change was not taken, the same three words `ConflictReason` in `@spy4x/realtime/outbox`
@@ -60,12 +63,12 @@ export const DEFAULT_CONFLICT_CHOOSER_LABELS: ConflictChooserLabels = {
   explanation: {
     version: "Changed elsewhere while you were offline.",
     gone: "Deleted elsewhere while you were offline.",
-    rejected: "The server refused this change.",
+    rejected: "The server didn't accept this change.",
   },
   keepMine: { version: "Keep mine", gone: "Restore mine", rejected: "Keep mine" },
   useTheirs: { version: "Use theirs", gone: "Discard mine", rejected: "Discard mine" },
   resolved: "All conflicts resolved",
-  failed: "Your choice was not saved. Try again.",
+  failed: "Couldn't save your choice. Try again.",
 }
 
 /** The words a caller replaces: any of them, and per reason inside the records. */
@@ -94,8 +97,25 @@ export interface ConflictChooserProps {
 }
 
 /** The labels with the caller's replacements merged in, per reason where the field is a record. */
-function mergeLabels(labels: ConflictChooserLabelOverrides = {}): ConflictChooserLabels {
-  const base = DEFAULT_CONFLICT_CHOOSER_LABELS
+function mergeLabels(
+  labels: ConflictChooserLabelOverrides = {},
+  translator: Translator<string>,
+): ConflictChooserLabels {
+  const english = DEFAULT_CONFLICT_CHOOSER_LABELS
+  const perReason = (field: "explanation" | "keepMine" | "useTheirs") => ({
+    version: translate(translator, `ConflictChooser.${field}.version`, english[field].version),
+    gone: translate(translator, `ConflictChooser.${field}.gone`, english[field].gone),
+    rejected: translate(translator, `ConflictChooser.${field}.rejected`, english[field].rejected),
+  })
+  const base: ConflictChooserLabels = {
+    heading: (count) =>
+      translate(translator, "ConflictChooser.heading", english.heading(count), { count }),
+    explanation: perReason("explanation"),
+    keepMine: perReason("keepMine"),
+    useTheirs: perReason("useTheirs"),
+    resolved: translate(translator, "ConflictChooser.resolved", english.resolved),
+    failed: translate(translator, "ConflictChooser.failed", english.failed),
+  }
   return {
     heading: labels.heading ?? base.heading,
     explanation: { ...base.explanation, ...labels.explanation },
@@ -125,7 +145,7 @@ export function ConflictChooser(
   { conflicts, onKeepMine, onUseTheirs, labels, headingLevel = 2, class: className }:
     ConflictChooserProps,
 ): JSX.Element {
-  const words = mergeLabels(labels)
+  const words = mergeLabels(labels, useT())
   const headingId = useId()
   const root = useRef<HTMLElement>(null)
   const heading = useRef<HTMLHeadingElement>(null)

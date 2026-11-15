@@ -22,6 +22,11 @@ export interface SiteFooterLink {
    * tab; whether to leave the page is the visitor's choice, not this component's.
    */
   external?: boolean
+  /**
+   * Words a screen reader hears after the label of an `external` link, such as
+   * `"(opens example.com)"`, since the icon is hidden from it. Printed only with `external`.
+   */
+  externalHint?: string
 }
 
 /** One column of the footer: a titled list of links. */
@@ -64,7 +69,11 @@ export function SiteFooter(props: SiteFooterProps): JSX.Element {
 
   return (
     <footer
-      class={cn("border-t border-subtle bg-surface dark:bg-canvas", barFocusOffset, className)}
+      class={cn(
+        "border-t border-subtle bg-surface dark:bg-canvas print:hidden",
+        barFocusOffset,
+        className,
+      )}
     >
       <div class="mx-auto flex max-w-7xl flex-col gap-8 px-4 py-12 sm:px-6 lg:px-8">
         {isGiven(brand) && <div>{brand}</div>}
@@ -88,10 +97,13 @@ export function SiteFooter(props: SiteFooterProps): JSX.Element {
                     <li key={`${linkIndex}-${link.href}`}>
                       <a
                         href={link.href}
-                        class="flex items-center gap-1 py-3 text-sm text-muted hover:text-foreground lg:py-1"
+                        class="flex items-center gap-1 py-3 text-sm text-muted wrap-anywhere hover:text-foreground lg:py-1"
                       >
                         {link.label}
                         {link.external && <IconExternalLink class="size-4" aria-hidden="true" />}
+                        {link.external && link.externalHint && (
+                          <span class="sr-only">{` ${link.externalHint}`}</span>
+                        )}
                       </a>
                     </li>
                   ))}

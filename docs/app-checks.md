@@ -2,8 +2,9 @@
 
 An app built on these packages keeps three checks that used to be copied by hand from app to app:
 the spacing guard, the screen boundary guard and the Playwright configuration. Each is now a few
-lines of configuration over an export of this library. This page has the lines to copy, and the one
-CI step that installs Deno into the Playwright image.
+lines of configuration over an export of this library. This page has the lines to copy, the one CI
+step that installs Deno into the Playwright image, and the lint rule that keeps untranslated text
+out.
 
 ## The spacing guard
 
@@ -22,6 +23,11 @@ registerSpacingTests({
   requiredFiles: ["apps/spa/src/app.tsx"],
 })
 ```
+
+An app whose pages can be right to left adds `logicalDirection: true`: a second test then fails on
+every class that names a physical side (`ml-`, `left-`, `text-right`, `border-l` and the rest) and
+names the logical class to write instead ([`theme/README.md`](../theme/README.md), "Logical
+sides").
 
 ## The screen boundary guard
 
@@ -71,6 +77,26 @@ registerBoundaryTests({
   another reader with `exists`, `readDir` and `readText` (the shape of `FileSystemPort` in
   `@spy4x/platform/server/ports`); this library's own tests pass an in-memory one. The boundary
   guard also needs `deno test` itself, because the rule runs on Deno's linter.
+
+## The untranslated-text lint rule
+
+An app that translates its UI turns on the `ui-text/no-literal` rule of `@spy4x/preact-theme/lint`
+in its `deno.json`. It flags JSX text and literal `aria-label`, `title`, `placeholder`, `alt` and
+`label` attributes; `translate="no"` and an ignore comment are the only ways to keep a literal
+([`theme/README.md`](../theme/README.md), "Untranslated text"). Write the version your import of
+`@spy4x/preact-theme` uses: `deno lint` does not read the import map for plugins.
+
+```json
+{
+  "lint": {
+    "plugins": ["jsr:@spy4x/preact-theme@^10.11.0/lint"]
+  }
+}
+```
+
+A file not translated yet starts with `// deno-lint-ignore-file ui-text/no-literal`. Every other
+rule still runs on it, and `deno lint` reports the comment as unused once the file has no literal
+left, so the comment comes out with the last literal.
 
 ## The Playwright configuration
 

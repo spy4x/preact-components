@@ -1,15 +1,19 @@
 /**
  * The parts `AccountMenu` and `AppShell`'s phone sheet share: the role badge, the identity row
- * (avatar, name, e-mail, badge) and the renderer of one account item. Internal to this package, so
- * it is not in the package's exports; `account-menu.tsx` re-exports `AccountTag`.
+ * (avatar, name, e-mail, badge), the language row's content and the renderer of one account
+ * item. Internal to this package, so it is not in the package's exports; `account-menu.tsx`
+ * re-exports `AccountTag`.
  *
  * @module
  */
 
+import { IconGlobe } from "@spy4x/preact-icons"
 import { Avatar } from "@spy4x/preact-ui/avatar"
 import { Badge } from "@spy4x/preact-ui/badge"
+import { languageName } from "@spy4x/preact-ui/language-picker"
+import { textDirection } from "@spy4x/platform/universal/i18n"
 import type { ComponentChildren, ComponentType, JSX } from "preact"
-import type { AccountMenuItem, AccountMenuUser } from "./account-menu.tsx"
+import type { AccountMenuItem, AccountMenuLanguage, AccountMenuUser } from "./account-menu.tsx"
 
 /** The neutral role badge `AccountMenuProps.tag` draws. */
 export function AccountTag({ tag }: { tag: string }): JSX.Element {
@@ -44,12 +48,36 @@ export function AccountIdentity(
   )
 }
 
+/**
+ * The language row's content: `IconGlobe`, the label, and the language in use (`current`, else
+ * `automatic`) at the row's end, named in itself with its own `lang` and `dir`. A fragment, so the
+ * menu item or the sheet row around it lays it out.
+ */
+export function AccountLanguage(
+  { label, language }: { label: string; language: AccountMenuLanguage },
+): JSX.Element {
+  const inUse = language.current ?? language.automatic
+  return (
+    <>
+      <IconGlobe class="size-4" aria-hidden="true" />
+      <span>{label}</span>
+      {inUse && (
+        <span class="notranslate ms-auto ps-4 text-muted" lang={inUse} dir={textDirection(inUse)}>
+          {languageName(inUse)}
+        </span>
+      )}
+    </>
+  )
+}
+
 /** What {@link AccountEntry} hands its control: a link, a submit button or a plain button. */
 export interface AccountControlProps {
   href?: string
   navigate?: (href: string) => void
   onClick?: () => void
   type?: "button" | "submit"
+  /** The item's {@link AccountMenuItem.keyshortcuts}, to announce and show; never bound. */
+  keyshortcuts?: readonly string[]
   dataE2E?: string
   children: ComponentChildren
 }
@@ -69,10 +97,16 @@ export function AccountEntry(
     Control: ComponentType<AccountControlProps>
   },
 ): JSX.Element {
-  const { label, href, action, method = "post", onClick, dataE2E } = item
+  const { label, href, action, method = "post", onClick, keyshortcuts, dataE2E } = item
   if (action === undefined) {
     return (
-      <Control href={href} navigate={navigate} onClick={onClick} dataE2E={dataE2E}>
+      <Control
+        href={href}
+        navigate={navigate}
+        onClick={onClick}
+        keyshortcuts={keyshortcuts}
+        dataE2E={dataE2E}
+      >
         {label}
       </Control>
     )
@@ -88,7 +122,7 @@ export function AccountEntry(
         onClick()
       }}
     >
-      <Control type="submit" dataE2E={dataE2E}>{label}</Control>
+      <Control type="submit" keyshortcuts={keyshortcuts} dataE2E={dataE2E}>{label}</Control>
     </form>
   )
 }

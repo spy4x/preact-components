@@ -90,6 +90,8 @@ const EXPECTED_ROOT_TOKENS: Record<string, string> = {
   "--color-canvas": "oklch(0.967 0.003 264.542)",
   "--color-border-subtle": "oklch(0.928 0.006 264.531)",
   "--color-border-control": "oklch(0.872 0.01 258.338)",
+  // #978: WindowFrame's edge is a token, so an app without `dark:` rules still draws it.
+  "--color-border-frame": "transparent",
   "--color-foreground": "oklch(0.13 0.028 261.692)",
   "--color-muted-foreground": "oklch(0.446 0.03 256.802)",
   // #695: placeholder text a step darker, so it reads at 4.5:1 on the canvas too.
@@ -168,6 +170,7 @@ const EXPECTED_DARK_TOKENS: Record<string, string> = {
   "--color-track": `oklch(0.446 0.03 256.802)`,
   "--color-border-strong": `oklch(0.551 0.027 264.364)`,
   "--color-border-button": `var(--color-border-strong)`,
+  "--color-border-frame": `var(--color-border-subtle)`,
   // #434: the selected fill and the focus ring stand off the dark page.
   "--color-selected": `var(--color-accent-600)`,
   "--color-ring": `var(--color-accent-400)`,
@@ -210,5 +213,16 @@ describe("preset.css fallbacks, after #463", () => {
       .map(([usage, token]) => `${usage} (tokens.css: ${root[token]})`)
     expect(fallbacks.length).toBe(18)
     expect(mismatched).toEqual([])
+  })
+})
+
+describe("preset.css border-frame, after #978", () => {
+  it("draws the frame token, and the subtle border for an app that never sets that token", () => {
+    const rule = PRESET_CSS.match(/@utility border-frame \{([^}]*)\}/)?.[1] ?? ""
+    const subtle = parseBlock(TOKENS_CSS, ":root")["--color-border-subtle"]
+
+    expect(rule.trim()).toBe(
+      `border-color: var(--color-border-frame, var(--color-border-subtle, ${subtle}));`,
+    )
   })
 })

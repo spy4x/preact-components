@@ -33,6 +33,21 @@ describe("CopyButton", () => {
       .toBe(render(<CopyButton textToCopy="abc" text="Copy link" />))
   })
 
+  it("renders the primary button with its label when asked for the primary look", () => {
+    const html = render(<CopyButton textToCopy="abc" text="Copy results" variant="primary" />)
+
+    expect(html).toContain("bg-accent-900")
+    expect(html).not.toContain("border-control")
+    expect(html).toContain("Copy results")
+  })
+
+  it("stays icon-only without text, whatever look is asked for", () => {
+    const html = render(<CopyButton textToCopy="abc" variant="primary" />)
+
+    expect(html).toContain("size-9")
+    expect(html).not.toContain("bg-accent-900")
+  })
+
   it("takes a custom label for tooltip and accessible name", () => {
     const html = render(<CopyButton textToCopy="abc" copyLabel="Copy API key" />)
 
@@ -137,12 +152,19 @@ describe("CopyButton's confirmation", () => {
     expect(html).toContain(CROSS)
     expect(html).not.toContain(CHECK)
     expect(html).toContain(
-      '<span role="status" aria-live="polite" class="sr-only">Copy failed</span>',
+      `<span role="status" aria-live="polite" class="sr-only">Couldn't copy</span>`,
     )
   })
 
   it("draws the failure cross in the danger colour", () => {
     expect(body("failed")).toMatch(/<svg[^>]* class="[^"]*text-danger[^"]*"/)
+  })
+
+  it("draws a failed copy in the primary button's own colour, not the danger colour", () => {
+    const html = body("failed", { text: "Copy results", variant: "primary" })
+
+    expect(html).toContain(CROSS)
+    expect(html).not.toContain("text-danger")
   })
 
   it("shows the checkmark and announces the copy after a copy that worked", () => {
@@ -163,7 +185,7 @@ describe("CopyButton's confirmation", () => {
     expect(copied).toMatch(/<\/svg>Copied<\/button>/)
     const failed = body("failed", { text: "Copy number" })
     expect(failed).not.toContain("Copy number")
-    expect(failed).toContain('<span class="text-danger">Copy failed</span></button>')
+    expect(failed).toContain(`<span class="text-danger">Couldn't copy</span></button>`)
   })
 
   it("takes both confirmation words from the caller", () => {

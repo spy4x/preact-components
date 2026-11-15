@@ -1,6 +1,6 @@
 import { assert, assertAlmostEquals, assertEquals } from "@std/assert"
 import { describe, it } from "@std/testing/bdd"
-import { extent, linearScale, niceScale, paddedDomain, xLabelStride } from "./scales.ts"
+import { extent, niceScale, paddedDomain } from "./scales.ts"
 
 // `niceStep` and `ticks` themselves — the pair now imported from `@spy4x/platform/universal/axis`
 // (spy4x/ts-libs#70) — are tested once, there; `axis.test.ts` covers most of the cases this file
@@ -298,70 +298,5 @@ describe("niceScale", () => {
     assertEquals(new Set(scale.ticks).size, 8)
     assertAlmostEquals(scale.min, -2e-13, 1e-26)
     assertAlmostEquals(scale.max, 1.2e-12, 1e-25)
-  })
-})
-
-describe("linearScale", () => {
-  it("maps the domain ends onto the range ends", () => {
-    const scale = linearScale([0, 10], [0, 100])
-
-    assertEquals(scale(0), 0)
-    assertEquals(scale(5), 50)
-    assertEquals(scale(10), 100)
-  })
-
-  it("supports a flipped range for a Y axis", () => {
-    const scale = linearScale([0, 10], [100, 0])
-
-    assertEquals(scale(0), 100)
-    assertEquals(scale(10), 0)
-    assertEquals(scale(2.5), 75)
-  })
-
-  it("maps a degenerate domain to the middle of the range", () => {
-    const scale = linearScale([4, 4], [0, 100])
-
-    assertEquals(scale(4), 50)
-    assertEquals(scale(0), 50)
-  })
-
-  it("maps non-finite values to the middle instead of NaN", () => {
-    const scale = linearScale([0, 10], [0, 100])
-
-    assertEquals(scale(NaN), 50)
-    assertEquals(scale(Infinity), 50)
-  })
-
-  it("maps a non-finite domain to the middle", () => {
-    assertEquals(linearScale([0, Infinity], [0, 100])(5), 50)
-  })
-
-  it("extrapolates outside the domain", () => {
-    assertEquals(linearScale([0, 10], [0, 100])(12), 120)
-  })
-})
-
-describe("xLabelStride", () => {
-  it("keeps a short axis labelled on every point", () => {
-    assertEquals(xLabelStride(8), 1)
-    assertEquals(xLabelStride(1), 1)
-    assertEquals(xLabelStride(0), 1)
-  })
-
-  it("thins a dense axis down to the label budget", () => {
-    assertEquals(xLabelStride(10), 2)
-    assertEquals(xLabelStride(100), 13)
-    assertEquals(xLabelStride(1000, 8), 125)
-  })
-
-  it("honours a custom label budget", () => {
-    assertEquals(xLabelStride(10, 2), 5)
-    assertEquals(xLabelStride(10, 1), 10)
-  })
-
-  it("falls back to the default budget for garbage input", () => {
-    assertEquals(xLabelStride(100, 0), xLabelStride(100))
-    assertEquals(xLabelStride(100, NaN), xLabelStride(100))
-    assertEquals(xLabelStride(NaN), 1)
   })
 })

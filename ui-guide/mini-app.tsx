@@ -176,7 +176,8 @@ export function MiniApp(): JSX.Element {
           toasts={toasts.list.value}
           onDismiss={toasts.remove}
           dataE2E="mini-app-toasts"
-          class="absolute top-auto right-4 bottom-4 left-4 z-10 ml-auto w-auto max-w-sm"
+          // Important: the stack's own `fixed`, offsets and widths stay in its class, and these win.
+          class="absolute! top-auto! right-4! bottom-4! left-4! z-10! ml-auto w-auto! max-w-sm!"
         />
       </div>
 
@@ -218,7 +219,7 @@ export function MiniApp(): JSX.Element {
                 ariaLabel="Builds this week"
                 height={220}
                 yDomain={[0, 40]}
-                yFormat={(value) => value.toFixed(0)}
+                valueFormat={(value) => value.toFixed(0)}
               />
             </div>
             <div class="min-w-0">

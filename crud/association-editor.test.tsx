@@ -194,7 +194,7 @@ describe("AssociationEditor", () => {
       </AssociationEditor>,
     )
 
-    expect(html).toContain("Restoring it keeps the record that was there before")
+    expect(html).toContain("Restore it to bring back the original")
 
     const live = fakeStore([row({ id: 5, zoneId: 0 })]).store
     expect(
@@ -203,7 +203,7 @@ describe("AssociationEditor", () => {
           {({ vm, vl }) => <TextField vm={vm} vl={vl} name="zoneId" label="Zone" />}
         </AssociationEditor>,
       ),
-    ).not.toContain("Restoring it keeps the record")
+    ).not.toContain("Restore it to bring back the original")
   })
 
   it("words Save, Cancel, the removed line and the restore hint as the app asks", () => {
@@ -241,7 +241,7 @@ describe("AssociationEditor", () => {
     )
 
     expect(add).toContain("Bring the old one back instead.")
-    expect(add).not.toContain("Restoring it keeps the record")
+    expect(add).not.toContain("Restore it to bring back the original")
   })
 
   it("heads the form with an h1, or with the level the page asks for", () => {

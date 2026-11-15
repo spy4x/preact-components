@@ -26,6 +26,7 @@ const variants: Record<ButtonVariant, string> = {
   ghost: "Ghost",
   icon: "Icon",
   danger: "Danger",
+  "danger-ghost": "Danger ghost",
 }
 
 const sizes: Record<ButtonSize, string> = {
@@ -317,8 +318,9 @@ function BusySubmitDemo() {
 /**
  * The clipboard is a port: the first two buttons copy through the browser API, the third through
  * the injected callback, so the host app can route copies through its own clipboard service. The
- * fourth's port always fails, to show the failure state. C presses the third. `pages/checks/ui.ts`
- * presses the fourth twice, and drives the first two with a clipboard it replaces.
+ * fourth's port always fails, to show the failure state; the fifth is the primary look, for a page
+ * whose main action is the copy. C presses the third. `pages/checks/ui.ts` presses the fourth
+ * twice, and drives the first two with a clipboard it replaces.
  */
 function CopyButtonDemo() {
   const lastCopy = useSignal("nothing yet")
@@ -341,6 +343,9 @@ function CopyButtonDemo() {
       </Cluster>
       <Cluster>
         <CopyButton textToCopy="INV-0007" text="Copy, then fail" copy={() => false} />
+      </Cluster>
+      <Cluster>
+        <CopyButton textToCopy="INV-0007" text="Copy results" variant="primary" />
       </Cluster>
     </Stack>
   )
@@ -424,7 +429,8 @@ export const buttonDemos = {
         name: "variant",
         type: "ButtonVariant",
         default: `"primary"`,
-        description: "One of the six looks in the rows above.",
+        description:
+          'One of the seven looks in the rows above. `"danger-ghost"` is the quiet destructive action in a dialog footer or a menu, guarded by a confirmation.',
       },
       {
         name: "size",
@@ -542,6 +548,13 @@ useSucceeded(saving.value, error.value, closeDialog) // once a save ends well`,
           "major it is the HTML `title`.",
       },
       {
+        name: "variant",
+        type: `"outline" | "primary"`,
+        default: `"outline"`,
+        description:
+          "The look of a button with `text`; primary for a page whose main action is the copy. The icon alone ignores it.",
+      },
+      {
         name: "copy",
         type: "(text) => void | boolean | Promise",
         default: "the clipboard",
@@ -557,7 +570,7 @@ useSucceeded(saving.value, error.value, closeDialog) // once a save ends well`,
       {
         name: "failedLabel",
         type: "string",
-        default: `"Copy failed"`,
+        default: `"Couldn't copy"`,
         description: "Shown and announced after a copy that failed.",
       },
       {
@@ -581,7 +594,8 @@ useSucceeded(saving.value, error.value, closeDialog) // once a save ends well`,
     snippet: `<CopyButton textToCopy={invoice.id} />
 <CopyButton textToCopy={invoice.id} text="Copy id" copy={app.clipboard.copy} />
 <CopyButton textToCopy={() => input.value} data-umami-event="copy-input" />
-<CopyButton textToCopy={invoice.id} text="Copy id" hotkey="c" />`,
+<CopyButton textToCopy={invoice.id} text="Copy id" hotkey="c" />
+<CopyButton textToCopy={results} text="Copy results" variant="primary" />`,
     render: () => <CopyButtonDemo />,
   },
   Link: {

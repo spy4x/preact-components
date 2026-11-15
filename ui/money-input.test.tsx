@@ -1,7 +1,22 @@
 import { expect } from "@std/expect"
 import { describe, it } from "@std/testing/bdd"
-import { render } from "preact-render-to-string"
+import type { ComponentChildren } from "preact"
+import { render as renderBare } from "preact-render-to-string"
+import { createFormatters } from "@spy4x/time/format"
+import { FormatContext } from "./format.tsx"
 import { editableText, MoneyInput, resolveMoneyInputEdit } from "./money-input.tsx"
+
+/**
+ * `node` under a `FormatContext` for `locale`, `en-US` unless given: the field's default locale is
+ * the region format, so no test reads this machine's own.
+ */
+function render(node: ComponentChildren, locale = "en-US"): string {
+  return renderBare(
+    <FormatContext.Provider value={createFormatters({ locale, timeZone: "UTC" })}>
+      {node}
+    </FormatContext.Provider>,
+  )
+}
 
 const INVALID = "Enter a valid amount"
 
@@ -76,7 +91,42 @@ describe("resolveMoneyInputEdit", () => {
     // `platform/universal/money.test.ts` already proves against that drift, wired here to confirm
     // `resolveMoneyInputEdit` does not reintroduce it.
     expect(resolveMoneyInputEdit(String(0.1 + 0.2), "USD", "en", {}, INVALID)).toEqual({
-      message: INVALID,
+      message: "USD takes up to 2 decimal places",
+    })
+  })
+
+  it("refuses too many decimals with a message that names the currency's decimals", () => {
+    expect(resolveMoneyInputEdit("12.345", "EUR", "en", {}, INVALID)).toEqual({
+      message: "EUR takes up to 2 decimal places",
+    })
+    expect(resolveMoneyInputEdit("0.5", "JPY", "en", {}, INVALID)).toEqual({
+      message: "JPY takes whole amounts only",
+    })
+    expect(resolveMoneyInputEdit("1.23", "BHD", "en", {}, INVALID, undefined, { decimals: 1 }))
+      .toEqual({ message: "BHD takes up to 1 decimal place" })
+  })
+
+  it("reads a coin's amount with the decimals the caller gives", () => {
+    const btc = { decimals: 8 }
+    expect(resolveMoneyInputEdit("0.00000001", "BTC", "en", {}, INVALID, undefined, btc)).toEqual({
+      value: 1,
+      message: undefined,
+    })
+    expect(resolveMoneyInputEdit("0.000000001", "BTC", "en", {}, INVALID, undefined, btc))
+      .toEqual({ message: "BTC takes up to 8 decimal places" })
+  })
+
+  it("uses the caller's own decimalsMessage", () => {
+    const edit = resolveMoneyInputEdit("1.234", "EUR", "en", {}, INVALID, undefined, {
+      decimalsMessage: (decimals, code) => `${code}: ${decimals}`,
+    })
+    expect(edit).toEqual({ message: "EUR: 2" })
+  })
+
+  it("reads German grouping in a de-DE region as the amount in cents", () => {
+    expect(resolveMoneyInputEdit("1.234,56", "EUR", "de-DE", {}, INVALID)).toEqual({
+      value: 123456,
+      message: undefined,
     })
   })
 
@@ -102,13 +152,13 @@ describe("resolveMoneyInputEdit", () => {
   it("refuses an amount below min, through rangeMessage", () => {
     const edit = resolveMoneyInputEdit("4.00", "USD", "en", { min: 500 }, INVALID)
     expect(edit.value).toBeUndefined()
-    expect(edit.message).toBe("Enter an amount of at least $5.00")
+    expect(edit.message).toBe("Enter $5.00 or more")
   })
 
   it("refuses an amount above max, through rangeMessage", () => {
     const edit = resolveMoneyInputEdit("6.00", "USD", "en", { max: 500 }, INVALID)
     expect(edit.value).toBeUndefined()
-    expect(edit.message).toBe("Enter an amount of at most $5.00")
+    expect(edit.message).toBe("Enter $5.00 or less")
   })
 
   it("names both bounds when both are set", () => {
@@ -163,6 +213,15 @@ describe("MoneyInput", () => {
     const html = render(<MoneyInput value={12345} currency="EUR" onChange={() => {}} />)
     expect(html).toContain('value="123.45"')
     expect(html).not.toContain("€")
+  })
+
+  it("renders autofocus on the visible input only when autoFocus is set", () => {
+    const visibleInput = (html: string) => html.match(/<input[^>]*>/)?.[0] ?? "no input"
+    const focused = render(<MoneyInput value={null} currency="EUR" onChange={() => {}} autoFocus />)
+    const plain = render(<MoneyInput value={null} currency="EUR" onChange={() => {}} />)
+
+    expect(visibleInput(focused)).toMatch(/\sautofocus[\s>]/)
+    expect(visibleInput(plain)).not.toContain("autofocus")
   })
 
   it("shows an empty field for a null value", () => {
@@ -240,11 +299,51 @@ describe("MoneyInput", () => {
     expect(html).toMatch(/role="status"[^>]*aria-live="polite"[^>]*>\s*<\/span>/)
   })
 
-  it("passes the caller's class through to the visible input, alongside the theme class", () => {
+  it("passes the caller's class through to the box that holds the input and the code", () => {
     const html = render(
       <MoneyInput value={1250} currency="USD" class="max-w-xs" onChange={() => {}} />,
     )
-    expect(html).toContain("pc-input max-w-xs")
+    expect(html).toMatch(/<div class="[^"]*border-control[^"]*max-w-xs"><input/)
+  })
+
+  it("shows the currency code in the field and describes the input with it and its name", () => {
+    const html = render(
+      <MoneyInput value={1250} currency="EUR" id="price" onChange={() => {}} />,
+    )
+    const visibleInput = html.match(/<input[^>]*>/)?.[0] ?? ""
+    expect(visibleInput).toContain('aria-describedby="price-currency"')
+    expect(html).toContain('id="price-currency"')
+    expect(html).toContain('<span aria-hidden="true">EUR</span>')
+    expect(html).toContain('<span class="sr-only">Currency: Euro (EUR)</span>')
+  })
+
+  it("describes a code Intl has no name for with the code alone", () => {
+    const html = render(
+      <MoneyInput value={1} currency="BTC" decimals={8} id="coin" onChange={() => {}} />,
+    )
+    expect(html).toMatch(/id="coin-currency"[^>]*>BTC<\/span>/)
+    expect(html).not.toContain("sr-only")
+  })
+
+  it("shows a coin's amount with the decimals the caller gives", () => {
+    const html = render(<MoneyInput value={1} currency="BTC" decimals={8} onChange={() => {}} />)
+    expect(html).toContain('value="0.00000001"')
+  })
+
+  it("formats in the region of FormatContext when no locale is given", () => {
+    const html = render(
+      <MoneyInput value={123456} currency="EUR" onChange={() => {}} />,
+      "de-DE",
+    )
+    expect(html).toContain('value="1234,56"')
+  })
+
+  it("marks the box with the danger border while the caller says the field is invalid", () => {
+    const html = render(
+      <MoneyInput value={1250} currency="USD" aria-invalid onChange={() => {}} />,
+    )
+    expect(html).toContain("border-danger")
+    expect(html).not.toContain("border-control")
   })
 
   it("disables the visible control when disabled is set", () => {

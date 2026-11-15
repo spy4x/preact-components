@@ -2,6 +2,7 @@ import { join } from "@spy4x/preact-cn/join"
 import type { ComponentChildren, JSX } from "preact"
 import { useId } from "preact/hooks"
 import { RadioChips } from "./radio-chips.tsx"
+import { useLabels } from "./i18n.tsx"
 
 /** The words of a {@link ThemePreview}. */
 export interface ThemePreviewLabels {
@@ -28,6 +29,19 @@ export interface ThemePreviewProps {
   class?: string
   /** Utilities added to the frame. */
   frameClass?: string
+  /**
+   * Extra attributes on each radio, by its value, such as an analytics event:
+   * `{ light: { "data-umami-event": "theme-light" } }`. The radio's own `data-preview-theme`, which
+   * the palette is chosen by, wins over an attribute of the same name.
+   */
+  inputAttributes?: Partial<Record<"dark" | "light", Record<string, string>>>
+}
+
+/** The English words of `ThemePreview`. */
+const THEME_PREVIEW_LABELS: Required<ThemePreviewLabels> = {
+  legend: "Theme",
+  dark: "Dark",
+  light: "Light",
 }
 
 /**
@@ -53,24 +67,29 @@ export function ThemePreview(
     hideLegend = false,
     class: className,
     frameClass,
+    inputAttributes,
   }: ThemePreviewProps,
 ): JSX.Element {
   const generated = useId()
-  const dark = labels?.dark ?? "Dark"
-  const light = labels?.light ?? "Light"
+  const words = useLabels("ThemePreview", THEME_PREVIEW_LABELS, labels)
+  const { dark, light } = words
   return (
     <div class={join("flex flex-col gap-3", className)}>
       <RadioChips
-        legend={labels?.legend ?? "Theme"}
+        legend={words.legend}
         hideLegend={hideLegend}
         name={name ?? `theme-preview-${generated}`}
         defaultValue={defaultTheme}
         options={[
-          { value: "dark", label: dark, inputAttributes: { "data-preview-theme": "dark" } },
+          {
+            value: "dark",
+            label: dark,
+            inputAttributes: { ...inputAttributes?.dark, "data-preview-theme": "dark" },
+          },
           {
             value: "light",
             label: light,
-            inputAttributes: { "data-preview-theme": "light" },
+            inputAttributes: { ...inputAttributes?.light, "data-preview-theme": "light" },
           },
         ]}
       />

@@ -803,7 +803,11 @@ export async function readOr<T>(
   try {
     return await page.evaluate<T>(expression)
   } catch (error) {
-    errors.push(error instanceof Error ? error.message : String(error))
+    const message = error instanceof Error ? error.message : String(error)
+    // A page exception names its expression; the protocol's own errors, such as "Inspected target
+    // navigated or closed", do not, so the reading is added to find the step that met them.
+    const reading = expression.replace(/\s+/g, " ").trim().slice(0, 80)
+    errors.push(message.includes("in expression:") ? message : `${message} — reading ${reading}`)
     return fallback
   }
 }

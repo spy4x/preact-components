@@ -1,12 +1,12 @@
 # `@spy4x/preact-map`
 
-`Map` — markers on a Leaflet tile layer, plotted from plain data, plus the plain-text list of the
+`LeafletMap` — markers on a Leaflet tile layer, plotted from plain data, plus the plain-text list of the
 same places next to it. The map's own pins are the keyboard and screen-reader interface; the list is
 a non-interactive overview — see "Keyboard and screen readers" below for why the two are split that
 way.
 
 Extracted per [issue #143](https://github.com/spy4x/preact-components/issues/143), which reverses
-the `docs/not-building.md` entry recorded when `Map` was first evaluated: the blocker then was that
+the `docs/not-building.md` entry recorded when `LeafletMap` was first evaluated: the blocker then was that
 the one existing version loaded Leaflet from a `<script>` tag and depended on one framework's "am I
 in the browser?" flag. Neither is true here — Leaflet is a real, exactly-pinned npm dependency of
 this package alone, and the component finds out it is in a browser the same way every other
@@ -15,15 +15,20 @@ runs.
 
 ## Components
 
-| Component | Subpath | Ports / key props                                            |
-| --------- | ------- | ------------------------------------------------------------ |
-| `Map`     | (root)  | `center`, `zoom`, `markers`, and the labels in "Props" below |
+| Component    | Subpath | Ports / key props                                            |
+| ------------ | ------- | ------------------------------------------------------------ |
+| `LeafletMap` | (root)  | `center`, `zoom`, `markers`, and the labels in "Props" below |
+| `Map`        | (root)  | deprecated alias of `LeafletMap`, removed in the next major  |
 
 ## Install
 
 ```tsx
-import { Map } from "@spy4x/preact-map"
+import { LeafletMap } from "@spy4x/preact-map"
 ```
+
+`Map` and `MapProps` are the former names of `LeafletMap` and `LeafletMapProps`, kept as deprecated
+aliases of the same component and type: `Map` shadowed the built-in `Map` in every file that
+imported it.
 
 Leaflet's stylesheet also has to reach the page — see "Leaflet's stylesheet" below, which is a
 separate step from importing the component.
@@ -257,7 +262,7 @@ point (`ui/+index.ts`, `charts/+index.ts`) rather than by reading their source f
 ## The list heading's level
 
 `MarkerList` renders its heading as an `<h3>` by default; `listHeadingLevel` picks another level, so
-a `Map` placed directly under an `<h1>` does not skip `<h2>`.
+a `LeafletMap` placed directly under an `<h1>` does not skip `<h2>`.
 
 ## Tests
 
@@ -289,3 +294,16 @@ reports no contrast for the whole page, so the page scan runs every rule except 
 credit line. `pages/e2e/map.spec.ts` measures its contrast with axe instead, in the dark theme
 only, with the tiles kept away, which is also what a reader sees when the tile server is down. In
 the light theme nothing measures the credit line's contrast.
+
+## Translations
+
+Every word the map components show by default comes from this package's catalog,
+`@spy4x/preact-map/i18n/<language>`, in `ar`, `de`, `en`, `es`, `pt-BR` and `ru`. It is read from
+the same `I18nContext` as the `ui` components (see "Translations" in `@spy4x/preact-ui`), so an app
+adds it beside the `ui` catalog in one `createTranslator`. Each language subpath, `./i18n/de` and
+the rest, has one `default` export: that language's catalog. Each key is `<Component>.<field>`, the
+prop it fills (`LeafletMap.zoomInLabel`). A word passed as a prop still wins, and without a provider
+every component renders the English it always has.
+
+The status words come from `MapStatus.on`, `MapStatus.off` and `MapStatus.unknown`. The zoom
+control's two names are read once, when the map mounts, like the rest of its props.

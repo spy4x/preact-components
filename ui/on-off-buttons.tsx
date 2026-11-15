@@ -1,6 +1,7 @@
 import { cn } from "@spy4x/preact-cn"
 import type { JSX } from "preact"
 import { Button } from "./button.tsx"
+import { translate, useT } from "./i18n.tsx"
 
 /** Props every {@link OnOffButtons} takes, whichever name its value port goes by. */
 interface OnOffButtonsBaseProps {
@@ -71,8 +72,8 @@ export function OnOffButtons(
     amount,
     onChange,
     onSwitch,
-    onLabel = "ON",
-    offLabel = "OFF",
+    onLabel: onLabelProp,
+    offLabel: offLabelProp,
     ariaLabel,
     label,
     class: className,
@@ -80,13 +81,16 @@ export function OnOffButtons(
 ): JSX.Element {
   // The type allows exactly one of the two; `onChange` is the name, `onSwitch` the old alias.
   const report = (onChange ?? onSwitch) as (on: boolean) => void
+  const translator = useT()
+  const onLabel = onLabelProp ?? translate(translator, "OnOffButtons.onLabel", "ON")
+  const offLabel = offLabelProp ?? translate(translator, "OnOffButtons.offLabel", "OFF")
   const name = ariaLabel ?? label ?? `${onLabel} / ${offLabel}`
   return (
     <div role="group" aria-label={name} class={cn(group, className)}>
       <Button
         aria-pressed={value === true ? "true" : "false"}
         variant={value === true ? "primary" : "outline"}
-        class={cn("flex-col rounded-r-none", value === true && selectedFill)}
+        class={cn("flex-col rounded-e-none", value === true && selectedFill)}
         onClick={() => report(true)}
       >
         <span>{onLabel}</span>
@@ -95,7 +99,7 @@ export function OnOffButtons(
       <Button
         aria-pressed={value === false ? "true" : "false"}
         variant={value === false ? "primary" : "outline"}
-        class={cn("-ml-px flex-col rounded-l-none", value === false && selectedFill)}
+        class={cn("-ms-px flex-col rounded-s-none", value === false && selectedFill)}
         onClick={() => report(false)}
       >
         <span>{offLabel}</span>

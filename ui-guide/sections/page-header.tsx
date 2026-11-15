@@ -1,10 +1,12 @@
 /**
  * The page-level frame of `ui/`: the header a page starts with and the rows a settings page is made
- * of. Spread into the Display section, right after `PageTitle`.
+ * of, with the `FilterBar` that sits under a list page's header. Spread into the Display section,
+ * right after `PageTitle`.
  *
- * What only a browser shows — the title truncating on one line with the actions beside it at
- * 375 px, the 44 px touch targets, the accessible name of every icon button — is driven by
- * `pages/checks/ui.ts`.
+ * What only a browser shows is checked there: `pages/e2e/ui/page-header.spec.ts` measures the title
+ * and subtitle cut short at two lines with the actions beside them at 375 px and at one line at
+ * 1440 px, and the 44 px touch targets; `pages/checks/ui.ts` checks the accessible name of every
+ * icon button.
  */
 
 import {
@@ -23,10 +25,20 @@ import {
 import { useSignal } from "@preact/signals"
 import { IconDownload, IconPlus } from "@spy4x/preact-icons"
 import { DemoNote } from "./demo-note.tsx"
+import { filterBarDemos } from "./filter-bar.tsx"
 import type { DemoFragment } from "../registry.ts"
 
-/** The long title the 375 px check truncates: longer than any phone is wide. */
+/** The long title the checks cut short: more than two lines at 375 px, more than one at 1440. */
 export const LONG_PAGE_TITLE = "Groceries for the long weekend at the lake house with everyone"
+
+/**
+ * The long subtitle the checks cut short: more than two lines at 375 px, more than one at 1440 in
+ * any font, since CI's narrower font fit a shorter one on one line at 1440.
+ */
+const LONG_PAGE_SUBTITLE =
+  "Personal, shared with Ada, Grace, Linus, Margaret and Edsger, restocked every Friday before " +
+  "the drive to the lake, with the ice, the charcoal and the sunscreen picked up at the last " +
+  "stop before the turn-off"
 
 function PageHeaderDemo() {
   const last = useSignal("nothing yet")
@@ -36,7 +48,7 @@ function PageHeaderDemo() {
       <PageHeader
         title={LONG_PAGE_TITLE}
         headingLevel={4}
-        subtitle="Personal"
+        subtitle={LONG_PAGE_SUBTITLE}
         back={{ href: "#lists", label: "Back to lists" }}
         navigate={() => last.value = "Back to lists"}
         action={
@@ -132,14 +144,14 @@ function EditButton({ setting }: { setting: string }) {
 export const pageHeaderDemos = {
   PageHeader: {
     summary:
-      "The header a page starts with: a back arrow, a one-line title, one primary action and a More actions menu.",
+      "The header a page starts with: a back arrow, a title cut short to fit, one primary action and a More actions menu.",
     wide: true,
     props: [
       {
         name: "title",
         type: "string",
         description:
-          "The heading; it stays on one line and truncates, with its full text as tooltip.",
+          "The heading: up to two lines on a phone, one from `sm` up, then an ellipsis; its full text is the tooltip.",
       },
       {
         name: "headingLevel",
@@ -152,7 +164,11 @@ export const pageHeaderDemos = {
         type: "ComponentChildren",
         description: "Drawn inside the heading in place of `title`, such as a field that renames.",
       },
-      { name: "subtitle", type: "ComponentChildren", description: "One quiet line under it." },
+      {
+        name: "subtitle",
+        type: "ComponentChildren",
+        description: "Quiet text under it, cut short like the title.",
+      },
       {
         name: "back",
         type: "{ href: string; label: string }",
@@ -201,6 +217,7 @@ export const pageHeaderDemos = {
 />`,
     render: () => <PageHeaderDemo />,
   },
+  ...filterBarDemos,
   PageAction: {
     summary:
       "A page header's primary action: icon and label from `sm` up, the icon alone on a phone, named at every width.",

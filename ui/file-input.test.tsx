@@ -1,8 +1,11 @@
 import { expect } from "@std/expect"
 import { describe, it } from "@std/testing/bdd"
 import { render } from "preact-render-to-string"
+import { createTranslator } from "@spy4x/platform/universal/i18n"
 import { Field } from "./field.tsx"
 import { classifyFiles, FileInput, matchesAccept, resolveLabels } from "./file-input.tsx"
+import en from "./i18n/en.ts"
+import ru from "./i18n/ru.ts"
 
 /** A minimal real `File`, the same platform primitive the browser hands the component. */
 function file(name: string, size: number, type = ""): File {
@@ -117,9 +120,19 @@ describe("resolveLabels", () => {
     const { removeFile, tooLarge, wrongType, tooMany } = resolveLabels({})
 
     expect(removeFile("a.png")).toBe("Remove a.png")
-    expect(tooLarge("a.png", 1024)).toBe("a.png is larger than 1 KB")
-    expect(wrongType("a.png")).toBe("a.png is not an accepted file type")
-    expect(tooMany("a.png")).toBe("a.png was not chosen — only one file is allowed")
+    expect(tooLarge("a.png", 1024)).toBe("a.png is over the 1 KB limit")
+    expect(wrongType("a.png")).toBe("a.png isn't a file type you can add here")
+    expect(tooMany("a.png")).toBe("a.png wasn't added — you can choose only one file")
+  })
+
+  it("words the size limit in the translator's language", () => {
+    const russian = createTranslator({
+      language: "ru",
+      catalogs: [{ source: en, translation: ru }],
+    })
+    const { tooLarge } = resolveLabels({}, russian)
+
+    expect(tooLarge("a.png", 2 * 1024 * 1024)).toBe("a.png: файл больше 2 МБ")
   })
 })
 
@@ -162,7 +175,7 @@ describe("FileInput", () => {
 
     expect(html).toMatch(/<input[^>]*\srequired(\s|>|=)/)
     expect(html).toContain(
-      '<span aria-hidden="true" class="ml-1 text-danger">*</span>',
+      '<span aria-hidden="true" class="ms-1 text-danger">*</span>',
     )
   })
 
@@ -280,5 +293,71 @@ describe("FileInput", () => {
     expect(nested).toContain('aria-invalid="true"')
     expect(standalone).toContain('aria-invalid="true"')
     expect(neither).not.toContain("aria-invalid")
+  })
+})
+
+describe("FileInput appearance button", () => {
+  it("draws one button named by label, and no drop zone, list or refusal region", () => {
+    const html = render(<FileInput id="attach" appearance="button" label="Attach files" />)
+
+    expect(html).toMatch(/<button[^>]*id="attach"[^>]*>Attach files<\/button>/)
+    expect(html).not.toContain("file-input-zone")
+    expect(html).not.toContain('role="status"')
+    expect(html).not.toContain("<label")
+  })
+
+  it("keeps the native input out of reach, under its own id, with the same checks", () => {
+    const html = render(
+      <FileInput id="attach" appearance="button" accept="image/*" multiple name="files" />,
+    )
+
+    expect(html).toMatch(/<input[^>]*type="file"/)
+    expect(html).toMatch(/<input[^>]*id="attach-input"/)
+    expect(html).toMatch(/<input[^>]*\shidden(\s|>|=)/)
+    expect(html).toMatch(/<input[^>]*tabindex="-1"/)
+    expect(html).toContain('accept="image/*"')
+    expect(html).toContain('name="files"')
+  })
+
+  it("says Choose files on the button when no label is given, and labels.browse overrides it", () => {
+    const defaults = render(<FileInput id="attach" appearance="button" />)
+    const overridden = render(
+      <FileInput id="attach" appearance="button" labels={{ browse: "Parcourir" }} />,
+    )
+
+    expect(defaults).toMatch(/<button[^>]*>Choose files<\/button>/)
+    expect(overridden).toMatch(/<button[^>]*>Parcourir<\/button>/)
+  })
+
+  it("shows busyLabel and marks the button busy while busy", () => {
+    const html = render(
+      <FileInput id="attach" appearance="button" label="Change" busy busyLabel="Uploading…" />,
+    )
+
+    expect(html).toContain('aria-busy="true"')
+    expect(html).toContain("Uploading…")
+    expect(html).not.toContain(">Change<")
+  })
+
+  it("draws the secondary variant by default and takes buttonVariant", () => {
+    const secondary = render(<FileInput id="attach" appearance="button" />)
+    const ghost = render(<FileInput id="attach" appearance="button" buttonVariant="ghost" />)
+
+    expect(secondary).toContain("border-button bg-hover")
+    expect(ghost).not.toContain("border-button bg-hover")
+    expect(ghost).toContain("bg-transparent")
+  })
+
+  it("gives the button a 44 px touch target on a phone, keeping the caller's class", () => {
+    const html = render(<FileInput id="attach" appearance="button" class="w-full" />)
+
+    expect(html).toMatch(/<button[^>]*class="[^"]*min-h-11 min-w-11[^"]*w-full"/)
+  })
+
+  it("disables the button and the input together", () => {
+    const html = render(<FileInput id="attach" appearance="button" disabled />)
+
+    expect(html).toMatch(/<button[^>]*\sdisabled(\s|>|=)/)
+    expect(html).toMatch(/<input[^>]*\sdisabled(\s|>|=)/)
   })
 })

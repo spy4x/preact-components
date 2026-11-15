@@ -21,6 +21,7 @@ deno add jsr:@spy4x/preact-ui        # the component set
 deno add jsr:@spy4x/preact-crud      # list and editor scaffold for one collection
 deno add jsr:@spy4x/preact-map       # map on Leaflet (resolves leaflet)
 deno add jsr:@spy4x/preact-ui-guide  # the live component catalogue, mounted in one line
+deno add jsr:@spy4x/preact-server    # website server: routes, pages, islands, static files
 ```
 
 Which package imports which sibling, read from the sources: `ui` imports `cn`, `icons` and
@@ -79,7 +80,7 @@ among them Clipboard, Geolocation, the Service Worker container, `localStorage`,
 with the browser's own as the default; others, such as the observers in `charts/` and the History
 API in `signals/`, are called directly. Every request a component makes goes to an address the app
 supplies: `Avatar`, `ImageGallery`, `Lightbox` and `ZoomableImages` load the image URLs they are
-passed, `Map` loads Leaflet with a dynamic `import()`, which the app's own bundle resolves, and
+passed, `LeafletMap` loads Leaflet with a dynamic `import()`, which the app's own bundle resolves, and
 fetches map tiles from the `tileUrl` it is given, and `SWUpdater` registers the service-worker
 script it is given, which the browser downloads. No package calls Fetch, Streams or Web Crypto; data
 arrives through props. The tests and the build run under Deno 2; running a published package under

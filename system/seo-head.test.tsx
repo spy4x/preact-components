@@ -259,6 +259,90 @@ describe("the canonical address seoHeadTags publishes", () => {
   })
 })
 
+/** The page in English (itself), German and Brazilian Portuguese, plus the language picker. */
+const ALTERNATES = [
+  { lang: "en", url: "https://acme.example/products/widgets" },
+  { lang: "de", url: "https://acme.example/de/products/widgets" },
+  { lang: "pt-BR", url: "https://acme.example/pt-br/products/widgets" },
+  { lang: "x-default", url: "https://acme.example/products/widgets" },
+]
+
+describe("the hreflang alternates seoHeadTags publishes", () => {
+  it("emits one hreflang link per alternate, right after the canonical link", () => {
+    const tags = seoHeadTags({ ...PAGE, alternates: ALTERNATES })
+    const canonical = tags.findIndex((tag) => tag.attrs.rel === "canonical")
+
+    expect(tags.slice(canonical + 1, canonical + 5)).toEqual(
+      ALTERNATES.map(({ lang, url }) => ({
+        tag: "link",
+        attrs: { rel: "alternate", hreflang: lang, href: url },
+      })),
+    )
+  })
+
+  it("puts the cleaned address in each hreflang link, not the string it was handed", () => {
+    const tags = seoHeadTags({ ...PAGE, alternates: [{ lang: "de", url: DIRTY_CANONICAL }] })
+
+    expect(tags.find((tag) => tag.attrs.hreflang === "de")?.attrs.href).toBe(CLEAN_CANONICAL)
+  })
+
+  it("rejects a javascript: alternate before emitting anything", () => {
+    expect(() => seoHeadTags({ ...PAGE, alternates: [{ lang: "de", url: "javascript:alert(1)" }] }))
+      .toThrow()
+  })
+
+  it("names every other language in og:locale:alternate, written with an underscore", () => {
+    const locales = seoHeadTags({ ...PAGE, alternates: ALTERNATES })
+      .filter((tag) => tag.attrs.property === "og:locale:alternate")
+      .map((tag) => tag.attrs.content)
+
+    // `en` points at this page and `x-default` names no language, so neither is listed.
+    expect(locales).toEqual(["de", "pt_BR"])
+  })
+
+  it("never names the page's own og:locale, nor one language twice", () => {
+    const locales = seoHeadTags({
+      ...PAGE,
+      locale: "en_US",
+      alternates: [
+        { lang: "en-US", url: "https://acme.example/us/products/widgets" },
+        { lang: "de", url: "https://acme.example/de/products/widgets" },
+        { lang: "de", url: "https://acme.example/de/products/widgets" },
+      ],
+    })
+      .filter((tag) => tag.attrs.property === "og:locale:alternate")
+      .map((tag) => tag.attrs.content)
+
+    expect(locales).toEqual(["de"])
+  })
+
+  it("puts og:locale:alternate right after og:locale", () => {
+    const keys = seoHeadTags({ ...PAGE, alternates: ALTERNATES }).map((tag) => tag.attrs.property)
+    const locale = keys.indexOf("og:locale")
+
+    expect(keys.slice(locale, locale + 3)).toEqual([
+      "og:locale",
+      "og:locale:alternate",
+      "og:locale:alternate",
+    ])
+  })
+
+  it("emits no og:locale:alternate for a page with no og:locale", () => {
+    const tags = seoHeadTags({ ...PAGE, locale: undefined, alternates: ALTERNATES })
+
+    expect(tags.some((tag) => tag.attrs.property === "og:locale:alternate")).toBe(false)
+    expect(tags.filter((tag) => tag.attrs.rel === "alternate")).toHaveLength(4)
+  })
+
+  it("leaves the tag set of a page with no alternates as it was, with no keys", () => {
+    const tags = seoHeadTags(PAGE)
+
+    expect(seoHeadTags({ ...PAGE, alternates: [] })).toEqual(tags)
+    expect(tags.some((tag) => tag.attrs.rel === "alternate" || tag.key !== undefined)).toBe(false)
+    expect(tags.some((tag) => tag.attrs.property === "og:locale:alternate")).toBe(false)
+  })
+})
+
 describe("seoHeadJsonLd", () => {
   it("emits the caller's crumbs as the BreadcrumbList", () => {
     const graph = graphOf(PAGE)
@@ -415,6 +499,14 @@ describe("SEOHead", () => {
 
     expect(body).toContain("\\u003c/script")
     expect(body.indexOf("</script>")).toBe(body.lastIndexOf("</script>"))
+  })
+
+  it("renders one hreflang link per alternate in the server markup", () => {
+    const html = render(<SEOHead {...PAGE} alternates={ALTERNATES.slice(0, 3)} />)
+
+    expect(html).toContain(`<link rel="alternate" hreflang="en" href="${ALTERNATES[0].url}"/>`)
+    expect(html).toContain(`<link rel="alternate" hreflang="de" href="${ALTERNATES[1].url}"/>`)
+    expect(html).toContain(`<link rel="alternate" hreflang="pt-BR" href="${ALTERNATES[2].url}"/>`)
   })
 
   it("renders nothing but markup — no wrapper element of its own", () => {

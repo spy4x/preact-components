@@ -16,9 +16,10 @@ import type { QuickAddDueLabel, QuickAddLabels } from "./quick-add.tsx"
  * @param date The day, `YYYY-MM-DD`.
  * @param now The clock the line was read with.
  * @param zone The time zone the line was read in.
+ * @param locale The language of the words; the library's English default when left out.
  */
-export function quickAddDueLabel(date: string, now: Date, zone: string): string {
-  return relativeDayLabel(date, isoDateInTz(now, zone))
+export function quickAddDueLabel(date: string, now: Date, zone: string, locale?: string): string {
+  return relativeDayLabel(date, isoDateInTz(now, zone), locale)
 }
 
 /** What {@link quickAddParts} needs besides the parsed line. */

@@ -43,6 +43,7 @@ import { inputDemos } from "./sections/inputs.tsx"
 import { layoutDemos } from "./sections/layout.tsx"
 import { mapDemos } from "./sections/map.tsx"
 import { pushSettingsDemos } from "./sections/push-settings.tsx"
+import { settingsLayoutDemos } from "./sections/settings-layout.tsx"
 import { surfaceDemos } from "./sections/surfaces.tsx"
 import { systemDemos } from "./sections/system.tsx"
 
@@ -227,7 +228,7 @@ export type SectionId =
   | "map"
 
 /** The System section's cards: the section file's own, then the cards kept in their own files. */
-const systemSectionDemos = { ...systemDemos, ...pushSettingsDemos }
+const systemSectionDemos = { ...systemDemos, ...pushSettingsDemos, ...settingsLayoutDemos }
 
 /**
  * The Billing section's cards, then `PageHero`'s. Billing is the UI page's last section, so the hero's

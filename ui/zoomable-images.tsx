@@ -51,6 +51,7 @@ import { describedImages, Lightbox, type LightboxImage } from "./lightbox.tsx"
 import type { JSX } from "preact"
 import { useSignal } from "@preact/signals"
 import { useEffect, useRef } from "preact/hooks"
+import { useLabels } from "./i18n.tsx"
 
 /**
  * The view of a clicked element this component needs.
@@ -133,7 +134,7 @@ function openedAlt(
 export function resolveImage(
   target: ImageElementLike | null,
   imageSelector = "img",
-  fallbackAlt = "Image",
+  fallbackAlt: string = "Image",
 ): LightboxImage | null {
   if (!target || !target.matches(imageSelector)) return null
 
@@ -153,6 +154,20 @@ export function resolveImage(
 
 /** Attribute marking an image this component has made zoomable, so cleanup knows what it owns. */
 const MARKER = "data-lightbox-zoom"
+
+/**
+ * The components' focus ring, in `Button`'s colour, for an image that becomes a Tab stop. It is an
+ * outline drawn just inside the image's edge: a frame such as `WindowFrame` clips anything outside
+ * the image, and an inset ring would be painted under the picture.
+ */
+const FOCUS_RING = [
+  "focus-visible:outline-2",
+  "focus-visible:-outline-offset-2",
+  "focus-visible:outline-(--color-ring)",
+]
+
+/** Attribute listing the {@link FOCUS_RING} utilities this component added, for cleanup. */
+const RING_MARKER = "data-lightbox-ring"
 
 /** What {@link markZoomable} puts on an image, beyond the marker itself. */
 interface ZoomableMarks {
@@ -198,6 +213,9 @@ function markZoomable(container: Element, marks: ZoomableMarks): void {
     image.setAttribute("tabindex", "0")
     image.setAttribute("aria-label", `${marks.zoomLabel}: ${alt}`)
     if (marks.zoomCursor) image.style.cursor = "zoom-in"
+    const added = FOCUS_RING.filter((utility) => !image.classList.contains(utility))
+    image.classList.add(...added)
+    image.setAttribute(RING_MARKER, added.join(" "))
   }
 }
 
@@ -205,7 +223,10 @@ function markZoomable(container: Element, marks: ZoomableMarks): void {
 function unmarkZoomable(container: Element): void {
   for (const element of container.querySelectorAll(`[${MARKER}]`)) {
     const image = element as HTMLElement
-    for (const attribute of [MARKER, "role", "tabindex", "aria-label"]) {
+    const added = image.getAttribute(RING_MARKER)?.split(" ").filter(Boolean) ?? []
+    image.classList.remove(...added)
+    if (image.classList.length === 0) image.removeAttribute("class")
+    for (const attribute of [MARKER, RING_MARKER, "role", "tabindex", "aria-label"]) {
       image.removeAttribute(attribute)
     }
     image.style.removeProperty("cursor")
@@ -253,7 +274,7 @@ export function collectSequence(
   elements: readonly ImageElementLike[],
   target: ImageElementLike | null,
   imageSelector = "img",
-  fallbackAlt = "Image",
+  fallbackAlt: string = "Image",
 ): ImageSequence {
   const resolved: Array<{ element: ImageElementLike; image: LightboxImage }> = []
   for (const element of elements) {
@@ -308,6 +329,16 @@ export interface ZoomableImagesProps {
   class?: string
 }
 
+/** The English words of `ZoomableImages`, each one a prop of its own. */
+const ZOOMABLE_IMAGES_LABELS: Required<
+  Pick<ZoomableImagesProps, "fallbackAlt" | "zoomLabel" | "label" | "closeLabel">
+> = {
+  fallbackAlt: "Image",
+  zoomLabel: "Zoom",
+  label: "Image viewer",
+  closeLabel: "Close",
+}
+
 /**
  * Zoomable images inside a container, opening the shared `Lightbox`.
  *
@@ -320,17 +351,27 @@ export function ZoomableImages(
   {
     containerSelector = "[data-lightbox]",
     imageSelector = "img",
-    fallbackAlt = "Image",
+    fallbackAlt: fallbackAltProp,
     zoomCursor = true,
-    zoomLabel = "Zoom",
-    label = "Image viewer",
-    closeLabel = "Close",
+    zoomLabel: zoomLabelProp,
+    label: labelProp,
+    closeLabel: closeLabelProp,
     previousLabel,
     nextLabel,
     onOpen,
     class: className,
   }: ZoomableImagesProps,
 ): JSX.Element {
+  const { fallbackAlt, zoomLabel, label, closeLabel } = useLabels(
+    "ZoomableImages",
+    ZOOMABLE_IMAGES_LABELS,
+    {
+      fallbackAlt: fallbackAltProp,
+      zoomLabel: zoomLabelProp,
+      label: labelProp,
+      closeLabel: closeLabelProp,
+    },
+  )
   const sequence = useSignal<LightboxImage[]>([])
   const index = useSignal(0)
   const open = useSignal(false)

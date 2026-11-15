@@ -24,7 +24,7 @@ export function focusBefore<T>(active: T | null, body: T | null): T | null {
  * that had focus before the palette opened, while it is still in the page. With neither, the field
  * gives focus up, so it is not left on a control inside the closed dialog.
  *
- * @param trigger The palette's own button.
+ * @param trigger The palette's own button, or the element of a trigger of its caller's.
  * @param before What {@link focusBefore} kept as the palette opened.
  * @param field The palette's search field.
  */

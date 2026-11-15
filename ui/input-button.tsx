@@ -28,7 +28,7 @@ export interface InputButtonProps
   /** Accessible name of the button. Required: an icon-only button has no other name. */
   iconLabel: string
   /**
-   * Replaces the input's right padding when the button is wider than one icon. Defaults to `pr-12`.
+   * Replaces the input's right padding when the button is wider than one icon. Defaults to `pe-12`.
    */
   iconMarginClass?: string
   /** Click handler of the trailing button — the input keeps its own events from `rest`. */
@@ -71,9 +71,9 @@ export const InputButton: (
           {...rest}
           ref={ref}
           disabled={disabled}
-          class={cn("pc-input", iconMarginClass ?? "pr-12", className)}
+          class={cn("pc-input", iconMarginClass ?? "pe-12", className)}
         />
-        <div class="absolute top-1.5 right-1.5">
+        <div class="absolute top-1.5 end-1.5">
           <button
             type="button"
             class="btn-input-icon"

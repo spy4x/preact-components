@@ -96,4 +96,38 @@ describe("SEOHead inside Fresh's <Head>", () => {
       expect([needle, count(html, needle)]).toEqual([needle, 1])
     }
   })
+
+  it("prints every hreflang link and og:locale:alternate once, beside an index-keyed block", async () => {
+    const alternates = [
+      { lang: "en", url: PAGE.canonical },
+      { lang: "de", url: "https://acme.example/de/products/widgets" },
+      { lang: "fr", url: "https://acme.example/fr/products/widgets" },
+      { lang: "x-default", url: PAGE.canonical },
+    ]
+    const html = await serve(
+      <>
+        <Head>
+          <SEOHead {...PAGE} locale="en_US" alternates={alternates} />
+        </Head>
+        <Head>
+          {["/a.css", "/b.css"].map((href, i) => <link key={i} rel="stylesheet" href={href} />)}
+        </Head>
+      </>,
+    )
+
+    for (
+      const needle of [
+        `hreflang="en" href="${PAGE.canonical}"`,
+        `hreflang="de" href="https://acme.example/de/products/widgets"`,
+        `hreflang="fr" href="https://acme.example/fr/products/widgets"`,
+        `hreflang="x-default" href="${PAGE.canonical}"`,
+        `property="og:locale:alternate" content="de"`,
+        `property="og:locale:alternate" content="fr"`,
+        `href="/a.css"`,
+        `href="/b.css"`,
+      ]
+    ) {
+      expect([needle, count(html, needle)]).toEqual([needle, 1])
+    }
+  })
 })
