@@ -43,6 +43,11 @@ export interface DotPlotProps {
   /** Shaded stretches behind the dots. */
   bands?: readonly DotPlotBand[]
   /** How a value prints. Defaults to `String(value)`. */
+  valueFormat?: (value: number) => string
+  /**
+   * @deprecated Use `valueFormat`. Removed in the next major. Behaves the same; when both are
+   * passed, `valueFormat` wins.
+   */
   format?: (value: number) => string
   /** The accessible name of the list. */
   ariaLabel?: string
@@ -101,11 +106,13 @@ export function DotPlot({
   domain,
   zero = false,
   bands = [],
-  format = (value: number) => String(value),
+  valueFormat,
+  format: legacyFormat,
   ariaLabel,
   missingLabel: missingLabelProp,
   class: className,
 }: DotPlotProps): JSX.Element {
+  const format = valueFormat ?? legacyFormat ?? String
   const { missingLabel } = useLabels("DotPlot", { missingLabel: "No data" }, {
     missingLabel: missingLabelProp,
   })

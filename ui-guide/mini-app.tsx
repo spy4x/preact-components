@@ -219,7 +219,7 @@ export function MiniApp(): JSX.Element {
                 ariaLabel="Builds this week"
                 height={220}
                 yDomain={[0, 40]}
-                yFormat={(value) => value.toFixed(0)}
+                valueFormat={(value) => value.toFixed(0)}
               />
             </div>
             <div class="min-w-0">

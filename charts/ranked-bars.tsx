@@ -60,6 +60,11 @@ export interface RankedBarsProps {
   data: readonly RankedBarRow[]
   columns: RankedBarColumns
   /** Formats the bar's own number. Defaults to `String(value)`. */
+  valueFormat?: (value: number) => string
+  /**
+   * @deprecated Use `valueFormat`. Removed in the next major. Behaves the same; when both are
+   * passed, `valueFormat` wins.
+   */
   format?: (value: number) => string
   /** Bar colours, by rank. Defaults to the shared chart palette. */
   colors?: readonly string[]
@@ -120,7 +125,8 @@ const numberCell = "py-2 ps-3 text-end align-top tabular-nums whitespace-nowrap"
 export function RankedBars({
   data,
   columns,
-  format = (value: number) => String(value),
+  valueFormat,
+  format: legacyFormat,
   colors,
   trackColor = DEFAULT_TRACK_COLOR,
   textColor = DEFAULT_TEXT_COLOR,
@@ -131,6 +137,7 @@ export function RankedBars({
   class: className,
   navigate,
 }: RankedBarsProps): JSX.Element {
+  const format = valueFormat ?? legacyFormat ?? String
   const { emptyLabel } = useLabels("Bars", { emptyLabel: "No data" }, {
     emptyLabel: emptyLabelProp,
   })

@@ -51,16 +51,16 @@ the axis and data helpers behind them.
 
 ## Components
 
-| Component         | Subpath            | Interactive in a browser               | Key props / ports                                                                                                                                 |
-| ----------------- | ------------------ | -------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `LineChart`       | `line-chart`       | crosshair, tooltip, arrow-key stepping | `series`, `xAxis`, `height`, `valueFormat`, `xFormat`, `yDomain`, `referenceValue`, `ignoreZeroes`, `dataTable`, `xLabel`                         |
-| `Bars`            | `bars`             | no                                     | `data` (a value or stacked `segments` per row), `max`, `valueFormat`, `labelWidth`, `colors`, `reference`                                         |
+| Component         | Subpath            | Interactive in a browser               | Key props / ports                                                                                                                                   |
+| ----------------- | ------------------ | -------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `LineChart`       | `line-chart`       | crosshair, tooltip, arrow-key stepping | `series`, `xAxis`, `height`, `valueFormat`, `xFormat`, `yDomain`, `referenceValue`, `ignoreZeroes`, `dataTable`, `xLabel`                           |
+| `Bars`            | `bars`             | no                                     | `data` (a value or stacked `segments` per row), `max`, `valueFormat`, `labelWidth`, `colors`, `reference`                                           |
 | `RankedBars`      | `ranked-bars`      | no                                     | `data` (`values`, `href` or `onSelect`, `lowSample`, `image`, `note` per row), `columns` (`label`, `value`, 1–3 `extra`), `valueFormat`, `navigate` |
-| `DotPlot`         | `dot-plot`         | no                                     | `rows`, `summary`, `domain`, `zero`, `bands`, `valueFormat`, `ariaLabel`, `missingLabel`                                                          |
-| `DonutChart`      | `donut-chart`      | slice tooltip, arrow-key stepping      | `data`, `centerValue`, `centerLabel`, `valueFormat`, `showLegend`, `colors`, `axisColor`                                                          |
-| `Kpi`             | `kpi`              | no                                     | `label`, `value`, `sub`, `tone`, `change` (`{ text, direction, tone? }`: icon and words, the only toned line)                                     |
-| `KpiGrid`         | `kpi`              | no                                     | `children`, `minWidth`                                                                                                                            |
-| `DependencyGraph` | `dependency-graph` | chain highlight, CSS only              | `nodes` (`href`, `tone`, `emphasis`, `badge`, `description`), `edges` (`style`, `tone`), `label`, `emptyLabel`, `dependsOnLabel`, `neededByLabel` |
+| `DotPlot`         | `dot-plot`         | no                                     | `rows`, `summary`, `domain`, `zero`, `bands`, `valueFormat`, `ariaLabel`, `missingLabel`                                                            |
+| `DonutChart`      | `donut-chart`      | slice tooltip, arrow-key stepping      | `data`, `centerValue`, `centerLabel`, `valueFormat`, `showLegend`, `colors`, `axisColor`                                                            |
+| `Kpi`             | `kpi`              | no                                     | `label`, `value`, `sub`, `tone`, `change` (`{ text, direction, tone? }`: icon and words, the only toned line)                                       |
+| `KpiGrid`         | `kpi`              | no                                     | `children`, `minWidth`                                                                                                                              |
+| `DependencyGraph` | `dependency-graph` | chain highlight, CSS only              | `nodes` (`href`, `tone`, `emphasis`, `badge`, `description`), `edges` (`style`, `tone`), `label`, `emptyLabel`, `dependsOnLabel`, `neededByLabel`   |
 
 Every chart prints its values through `valueFormat`. The older names, `format` on `Bars`,
 `RankedBars` and `DotPlot` and `yFormat` on `LineChart`, still work the same way and are deprecated;

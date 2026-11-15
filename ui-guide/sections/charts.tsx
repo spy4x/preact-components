@@ -479,7 +479,7 @@ export const chartsDemos = {
         description: "A rule at zero, when zero is inside the domain.",
       },
       {
-        name: "format",
+        name: "valueFormat",
         type: "(value: number) => string",
         default: "String",
         description: "How a value and the scale's ends print.",
@@ -491,7 +491,7 @@ export const chartsDemos = {
   rows={[{ id: "18-24", label: "18 to 24", value: 7.6, detail: "1,204 people" }]}
   summary={{ id: "all", label: "Everyone", value: 7 }}
   bands={[{ from: 7, to: 9, label: "Recommended, 7 to 9 hours", strength: 1 }]}
-  format={(value) => \`\${value} h\`}
+  valueFormat={(value) => \`\${value} h\`}
 />`,
     render: () => (
       <DotPlot
@@ -500,7 +500,7 @@ export const chartsDemos = {
         rows={sleep}
         summary={{ id: "all", label: "Everyone", value: 7 }}
         bands={[{ from: 7, to: 9, label: "Recommended, 7 to 9 hours", strength: 1 }]}
-        format={(value) => `${value} h`}
+        valueFormat={(value) => `${value} h`}
       />
     ),
   },
@@ -659,7 +659,7 @@ export const chartsDemos = {
           "The headers of the label, the bar's number and one to three `extra` columns, each with an optional `format`.",
       },
       {
-        name: "format",
+        name: "valueFormat",
         type: "(value: number) => string",
         default: "String",
         description: "How the bar's own number is printed.",

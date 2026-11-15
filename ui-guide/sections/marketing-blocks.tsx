@@ -272,7 +272,7 @@ function ExplorableDemo() {
             { label: "No\u00a0fee", value: without },
             { label: `${fee.value.toFixed(1)}%\u00a0fee`, value: withFee },
           ]}
-          format={(value) => whole.format(value)}
+          valueFormat={(value) => whole.format(value)}
           reference={{ value: paidIn, label: "Paid in" }}
           ariaLabel="Savings at the end"
         />
