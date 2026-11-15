@@ -339,8 +339,22 @@ export interface CommandPaletteRemoteProps<T extends CommandPaletteOption>
    * error label. While the next answer loads, the previous results stay listed as they are; past
    * 300 ms the loading label shows beside the field and is announced. Enter pressed
    * while it loads waits for the answer and picks its first result.
+   *
+   * `show` lists an early answer for the same query at once, such as the commands that match
+   * before a server's results arrive; it can be called more than once, and the promise's answer
+   * replaces it. Once an early answer is listed, Enter picks the highlighted row without waiting,
+   * and a later answer for the same query keeps the highlighted option, found by its `id`, rather
+   * than moving the highlight to the first row. A call after the promise settled, or from a stale
+   * call, is ignored. A rejection after an early answer keeps its rows and says the error label.
+   * The palette does not read a ">" itself in this mode: listing only the commands for a query that
+   * starts with ">" is `search`'s job. The "> for commands" hint shows on the empty query while
+   * the listed answer holds a command (an option with `run`).
    */
-  search: (query: string, signal: AbortSignal) => Promise<readonly T[]>
+  search: (
+    query: string,
+    signal: AbortSignal,
+    show: (options: readonly T[]) => void,
+  ) => Promise<readonly T[]>
   /** Milliseconds of quiet typing before `search` is called. Defaults to `200`. */
   debounce?: number
   options?: never
@@ -494,6 +508,8 @@ enum Status {
 interface Remote<T> {
   status: Status
   options: readonly T[]
+  /** The options are an early answer the current call gave through `show`. */
+  early?: boolean
 }
 
 /**
@@ -658,8 +674,10 @@ export function CommandPalette<T extends CommandPaletteOption>(
     clearTimeout(slowTimer.current)
     slowTimer.current = undefined
     pickWhenAnswered.current = null
-    call.current?.abort()
+    // Forgotten before the abort, so a `show` that the abort itself sets off is already stale.
+    const stale = call.current
     call.current = null
+    stale?.abort()
   }
 
   /** Asks `search` for `text` after `delay` milliseconds, replacing any earlier call. */
@@ -680,29 +698,51 @@ export function CommandPalette<T extends CommandPaletteOption>(
       timer.current = undefined
       const controller = new AbortController()
       call.current = controller
+      /** The top-level rows `text` lists now, as the reader sees them. */
+      const rows = () => groupsFor(undefined, text).flatMap((group) => group.options)
+      /**
+       * Lists `next`. A second answer for this query keeps the highlighted option by its id, and
+       * the first starts on the first row; a submenu entered meanwhile keeps its own highlight.
+       */
+      const list = (next: Remote<T>) => {
+        const before = rows()
+        const kept = remote.value.early
+          ? before[Math.min(activeIndex.value, before.length - 1)]
+          : undefined
+        remote.value = next
+        if (path.value.length === 0) {
+          activeIndex.value = kept === undefined
+            ? 0
+            : Math.max(0, rows().findIndex((option) => option.id === kept.id))
+        }
+        const waiting = pickWhenAnswered.current
+        if (waiting && next.options.length > 0) {
+          pickWhenAnswered.current = null
+          choose(next.options[0], waiting.alternative)
+        }
+      }
       const settle = (next: Remote<T>) => {
         if (call.current !== controller) return
         call.current = null
         clearTimeout(slowTimer.current)
         slowTimer.current = undefined
-        remote.value = next
-        // A submenu entered while the answer loaded keeps its own highlight.
-        if (path.value.length === 0) activeIndex.value = 0
-        const waiting = pickWhenAnswered.current
-        if (waiting) {
-          pickWhenAnswered.current = null
-          choose(next.options[0], waiting.alternative)
-        }
+        list(next)
+        pickWhenAnswered.current = null
+      }
+      const show = (options: readonly T[]) => {
+        if (call.current !== controller) return
+        list({ status: remote.value.status, options, early: true })
       }
       let answer: Promise<readonly T[]>
       try {
-        answer = Promise.resolve(search(text, controller.signal))
+        answer = Promise.resolve(search(text, controller.signal, show))
       } catch (error) {
         answer = Promise.reject(error)
       }
       answer.then(
         (options) => settle({ status: Status.IDLE, options }),
-        () => settle({ status: Status.ERROR, options: [] }),
+        () =>
+          settle({ status: Status.ERROR, options: remote.value.early ? remote.value.options : [] }),
       )
     }, delay)
   }
@@ -886,8 +926,9 @@ export function CommandPalette<T extends CommandPaletteOption>(
       close()
       return
     }
-    if (key === "Enter" && busy) {
-      // The highlighted row belongs to the previous query: wait for this one's answer instead.
+    if (key === "Enter" && busy && !remote.value.early) {
+      // The highlighted row belongs to the previous query: wait for this one's answer instead. An
+      // early answer is this query's, so Enter picks from it at once.
       event.preventDefault()
       pickWhenAnswered.current = { alternative: event.ctrlKey || event.metaKey }
       return
@@ -905,8 +946,9 @@ export function CommandPalette<T extends CommandPaletteOption>(
   const listbox = `${id}-results`
   const crumbId = `${id}-path`
   const hintId = `${id}-hint`
-  const showHint = level === undefined && query.value === "" && props.search === undefined &&
-    props.options.some((option) => option.run !== undefined)
+  const showHint = level === undefined && query.value === "" &&
+    (props.search === undefined ? props.options : remote.value.options)
+      .some((option) => option.run !== undefined)
   // Keyed by the option's own id, not its row: when an answer puts another option in the
   // highlighted row, the active descendant changes and a screen reader announces the new one.
   const optionId = (option: T) => `${id}-result-${encodeURIComponent(option.id)}`

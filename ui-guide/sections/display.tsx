@@ -2864,9 +2864,9 @@ const rows = [...bindings, { keys: "g t", description: "Go to Today", group: "Na
       },
       {
         name: "search",
-        type: "(query, signal) => Promise<options>",
+        type: "(query, signal, show) => Promise<options>",
         description:
-          "Asks a server after a pause in typing; a stale call is aborted and its answer ignored. The last results stay while the next loads, with “Searching…” beside the field after 300 ms; Enter waits for the answer.",
+          "Asks a server after a pause in typing; a stale call is aborted and its answer ignored. The last results stay while the next loads, with “Searching…” beside the field after 300 ms; Enter waits for the answer. `show(options)` lists an early answer for the same query, such as the commands, which Enter picks from at once; the final answer keeps the highlighted option.",
       },
       {
         name: "onSelect",
@@ -3374,15 +3374,55 @@ function paletteFruitSearch(
   )
 }
 
+/** The notes the early-answer `CommandPalette` demo's pretend server finds. */
+const paletteNotes = ["Grocery list", "Meeting notes", "Novel ideas", "Packing list"]
+
 /**
- * `CommandPalette` six ways. The first filters its own options and opens on Ctrl+P (⌘P on a Mac),
+ * The pretend server behind the early-answer demo: it lists the `commands` that match at once
+ * through `show`, then answers with the matching notes first and the commands after them 1.5 s
+ * later, so the rows under the highlight move. A query ending in "!" gets an answer without the
+ * commands. Like `paletteFruitSearch` it ignores `signal`, and it calls `show` again after an abort
+ * and after it answered, so the palette alone has to drop those late calls; `onAnswered` runs after
+ * the second one.
+ */
+function paletteNoteSearch(
+  query: string,
+  signal: AbortSignal,
+  show: (options: readonly CommandPaletteOption[]) => void,
+  commands: readonly CommandPaletteOption[],
+  onAnswered: () => void,
+): Promise<CommandPaletteOption[]> {
+  const needle = query.trim().toLowerCase().replace(/!$/, "")
+  const matching = commands.filter((command) => command.label.toLowerCase().includes(needle))
+  const stale = () => show([{ id: "stale", label: "Stale answer" }])
+  signal.addEventListener("abort", stale, { once: true })
+  show(matching)
+  return new Promise((resolve) =>
+    setTimeout(() => {
+      resolve([
+        ...paletteNotes
+          .filter((note) => note.toLowerCase().includes(needle))
+          .map((note) => ({ id: note, label: note, group: "Notes" })),
+        ...(query.trim().endsWith("!") ? [] : matching),
+      ])
+      setTimeout(() => {
+        stale()
+        onAnswered()
+      }, 0)
+    }, 1500)
+  )
+}
+
+/**
+ * `CommandPalette` seven ways. The first filters its own options and opens on Ctrl+P (⌘P on a Mac),
  * since this page's header search already owns `/` and Ctrl+K. The second asks a pretend server and
  * has no hotkey. The third puts the first one's options behind the icon trigger, whose tooltip
  * shows Ctrl+Shift+K (⌘⇧K on a Mac). The fourth is the field trigger, opening on a query with a
  * typo, and says how each result matched. The fifth lists commands: a theme toggle that stays open,
  * a shortcut, a command that cannot run, one that moves focus to the card's note, a quick-create
  * row and a submenu. It draws a trigger of its own, which a switch can remove, and opens on
- * Ctrl+Shift+P either way. The sixth lists the same commands and remembers recent picks.
+ * Ctrl+Shift+P either way. The sixth lists the same commands and remembers recent picks. The
+ * seventh asks a pretend server for notes and lists its commands as an early answer meanwhile.
  * `pages/checks/ui.ts` and `pages/e2e/ui.spec.ts` read what each picked and how many searches
  * started and answered.
  */
@@ -3397,6 +3437,11 @@ function CommandPaletteDemo() {
   const ran = useSignal("nothing yet")
   const log = useRef<HTMLSpanElement>(null)
   const commandsTrigger = useSignal(true)
+  const pickedEarly = useSignal("nothing yet")
+  const answeredEarly = useSignal(0)
+  const earlyCommands: CommandPaletteOption[] = ["New note", "Open settings", "Sign out"].map(
+    (label) => ({ id: label, label, group: "Commands", run: () => pickedEarly.value = label }),
+  )
   return (
     <Stack>
       <Cluster>
@@ -3479,6 +3524,15 @@ function CommandPaletteDemo() {
           labels={{ placeholder: "Run, remembering…" }}
           onSelect={(option, details) => ran.value = ranText(option.label, details)}
         />
+        <CommandPalette
+          search={(query, signal, show) =>
+            paletteNoteSearch(query, signal, show, earlyCommands, () => answeredEarly.value++)}
+          debounce={400}
+          hotkeys={[]}
+          dataE2E="palette-early"
+          labels={{ placeholder: "Find a note or a command…" }}
+          onSelect={(option) => pickedEarly.value = option.label}
+        />
         <Button
           variant="outline"
           size="sm"
@@ -3506,6 +3560,14 @@ function CommandPaletteDemo() {
         lists only commands, Tab enters Account or Add a task, Backspace goes back, PageDown jumps a
         group, and Ctrl+Enter picks the alternative way. “dark” pins Theme as the best match. The
         last palette remembers its picks across reloads and lists them on the empty query.
+      </DemoNote>
+      <DemoNote e2e="palette-early-picked">
+        The notes palette picked <span data-e2e="palette-early-picked">{pickedEarly.value}</span>
+        {" "}
+        after <span data-e2e="palette-early-answered">{answeredEarly.value}</span>{" "}
+        answers. It lists its commands at once and the notes 1.5 s later, above them; the
+        highlighted row stays on its option as the notes land. A query ending in “!” gets notes
+        only.
       </DemoNote>
     </Stack>
   )
