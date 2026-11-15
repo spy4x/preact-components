@@ -116,7 +116,8 @@ function FilterBarDemo() {
       <FilterBar
         search={{
           value: query.value,
-          onChange: (next) => query.value = next,
+          // Trimmed, as an app that keeps the query in the address does.
+          onChange: (next) => query.value = next.trim(),
           label: "Search notes",
           hotkeyHint: "/",
           // As a list the server searches would: the readout changes once the typing pauses.

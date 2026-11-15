@@ -450,7 +450,8 @@ function useSearchText(search: FilterBarSearch | undefined): {
   const latest = useRef(search)
   latest.current = search
   useEffect(() => {
-    if (value === sent.current) return
+    // An app that trims the query sends back the text without its edge spaces: keep the typed text.
+    if (value === sent.current.trim()) return
     sent.current = value
     clearTimeout(timer.current)
     setText(value)
