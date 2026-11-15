@@ -1,6 +1,6 @@
 {
   "name": "@spy4x/preact-ui",
-  "version": "14.11.0",
+  "version": "15.0.0",
   "exports": {
     ".": "./+index.ts",
     "./attachment-list": "./attachment-list.tsx",
