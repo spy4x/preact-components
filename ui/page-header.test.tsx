@@ -61,12 +61,35 @@ function pressBoth(anchor: VNode<{ onClick?: (e: Click) => void }>, routed: stri
 describe("PageHeader", () => {
   onAppPage()
 
-  it("draws the title as the page's one-line h1, with its full text as the tooltip", () => {
+  it("draws the title as the page's h1, with its full text as the tooltip", () => {
     const html = render(<PageHeader title="Notes" subtitle="Personal" />)
     expect(html).toMatch(
-      /<h1 [^>]*title="Notes"[^>]*><span dir="auto" class="block truncate [^"]*">Notes<\/span><\/h1>/,
+      /<h1 [^>]*title="Notes"[^>]*><span dir="auto" class="[^"]*">Notes<\/span><\/h1>/,
     )
     expect(html).toContain(">Personal</p>")
+  })
+
+  it("cuts the title and the subtitle at two lines on a phone and at one line from sm up", () => {
+    // `pages/checks/ui/page-header.ts` measures the lines and the cut in a browser.
+    const html = render(<PageHeader title="Notes" subtitle="Personal" />)
+    const classes = [...html.matchAll(/<(?:span|p) dir="auto" class="([^"]*)"/g)]
+      .map((match) => match[1].split(" "))
+    expect(classes).toHaveLength(2)
+    for (const list of classes) {
+      expect(list).toEqual(
+        expect.arrayContaining(["line-clamp-2", "break-words", "sm:block", "sm:truncate"]),
+      )
+      expect(list).not.toContain("truncate")
+    }
+  })
+
+  it("leaves the heading slot uncut, so its focus ring shows whole", () => {
+    const html = render(
+      <PageHeader title="Trip" heading={<button type="button">Trip</button>} subtitle="Team" />,
+    )
+    const heading = html.slice(html.indexOf("<h1"), html.indexOf("</h1>"))
+    expect(heading).not.toContain("line-clamp")
+    expect(heading).not.toContain("truncate")
   })
 
   it("sets the title and the subtitle in the direction of their own words", () => {
@@ -82,7 +105,7 @@ describe("PageHeader", () => {
   it("draws the title at the level the caller picks, and no h1 then", () => {
     const html = render(<PageHeader title="Notes" headingLevel={2} />)
     expect(html).toMatch(
-      /<h2 [^>]*title="Notes"[^>]*><span dir="auto" class="block truncate [^"]*">Notes<\/span><\/h2>/,
+      /<h2 [^>]*title="Notes"[^>]*><span dir="auto" class="[^"]*">Notes<\/span><\/h2>/,
     )
     expect(html).not.toContain("<h1")
   })
@@ -159,7 +182,7 @@ describe("PageHeader", () => {
     expect(render(<PageHeader title="Trip" />)).not.toContain(`id="m"`)
   })
 
-  it("keeps the actions from shrinking, so a long title truncates instead", () => {
+  it("keeps the actions from shrinking, so a long title is cut short instead", () => {
     const html = render(
       <PageHeader title="Trip" action={<PageAction label="New" Icon={IconPlus} />} />,
     )
