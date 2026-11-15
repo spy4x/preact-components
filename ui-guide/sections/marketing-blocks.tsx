@@ -741,7 +741,7 @@ export const marketingBlockDemos: DemoFragment = {
 // @import "@spy4x/preact-theme/theme-preview.css";
 <ThemePreview>
   <Button variant="primary">Save</Button>
-  <Badge text="Live" color="green" />
+  <Badge text="Live" tone="success" />
 </ThemePreview>`,
     render: () => (
       <ThemePreview name="ui-guide-theme-preview">
@@ -749,7 +749,7 @@ export const marketingBlockDemos: DemoFragment = {
           <div class="flex flex-wrap items-center gap-3">
             <Button variant="primary">Save</Button>
             <Button variant="secondary">Cancel</Button>
-            <Badge text="Live" color="green" />
+            <Badge text="Live" tone="success" />
           </div>
           <Field id="theme-preview-email" label="Email">
             <Input type="email" placeholder="you@example.com" />

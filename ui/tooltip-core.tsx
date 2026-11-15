@@ -68,6 +68,7 @@ export function TooltipCore(
     merge,
     children,
     content,
+    ariaLabel,
     label,
     placement = "top",
     focusable = true,
@@ -162,7 +163,7 @@ export function TooltipCore(
   )
   const wrapper = {
     class: merge(triggerBase, className),
-    "aria-label": label,
+    "aria-label": ariaLabel ?? label,
     onPointerEnter: () => engage(hovered),
     onPointerLeave: () => hovered.value = false,
     onFocusIn: () => engage(focused),

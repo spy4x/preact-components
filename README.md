@@ -79,7 +79,7 @@ deno add jsr:@spy4x/preact-ui
 ```tsx
 import { Badge } from "@spy4x/preact-ui/badge"
 
-<Badge text="Active" color="green" />
+<Badge text="Active" tone="success" />
 ```
 
 The components render against the compiled Tailwind stylesheet from `@spy4x/preact-theme`; JSR

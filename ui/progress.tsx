@@ -14,11 +14,6 @@ interface ProgressBaseProps {
   showValue?: boolean
   /** Colour of the filled portion. Defaults to `"primary"`. */
   tone?: ProgressTone
-  /**
-   * Accessible name for a bar with no `label`, applied as `aria-label`. A captioned bar is named by
-   * its caption and ignores this.
-   */
-  ariaLabel?: string
   class?: string
 }
 
@@ -30,8 +25,8 @@ interface ProgressBaseProps {
  * independent optionals, which makes `label` without `id` a compile error. The caller still picks
  * the id, which doubles as the bar's DOM id and the prefix of the caption's.
  *
- * A bar with no `label` is named only by `ariaLabel`. The type does not require one, so a bar with
- * neither still compiles and has no name; pass `ariaLabel` whenever there is no caption.
+ * A bar with no `label` is named by `ariaLabel`, which the type then requires (#861): a bar with
+ * neither does not compile.
  */
 export type ProgressProps =
   & ProgressBaseProps
@@ -41,10 +36,14 @@ export type ProgressProps =
       label: string
       /** Id of the bar; the caption becomes `${id}-label` and names the bar. */
       id: string
+      /** Ignored: a captioned bar is named by its caption. */
+      ariaLabel?: string
     }
     | {
       label?: undefined
       id?: undefined
+      /** Accessible name of a bar with no caption, applied as `aria-label`. */
+      ariaLabel: string
     }
   )
 

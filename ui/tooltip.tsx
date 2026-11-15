@@ -9,18 +9,12 @@ import { TooltipCore } from "./tooltip-core.tsx"
  */
 export type TooltipPlacement = "top" | "end" | "bottom" | "start" | "right" | "left"
 
-export interface TooltipProps {
+/** Props every {@link Tooltip} takes, whichever name its accessible name goes by. */
+interface TooltipBaseProps {
   /** Visible content of the trigger. It also carries the trigger's accessible name. */
   children: ComponentChildren
-  /** Tooltip text. Supplementary to {@link TooltipProps.label}, never the trigger's only name. */
+  /** Tooltip text. Supplementary to the trigger's `ariaLabel`, never the trigger's only name. */
   content: ComponentChildren
-  /**
-   * Accessible name for the trigger, applied as `aria-label`.
-   *
-   * Required, so the trigger always has a name of its own. Screen readers announce it first and
-   * the tooltip only as the description.
-   */
-  label: string
   /**
    * Side of the trigger the tooltip is anchored to. Defaults to `"top"`. A side placement opens
    * toward the inline end with `"end"` (`"right"`) and toward the start with `"start"` (`"left"`).
@@ -42,6 +36,29 @@ export interface TooltipProps {
 }
 
 /**
+ * Props of {@link Tooltip}. The trigger's accessible name is required, so the trigger always has a
+ * name of its own: screen readers announce it first and the tooltip only as the description.
+ */
+export type TooltipProps =
+  & TooltipBaseProps
+  & (
+    | {
+      /** Accessible name for the trigger, applied as `aria-label`. */
+      ariaLabel: string
+      label?: undefined
+    }
+    | {
+      /**
+       * Accessible name for the trigger, applied as `aria-label`.
+       *
+       * @deprecated Use `ariaLabel`. Removed in the next major.
+       */
+      label: string
+      ariaLabel?: undefined
+    }
+  )
+
+/**
  * Supplementary hint attached to a trigger, revealed on hover and on keyboard focus.
  *
  * Positioning is CSS first: the wrapper is `relative`, the surface `absolute` plus one of four
@@ -51,7 +68,7 @@ export interface TooltipProps {
  * is no scroll listener and no resize listener, so it costs nothing while nobody is on it.
  *
  * The wrapper is the described element: it carries `aria-describedby`, and the tooltip surface
- * carries that id and `role="tooltip"`. The trigger keeps its own name through `label`, so the
+ * carries that id and `role="tooltip"`. The trigger keeps its own name through `ariaLabel`, so the
  * tooltip text is always a description and never the only label. That wrapper is a `<button>`
  * rather than a `<span>` with a tab stop, because `aria-label` on an element with no role is not
  * guaranteed to reach the accessibility tree: the hint used to hang off something that might carry

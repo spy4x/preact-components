@@ -328,12 +328,12 @@ function CopyButtonDemo() {
     <Stack>
       <Cluster>
         <CopyButton textToCopy="INV-0007" />
-        <CopyButton textToCopy="INV-0007" title="Copy number" />
+        <CopyButton textToCopy="INV-0007" text="Copy number" />
       </Cluster>
       <Cluster>
         <CopyButton
           textToCopy="INV-0007"
-          title="Copy via port"
+          text="Copy via port"
           hotkey="c"
           copy={(text) => {
             lastCopy.value = text
@@ -342,10 +342,10 @@ function CopyButtonDemo() {
         <DemoNote>port received: {lastCopy.value}</DemoNote>
       </Cluster>
       <Cluster>
-        <CopyButton textToCopy="INV-0007" title="Copy, then fail" copy={() => false} />
+        <CopyButton textToCopy="INV-0007" text="Copy, then fail" copy={() => false} />
       </Cluster>
       <Cluster>
-        <CopyButton textToCopy="INV-0007" title="Copy results" variant="primary" />
+        <CopyButton textToCopy="INV-0007" text="Copy results" variant="primary" />
       </Cluster>
     </Stack>
   )
@@ -495,6 +495,12 @@ export const buttonDemos = {
         description: "The words the hint shows for a key, such as Ctrl.",
       },
       {
+        name: "class",
+        type: "string",
+        description: 'Utilities merged into the button\'s own: `class="px-8"` replaces the ' +
+          "size's padding.",
+      },
+      {
         name: "ref",
         type: "Ref<HTMLButtonElement>",
         description: "Reaches the native `<button>`, so it can be focused.",
@@ -521,7 +527,7 @@ useSucceeded(saving.value, error.value, closeDialog) // once a save ends well`,
     ),
   },
   CopyButton: {
-    summary: "Copies a piece of text to the clipboard, as an icon alone or with a title.",
+    summary: "Copies a piece of text to the clipboard, as an icon alone or with visible text.",
     wide: false,
     props: [
       {
@@ -530,17 +536,23 @@ useSucceeded(saving.value, error.value, closeDialog) // once a save ends well`,
         description: "What lands on the clipboard; a function is read at click time.",
       },
       {
-        name: "title",
+        name: "text",
         type: "string",
         description:
-          "A visible label, replaced by the confirmation while it shows; without it, the icon alone.",
+          "Visible text, replaced by the confirmation while it shows; without it, the icon alone.",
+      },
+      {
+        name: "title",
+        type: "string",
+        description: "Deprecated: use `text`; `text` wins when both are given. From the next " +
+          "major it is the HTML `title`.",
       },
       {
         name: "variant",
         type: `"outline" | "primary"`,
         default: `"outline"`,
         description:
-          "The look of a button with a title; primary for a page whose main action is the copy. The icon alone ignores it.",
+          "The look of a button with `text`; primary for a page whose main action is the copy. The icon alone ignores it.",
       },
       {
         name: "copy",
@@ -571,7 +583,7 @@ useSucceeded(saving.value, error.value, closeDialog) // once a save ends well`,
         name: "hotkey",
         type: "string",
         description:
-          "A key that copies, as `Button`'s does; with a title it shows in a hint, the icon alone shows none.",
+          "A key that copies, as `Button`'s does; with `text` it shows in a hint, the icon alone shows none.",
       },
       {
         name: "data-*, id, …",
@@ -580,10 +592,10 @@ useSucceeded(saving.value, error.value, closeDialog) // once a save ends well`,
       },
     ],
     snippet: `<CopyButton textToCopy={invoice.id} />
-<CopyButton textToCopy={invoice.id} title="Copy id" copy={app.clipboard.copy} />
+<CopyButton textToCopy={invoice.id} text="Copy id" copy={app.clipboard.copy} />
 <CopyButton textToCopy={() => input.value} data-umami-event="copy-input" />
-<CopyButton textToCopy={invoice.id} title="Copy id" hotkey="c" />
-<CopyButton textToCopy={results} title="Copy results" variant="primary" />`,
+<CopyButton textToCopy={invoice.id} text="Copy id" hotkey="c" />
+<CopyButton textToCopy={results} text="Copy results" variant="primary" />`,
     render: () => <CopyButtonDemo />,
   },
   Link: {
