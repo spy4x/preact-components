@@ -17,6 +17,32 @@ function filterBarSpecs(): Spec[] {
   })
   return [
     {
+      name: "FilterBar: a search with a delay keeps the typed text, sends it once the typing " +
+        "pauses, and at once on Enter",
+      pageId: "ui",
+      run: async (page) => {
+        // A paused clock: the delay's timer fires only when the spec moves the time on.
+        await page.clock.install()
+        await page.clock.pauseAt(Date.now() + 60_000)
+        // The page is shared with the next specs, so the clock runs again whatever happens.
+        try {
+          await page.setViewportSize({ width: 1280, height: 900 })
+          const bar = filterBarCard(page)
+          await bar.search.pressSequentially("pla")
+          await page.clock.runFor(299)
+          await bar.stateHas("q: (empty) ·")
+          if (await bar.search.inputValue() !== "pla") throw new Error("the typed text was lost")
+          await page.clock.runFor(1)
+          await bar.stateHas("q: pla ·")
+          await bar.search.press("n")
+          await bar.search.press("Enter")
+          await bar.stateHas("q: plan ·")
+        } finally {
+          await page.clock.resume()
+        }
+      },
+    },
+    {
       name: "FilterBar at 390 px, dark: the sheet passes axe with its Done item focused",
       pageId: "ui",
       colorScheme: "dark",

@@ -119,6 +119,8 @@ function FilterBarDemo() {
           onChange: (next) => query.value = next,
           label: "Search notes",
           hotkeyHint: "/",
+          // As a list the server searches would: the readout changes once the typing pauses.
+          delay: 300,
         }}
         filters={[
           {
@@ -216,9 +218,9 @@ export const filterBarDemos = {
     props: [
       {
         name: "search",
-        type: "{ value, onChange, label?, placeholder?, hotkeyHint?, clearLabel? }",
+        type: "{ value, onChange, label?, placeholder?, hotkeyHint?, clearLabel?, delay? }",
         description:
-          "A search field with a clear button; `hotkeyHint` shows a key the app already binds, such as `/`.",
+          "A search field with a clear button; `hotkeyHint` shows a key the app already binds, such as `/`; `delay` (ms) calls `onChange` once the typing pauses, for a list the server searches, and at once on Enter.",
       },
       {
         name: "filters",

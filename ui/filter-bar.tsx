@@ -7,7 +7,7 @@ import {
   IconXMark,
 } from "@spy4x/preact-icons"
 import type { ComponentChildren, JSX } from "preact"
-import { useEffect, useId, useRef } from "preact/hooks"
+import { useEffect, useId, useRef, useState } from "preact/hooks"
 import { badgeClasses } from "./badge.tsx"
 import { Dropdown, DropdownItem } from "./dropdown.tsx"
 import { HotkeyHint } from "./hotkey-hint.tsx"
@@ -89,8 +89,17 @@ export interface FilterBarToggle {
 /** The search field of a {@link FilterBar}. */
 export interface FilterBarSearch {
   value: string
-  /** Called with the field's whole text on every keystroke, and with `""` by the clear button. */
+  /**
+   * Called with the field's whole text on every keystroke, and with `""` by the clear button. With
+   * `delay`, called once the typing pauses instead.
+   */
   onChange: (value: string) => void
+  /**
+   * Milliseconds to wait after the last keystroke before calling `onChange`, for a list the server
+   * searches, such as `300`. The field keeps what was typed meanwhile, Enter and the clear button
+   * call `onChange` at once, and a new `value` from outside (Back) replaces the field's text.
+   */
+  delay?: number
   /** The field's accessible name. Defaults to `"Search"`. */
   label?: string
   /** Defaults to `label`. */
@@ -421,6 +430,52 @@ const FILTER_BAR_LABELS = {
 }
 
 /**
+ * The text a search field shows, and how it reaches `onChange`: at once without a `delay`, after
+ * the typing pauses with one. A `value` from outside that differs from the last one sent replaces
+ * the text; the echo of what was sent does not, so a slow reply never overwrites newer typing.
+ *
+ * @param search The bar's search, if any.
+ * @returns The field's text, `type` for each keystroke and `send` for Enter and the clear button.
+ */
+function useSearchText(search: FilterBarSearch | undefined): {
+  text: string
+  type: (text: string) => void
+  send: (text: string) => void
+} {
+  const value = search?.value ?? ""
+  const [text, setText] = useState(value)
+  const sent = useRef(value)
+  const timer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined)
+  useEffect(() => {
+    if (value === sent.current) return
+    sent.current = value
+    clearTimeout(timer.current)
+    setText(value)
+  }, [value])
+  useEffect(() => () => clearTimeout(timer.current), [])
+  const send = (next: string) => {
+    clearTimeout(timer.current)
+    setText(next)
+    if (next === sent.current) return
+    sent.current = next
+    search?.onChange(next)
+  }
+  const type = (next: string) => {
+    if (search?.delay === undefined) return send(next)
+    setText(next)
+    clearTimeout(timer.current)
+    timer.current = setTimeout(() => send(next), search.delay)
+  }
+  return search?.delay === undefined
+    ? {
+      text: value,
+      type: (next) => search?.onChange(next),
+      send: (next) => search?.onChange(next),
+    }
+    : { text, type, send }
+}
+
+/**
  * Search, filter menus, one-tap toggles and a sort over a list, with the active filters as
  * removable chips under them and a result count.
  *
@@ -471,6 +526,7 @@ export function FilterBar(props: FilterBarProps): JSX.Element {
   const searchRef = useRef<HTMLInputElement>(null)
   const refocus = useRef<Refocus | null>(null)
   const searchId = useId()
+  const searchText = useSearchText(search)
   const apple = useApplePlatform()
   const controlsFade = useScrollFade()
   const chipsFade = useScrollFade()
@@ -510,17 +566,24 @@ export function FilterBar(props: FilterBarProps): JSX.Element {
           ref={searchRef}
           id={searchId}
           type="search"
-          value={search.value}
+          value={searchText.text}
           placeholder={search.placeholder ?? searchLabel}
           autocomplete="off"
           aria-keyshortcuts={search.hotkeyHint === undefined
             ? undefined
             : ariaKeyShortcuts(search.hotkeyHint, apple)}
-          onInput={(event) => search.onChange((event.currentTarget as HTMLInputElement).value)}
+          onInput={(event) => searchText.type((event.currentTarget as HTMLInputElement).value)}
+          onKeyDown={(event) => {
+            if (event.key === "Enter") {
+              searchText.send(
+                (event.currentTarget as HTMLInputElement).value,
+              )
+            }
+          }}
           class="pc-input h-11 pe-12 ps-8 text-sm sm:h-8 [&::-webkit-search-cancel-button]:appearance-none"
           data-e2e="filter-search"
         />
-        {search.value !== ""
+        {searchText.text !== ""
           ? (
             <button
               type="button"
@@ -528,7 +591,7 @@ export function FilterBar(props: FilterBarProps): JSX.Element {
                 translate(translator, "FilterBar.clearSearch", "Clear search")}
               class="absolute inset-y-0 end-0 flex w-11 cursor-pointer items-center justify-center rounded-primary text-muted hover:text-foreground focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-focus sm:w-8"
               onClick={() => {
-                search.onChange("")
+                searchText.send("")
                 searchRef.current?.focus()
               }}
             >

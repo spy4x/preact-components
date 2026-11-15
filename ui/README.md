@@ -101,7 +101,7 @@ Each line: the component, its subpath, then its ports and key props.
 - `FeatureCard` (`feature-card`): `id` (heading id), `title`, `children`, `Icon?`, `href?`, `linkLabel?` ("Learn more", described by the heading), `media?` (a picture to the edges), `wide?` (two columns from `lg`), `headingLevel?` (`2`, `3`), `class?` — a feature on a public site, no JavaScript
 - `Field` (`field`): `id`, `label?`, `children`, `hint?`, `error?`, `required?` (hands `required` to the control, which enforces it; the `*` also shows for a control that is `required` itself), `suffix?`, `labelFor?`
 - `FileInput` (`file-input`): `id`, `accept?`, `multiple?`, `maxSize?`, `name?`, `onFiles?`, `onReject?`, `label?`, `error?`, `previews?`, `labels?`, `appearance?` (`"button"`: one button, no list), `buttonVariant?`, `busy?`, `busyLabel?`
-- `FilterBar` (`filter-bar`): `search?` (`value`, `onChange`, `label?`, `hotkeyHint?`), `filters?` (menus: `id`, `label`, `options`, `value`, `onChange`, `multiple?`, `chipLabel?`, `anyLabel?`, `header?`), `toggles?`, `sort?`, `count?`, `onClear?`, labels — a `search` landmark with removable filter chips
+- `FilterBar` (`filter-bar`): `search?` (`value`, `onChange`, `label?`, `hotkeyHint?`, `delay?`), `filters?` (menus: `id`, `label`, `options`, `value`, `onChange`, `multiple?`, `chipLabel?`, `anyLabel?`, `header?`), `toggles?`, `sort?`, `count?`, `onClear?`, labels — a `search` landmark with removable filter chips
 - `FormatContext` (`format`): Preact context: `<FormatContext.Provider value={createFormatters(settings)}>`; `When`, `OnDay` and `useFormat()` read it; without a provider, this device's format
 - `Grid` (`layout`): `gap?` (default `md`), `minColumnWidth?` (`sm`/`md`/`lg`), `as?`, `class?` — equal columns that fill the row
 - `HelpPopover` (`help-popover`): `label` (the trigger's text), `title`, `children`, `closeLabel?`, `id?`, `class?`, `dataE2E?` — a ghost help button opening a native `popover` panel; Escape, a click outside and the close button close it; no JavaScript
@@ -471,7 +471,9 @@ the URL with `useUrlFilters` from `@spy4x/preact-signals`.
 - The bar is a `search` landmark named by `label`. The search field is a labelled
   `type="search"` input; while it holds text a "Clear search" button empties it and hands focus
   back to the field. `hotkeyHint` shows a key the app already binds (such as `/`) while the field
-  is empty, and announces it in `aria-keyshortcuts`; the bar binds no key itself.
+  is empty, and announces it in `aria-keyshortcuts`; the bar binds no key itself. For a list the
+  server searches, `delay` (such as `300` ms) calls `onChange` once the typing pauses, and at once
+  on Enter or the clear button; the field keeps what was typed meanwhile.
 - Each menu is a `Dropdown` with a chip trigger that shows its `label`. While something is
   chosen the trigger adds a count badge ("Tags 2") and the chips' soft tint with an outline, so it
   keeps its width and never takes the accent fill of the page's primary button; its accessible
