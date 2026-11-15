@@ -392,6 +392,58 @@ export const chartsDemos = {
       </div>
     ),
   },
+  DonutChart: {
+    summary:
+      "A donut drawn with one CSS `conic-gradient` whose slices show their value and share on hover or by the arrow keys, and whose legend rows turn into links when a slice has an `href`.",
+    wide: false,
+    props: [
+      { name: "data", type: "DonutDatum[]", description: "The slices: a label and a value each." },
+      {
+        name: "valueFormat",
+        type: "(value: number) => string",
+        default: "String",
+        description: "How a slice's value is printed in its tooltip.",
+      },
+      {
+        name: "centerValue",
+        type: "string | number",
+        description: "The figure in the hole, usually the total.",
+      },
+      {
+        name: "axisColor",
+        type: "string",
+        default: "the control border token",
+        description: "The tooltip's border colour, as LineChart's axisColor.",
+      },
+      {
+        name: "headingLevel",
+        type: "2 | 3 | 4 | 5 | 6",
+        default: "3",
+        description: "The level of the title's heading, so it fits the page's outline.",
+      },
+    ],
+    snippet: `<DonutChart
+  data={[{ label: "Organic", value: 52 }, { label: "Referral", value: 24, href: "/referral" }]}
+  centerValue="12.4k"
+  centerLabel="sessions"
+  title="Traffic sources"
+/>`,
+    render: () => (
+      <div class="flex flex-col gap-6">
+        <DonutChart
+          data={traffic}
+          centerValue="12.4k"
+          centerLabel="sessions"
+          title="Traffic sources"
+          valueFormat={(value) => `${value * 124} sessions`}
+        />
+        <div class="flex flex-col gap-3">
+          <p class="text-xs text-muted">the same donut, drawn once it scrolls into view</p>
+          <DeferredDonut />
+        </div>
+      </div>
+    ),
+  },
   DependencyGraph: {
     summary:
       "Boxes joined by curved arrows, laid out left to right by what comes first, drawn complete on the server; hovering or focusing a step keeps its chain and dims the rest, with CSS alone.",
@@ -444,58 +496,6 @@ export const chartsDemos = {
     render: () => (
       <div data-e2e="dependency-graph">
         <DependencyGraph label="Website launch" nodes={launchSteps} edges={launchLinks} />
-      </div>
-    ),
-  },
-  DonutChart: {
-    summary:
-      "A donut drawn with one CSS `conic-gradient` whose slices show their value and share on hover or by the arrow keys, and whose legend rows turn into links when a slice has an `href`.",
-    wide: false,
-    props: [
-      { name: "data", type: "DonutDatum[]", description: "The slices: a label and a value each." },
-      {
-        name: "valueFormat",
-        type: "(value: number) => string",
-        default: "String",
-        description: "How a slice's value is printed in its tooltip.",
-      },
-      {
-        name: "centerValue",
-        type: "string | number",
-        description: "The figure in the hole, usually the total.",
-      },
-      {
-        name: "axisColor",
-        type: "string",
-        default: "the control border token",
-        description: "The tooltip's border colour, as LineChart's axisColor.",
-      },
-      {
-        name: "headingLevel",
-        type: "2 | 3 | 4 | 5 | 6",
-        default: "3",
-        description: "The level of the title's heading, so it fits the page's outline.",
-      },
-    ],
-    snippet: `<DonutChart
-  data={[{ label: "Organic", value: 52 }, { label: "Referral", value: 24, href: "/referral" }]}
-  centerValue="12.4k"
-  centerLabel="sessions"
-  title="Traffic sources"
-/>`,
-    render: () => (
-      <div class="flex flex-col gap-6">
-        <DonutChart
-          data={traffic}
-          centerValue="12.4k"
-          centerLabel="sessions"
-          title="Traffic sources"
-          valueFormat={(value) => `${value * 124} sessions`}
-        />
-        <div class="flex flex-col gap-3">
-          <p class="text-xs text-muted">the same donut, drawn once it scrolls into view</p>
-          <DeferredDonut />
-        </div>
       </div>
     ),
   },
