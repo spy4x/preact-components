@@ -331,6 +331,7 @@ LanguagePicker.error	5901d8fc1a3424f4
 LanguagePicker.label	a4fe65264ef7dbb3
 LanguagePicker.loading	909a22ac42c52561
 LanguagePicker.offline	3cb8a39b153d4d58
+LayoutCustomiser.close	7d9eb7acb13e2462
 LayoutCustomiser.done	11a6767d5674c7e4
 LayoutCustomiser.hidden	7e6fefff0f0aeb6c
 LayoutCustomiser.list	efbcd674b4f43dcc
@@ -382,6 +383,8 @@ Pagination.label	7b3f674b625e7226
 Pagination.nextLabel	1ff57a29d7c9d11b
 Pagination.pageLabel	7b2478a95138b0b2
 Pagination.previousLabel	a57b08a480b822a0
+PasswordInput.hide	a60a56c584b3b05b
+PasswordInput.show	6aeaa6a53d09dcad
 PeriodStepper.currentMonth	fd787ef3d46c9b82
 PeriodStepper.currentWeek	8c4eef5ab2532515
 PeriodStepper.groupMonth	310ca503ef36f177

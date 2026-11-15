@@ -81,7 +81,8 @@
  * **The show/hide control is a real, named button, not a click zone on an icon.** It never submits
  * — `type="button"` — and it reports whether the password is showing through `aria-pressed` rather
  * than through its own changing label alone, and it moves the focus to itself on activation so a
- * keyboard user does not have to find it again after the toggle re-renders.
+ * keyboard user does not have to find it again after the toggle re-renders. The field is
+ * `PasswordInput` from `@spy4x/preact-ui`, so an app's other password fields behave the same.
  *
  * **Every control carries a fixed `data-e2e`** (`auth-form-login`, `auth-form-password`, …), the
  * same convention as `Shell`'s own parts, so an app's end-to-end tests find a field whatever
@@ -97,13 +98,13 @@
  */
 
 import { cn } from "@spy4x/preact-cn"
-import { IconEye, IconEyeOff } from "@spy4x/preact-icons"
 import { Button, buttonClasses, type ButtonVariant } from "@spy4x/preact-ui/button"
 import { Field } from "@spy4x/preact-ui/field"
 import { Input } from "@spy4x/preact-ui/input"
+import { PasswordInput } from "@spy4x/preact-ui/password-input"
 import { followLinkClick } from "@spy4x/preact-ui/link"
 import type { ComponentChildren, JSX } from "preact"
-import { useEffect, useId, useRef, useState } from "preact/hooks"
+import { useEffect, useId, useRef } from "preact/hooks"
 import { useLabels } from "@spy4x/preact-ui/i18n"
 
 /** Which screen {@link AuthForm} draws. */
@@ -327,7 +328,6 @@ export function AuthForm(
   const passwordId = `${baseId}-password`
   const codeId = `${baseId}-code`
 
-  const [showPassword, setShowPassword] = useState(false)
   const codeRef = useRef<HTMLInputElement>(null)
   const formRef = useRef<HTMLFormElement>(null)
   const messageRef = useRef<HTMLParagraphElement>(null)
@@ -447,44 +447,17 @@ export function AuthForm(
               error={problem?.field === "password" ? problem.message : undefined}
             >
               {(wiring) => (
-                // A password is typed left to right in every language, shown or hidden, so the box
-                // and its toggle keep that direction on a right-to-left page too.
-                <div class="relative" dir="ltr">
-                  <Input
-                    id={wiring.id}
-                    aria-describedby={wiring["aria-describedby"]}
-                    aria-invalid={problem?.field === "password" ? true : undefined}
-                    name={fieldNames.password}
-                    type={showPassword ? "text" : "password"}
-                    autocomplete={mode === "sign-up" ? "new-password" : "current-password"}
-                    required
-                    class="pe-12"
-                    data-e2e="auth-form-password"
-                  />
-                  {
-                    /* An icon-only toggle, 32 px square at 4 px from the edge, so the field's
-                      `pe-12` (48 px) keeps a shown password clear of it; a word-sized button
-                      needed more room than any step on the spacing scale. */
-                  }
-                  <Button
-                    type="button"
-                    variant="icon"
-                    size="sm"
-                    aria-pressed={showPassword}
-                    aria-label={showPassword ? copy.hidePassword : copy.showPassword}
-                    class="absolute top-1/2 end-1 -translate-y-1/2"
-                    data-e2e="auth-form-password-toggle"
-                    onClick={(event) => {
-                      // Keeps the toggle itself the Tab stop after the type swap re-renders it,
-                      // rather than leaving the browser's own click-focus behaviour to decide —
-                      // that behaviour is not the same in every engine.
-                      event.currentTarget.focus()
-                      setShowPassword((value) => !value)
-                    }}
-                  >
-                    {showPassword ? <IconEyeOff class="size-5" /> : <IconEye class="size-5" />}
-                  </Button>
-                </div>
+                <PasswordInput
+                  id={wiring.id}
+                  aria-describedby={wiring["aria-describedby"]}
+                  aria-invalid={problem?.field === "password" ? true : undefined}
+                  name={fieldNames.password}
+                  autocomplete={mode === "sign-up" ? "new-password" : "current-password"}
+                  required
+                  labels={{ show: copy.showPassword, hide: copy.hidePassword }}
+                  data-e2e="auth-form-password"
+                  toggleDataE2E="auth-form-password-toggle"
+                />
               )}
             </Field>
             <div class="flex flex-wrap items-center gap-3">

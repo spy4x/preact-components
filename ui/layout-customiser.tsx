@@ -87,6 +87,11 @@ export interface LayoutCustomiserLabels {
   reset: string
   /** The button that closes the dialog. */
   done: string
+  /**
+   * The accessible name of the ✕ in the dialog's header. Optional, so a full labels object written
+   * before it existed still type-checks.
+   */
+  close?: string
 }
 
 /** The English defaults of {@link LayoutCustomiserLabels}. */
@@ -96,6 +101,7 @@ export const defaultLayoutCustomiserLabels: LayoutCustomiserLabels = {
   list: "Parts",
   reset: "Reset to default",
   done: "Done",
+  close: "Close",
 }
 
 /** What {@link LayoutCustomiser} takes. */
@@ -123,8 +129,8 @@ export interface LayoutCustomiserProps {
 /**
  * A dialog that reorders and hides the parts of a page: a `SortableList` (drag a handle, or use the
  * keyboard) with a switch per row. Every change goes to `onChange` at once, so the page behind
- * follows it and the caller saves it; the only buttons are "Reset to default" and "Done", because
- * there is nothing to confirm. A failed save shows `error` under the list.
+ * follows it and the caller saves it. Nothing needs confirming, so it has no Cancel or Save: a ✕ in
+ * the header and "Done" both close it, and "Reset to default" puts the default layout back. A failed save shows `error` under the list.
  *
  * @param props See {@link LayoutCustomiserProps}.
  */
@@ -141,6 +147,7 @@ export function LayoutCustomiser(
       open={open}
       onClose={onClose}
       title={title}
+      cancelLabel={text.close}
       dataE2E={dataE2E}
       footer={
         <div class="flex w-full flex-col-reverse gap-2 sm:flex-row sm:justify-between">
