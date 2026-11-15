@@ -224,6 +224,13 @@ describe("DependencyGraph", () => {
     expect(html).not.toContain("<script")
   })
 
+  it("wraps the highlight rules in an @scope block", () => {
+    // Unscoped, `:scope:has([data-node="3"]:hover)` matches the page root and dims every graph on it.
+    const style = graph().match(/<style>([^]*?)<\/style>/)?.[1]
+    expect(style?.startsWith("@scope{")).toBe(true)
+    expect(style?.endsWith("}")).toBe(true)
+  })
+
   it("leaves the highlight out of a graph whose chains would bloat the markup", () => {
     const nodes = Array.from(
       { length: 400 },
