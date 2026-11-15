@@ -325,8 +325,13 @@ interface CardText {
  * A `<textarea>` counts by its value rather than its child text: the server writes the value as the
  * element's text, while Preact in the browser sets the `value` property and leaves the element
  * empty, so `textContent` alone reports every filled textarea as a difference.
+ *
+ * The text of `<style>`, `<script>`, `<template>` and `<noscript>` is skipped: no reader sees it,
+ * and it can carry a generated id that differs because the served document renders every page at
+ * once (#1307: DependencyGraph's scoped stylesheet read `P0-135` served and `P0-338` live).
  */
 const CARD_TEXTS = `(root, drawnBy) => {
+  const unread = new Set(["STYLE", "SCRIPT", "TEMPLATE", "NOSCRIPT"])
   const squash = (text) => text.replace(/\\s+/g, " ").trim()
   const read = (card) => {
     const selector = drawnBy[card.id]
@@ -336,6 +341,7 @@ const CARD_TEXTS = `(root, drawnBy) => {
     const walk = (node, into) => {
       if (node.nodeType === Node.TEXT_NODE) return void into.push(node.data)
       if (node.nodeType !== Node.ELEMENT_NODE) return
+      if (unread.has(node.nodeName)) return
       if (into === rest && selector && node.matches(selector)) {
         into = drawn
         parts++
