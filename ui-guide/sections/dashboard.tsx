@@ -183,7 +183,7 @@ export const dashboardDemos = {
   },
   WidgetStat: {
     summary:
-      "A stat widget's body: one large number in tabular figures and muted lines under it, never coloured as good or bad. A long number steps down in size to fit its card, never cut or shortened.",
+      "A stat widget's body: one large number in tabular figures that steps down in size to fit its card, never cut or shortened, and muted lines under it, never coloured as good or bad.",
     wide: false,
     props: [
       { name: "value", type: "string | number", description: "The number, already formatted." },
