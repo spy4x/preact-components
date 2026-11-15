@@ -270,8 +270,8 @@ export function declarationIndex(
  *
  * A name exported by several entry points is listed once, under the first: the barrel comes first,
  * so a name the barrel exports imports from the package root. A `default` export is the exception:
- * each entry point's is its own value (one catalog per `i18n/<language>`), so each is listed. The kind and the JSDoc come from
- * where the name is declared: a `reference` symbol (a re-export) is followed through `index` to
+ * each entry point's is its own value (one catalog per `i18n/<language>`), so each is listed. The
+ * kind and the JSDoc come from where the name is declared: a `reference` symbol (a re-export) is followed through `index` to
  * its declaration, in this package or another. A reference that reaches nothing has neither. With
  * no JSDoc the summary falls back to the README's description column, then, for a `FooProps` type,
  * to "Props of `Foo`."; otherwise it is empty.
