@@ -414,6 +414,16 @@ function earlyAnswerSpecs(): Spec[] {
         // The empty query's call has answered and called show once more.
         await palette.answeredAtLeast(1)
         const before = await palette.answered()
+        // Every row ever listed from here on, so a stale row that a later answer replaced counts too.
+        const seen = await palette.dialog.evaluateHandle((dialog) => {
+          const labels = new Set<string>()
+          new MutationObserver(() => {
+            for (const option of dialog.querySelectorAll(`[role="option"]`)) {
+              labels.add(option.querySelector("span span")?.textContent ?? "")
+            }
+          }).observe(dialog, { subtree: true, childList: true, characterData: true })
+          return labels
+        })
         // "n" is superseded by "ne" once it has started, and calls show when its signal aborts.
         await page.keyboard.type("n")
         await palette.rowsAre(["New note", "Open settings", "Sign out"])
@@ -421,8 +431,8 @@ function earlyAnswerSpecs(): Spec[] {
         await palette.rowsAre(["New note"])
         // Both calls have answered and called show once more.
         await palette.answeredAtLeast(before + 2)
-        const stale = await palette.dialog.getByRole("option", { name: "Stale answer" }).count()
-        if (stale !== 0) throw new Error("a late show listed the stale answer")
+        const stale = await seen.evaluate((labels) => labels.has("Stale answer"))
+        if (stale) throw new Error("a late show listed the stale answer")
         await palette.rowsAre(["New note"])
       },
     },
