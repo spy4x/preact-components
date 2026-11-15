@@ -397,6 +397,7 @@ export default {
   "LanguagePicker.label": "Язык",
   "LanguagePicker.loading": "Загружаем язык ({language})…",
   "LanguagePicker.offline": "Нужен интернет",
+  "LayoutCustomiser.close": "Закрыть",
   "LayoutCustomiser.done": "Готово",
   "LayoutCustomiser.hidden": "Скрыто",
   "LayoutCustomiser.list": "Блоки",

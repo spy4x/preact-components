@@ -370,6 +370,7 @@ export default {
   "LanguagePicker.label": "Language",
   "LanguagePicker.loading": "Loading {language}…",
   "LanguagePicker.offline": "Needs a connection",
+  "LayoutCustomiser.close": "Close",
   "LayoutCustomiser.done": "Done",
   "LayoutCustomiser.hidden": "Hidden",
   "LayoutCustomiser.list": "Parts",

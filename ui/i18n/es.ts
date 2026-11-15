@@ -386,6 +386,7 @@ export default {
   "LanguagePicker.label": "Idioma",
   "LanguagePicker.loading": "Cargando {language}…",
   "LanguagePicker.offline": "Necesita conexión",
+  "LayoutCustomiser.close": "Cerrar",
   "LayoutCustomiser.done": "Listo",
   "LayoutCustomiser.hidden": "Oculto",
   "LayoutCustomiser.list": "Secciones",

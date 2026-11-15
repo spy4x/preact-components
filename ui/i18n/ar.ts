@@ -414,6 +414,7 @@ export default {
   "LanguagePicker.label": "اللغة",
   "LanguagePicker.loading": "جارٍ تحميل {language}…",
   "LanguagePicker.offline": "يلزم الاتصال بالإنترنت",
+  "LayoutCustomiser.close": "إغلاق",
   "LayoutCustomiser.done": "تم",
   "LayoutCustomiser.hidden": "مخفي",
   "LayoutCustomiser.list": "الأقسام",

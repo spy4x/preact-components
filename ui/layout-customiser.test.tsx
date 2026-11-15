@@ -104,6 +104,26 @@ describe("LayoutCustomiser", () => {
     expect(markup).toContain('aria-label="Widgets"')
   })
 
+  it("puts a close button named Close in the dialog header", () => {
+    const header = html().match(/<header[^>]*>(.*?)<\/header>/)?.[1] ?? ""
+    expect(header).toMatch(/<button[^>]*aria-label="Close"/)
+  })
+
+  it("names the header close button from a labels override", () => {
+    const markup = render(
+      <LayoutCustomiser
+        open
+        onClose={() => {}}
+        title="Customise overview"
+        items={items}
+        onChange={() => {}}
+        labels={{ close: "Schließen" }}
+      />,
+    )
+    expect(markup).toMatch(/<header[^>]*>.*<button[^>]*aria-label="Schließen".*<\/header>/)
+    expect(markup).not.toContain('aria-label="Close"')
+  })
+
   it("shows a failed save as an alert under the list, and nothing when there is none", () => {
     expect(html("We could not save your layout.")).toContain(
       '<p role="alert" class="text-sm text-danger">We could not save your layout.</p>',

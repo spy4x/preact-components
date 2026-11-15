@@ -357,6 +357,7 @@ export default {
   "LanguagePicker.label": "语言",
   "LanguagePicker.loading": "正在加载{language}…",
   "LanguagePicker.offline": "需要联网",
+  "LayoutCustomiser.close": "关闭",
   "LayoutCustomiser.done": "完成",
   "LayoutCustomiser.hidden": "已隐藏",
   "LayoutCustomiser.list": "模块",

@@ -267,6 +267,11 @@ export const dashboardDemos = {
         type: "(layout: { id, hidden }[]) => void",
         description: "The whole new layout after one move or one switch.",
       },
+      {
+        name: "onClose",
+        type: "() => void",
+        description: "Closes the dialog: Done, Escape and the ✕ in the header.",
+      },
       { name: "onReset", type: "() => void", description: "Puts the default layout back." },
       {
         name: "error",

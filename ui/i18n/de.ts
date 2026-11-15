@@ -375,6 +375,7 @@ export default {
   "LanguagePicker.label": "Sprache",
   "LanguagePicker.loading": "{language} wird geladen …",
   "LanguagePicker.offline": "Nur mit Internetverbindung",
+  "LayoutCustomiser.close": "Schließen",
   "LayoutCustomiser.done": "Fertig",
   "LayoutCustomiser.hidden": "Ausgeblendet",
   "LayoutCustomiser.list": "Bereiche",

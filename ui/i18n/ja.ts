@@ -362,6 +362,7 @@ export default {
   "LanguagePicker.label": "言語",
   "LanguagePicker.loading": "{language}を読み込み中…",
   "LanguagePicker.offline": "接続が必要です",
+  "LayoutCustomiser.close": "閉じる",
   "LayoutCustomiser.done": "完了",
   "LayoutCustomiser.hidden": "非表示",
   "LayoutCustomiser.list": "パーツ",

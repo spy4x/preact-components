@@ -126,6 +126,18 @@ const dashboardSpecs: Spec[] = [
     },
   },
   {
+    name: "LayoutCustomiser: the ✕ named Close in the header closes the dialog",
+    pageId: "ui",
+    run: async (page) => {
+      const card = page.locator("#demo-LayoutCustomiser")
+      await card.locator(`[data-e2e="layout-open"]`).click()
+      const dialog = page.locator(`dialog[data-e2e="layout-customiser"]`)
+      await dialog.waitFor()
+      await dialog.getByRole("button", { name: "Close", exact: true }).click()
+      await dialog.waitFor({ state: "hidden" })
+    },
+  },
+  {
     name: "LayoutCustomiser: the keyboard moves a widget and the page follows",
     pageId: "ui",
     run: async (page) => {
