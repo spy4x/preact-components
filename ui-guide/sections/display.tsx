@@ -3381,7 +3381,7 @@ const paletteNotes = ["Grocery list", "Meeting notes", "Novel ideas", "Packing l
  * The pretend server behind the early-answer demo: it lists the `commands` that match at once
  * through `show`, then answers with the matching notes first and the commands after them 1.5 s
  * later, so the rows under the highlight move. A query ending in "!" gets an answer without the
- * commands. Like `paletteFruitSearch` it ignores `signal`, and it calls `show` again after an abort
+ * commands, and one ending in "?" fails after the commands are listed. Like `paletteFruitSearch` it ignores `signal`, and it calls `show` again after an abort
  * and after it answered, so the palette alone has to drop those late calls; `onAnswered` runs after
  * the second one.
  */
@@ -3392,19 +3392,20 @@ function paletteNoteSearch(
   commands: readonly CommandPaletteOption[],
   onAnswered: () => void,
 ): Promise<CommandPaletteOption[]> {
-  const needle = query.trim().toLowerCase().replace(/!$/, "")
+  const needle = query.trim().toLowerCase().replace(/[!?]$/, "")
   const matching = commands.filter((command) => command.label.toLowerCase().includes(needle))
   const stale = () => show([{ id: "stale", label: "Stale answer" }])
   signal.addEventListener("abort", stale, { once: true })
   show(matching)
-  return new Promise((resolve) =>
+  return new Promise((resolve, reject) =>
     setTimeout(() => {
-      resolve([
-        ...paletteNotes
-          .filter((note) => note.toLowerCase().includes(needle))
-          .map((note) => ({ id: note, label: note, group: "Notes" })),
-        ...(query.trim().endsWith("!") ? [] : matching),
-      ])
+      if (query.trim().endsWith("?")) reject(new Error("The pretend server failed"))
+      else {resolve([
+          ...paletteNotes
+            .filter((note) => note.toLowerCase().includes(needle))
+            .map((note) => ({ id: note, label: note, group: "Notes" })),
+          ...(query.trim().endsWith("!") ? [] : matching),
+        ])}
       setTimeout(() => {
         stale()
         onAnswered()
@@ -3567,7 +3568,7 @@ function CommandPaletteDemo() {
         after <span data-e2e="palette-early-answered">{answeredEarly.value}</span>{" "}
         answers. It lists its commands at once and the notes 1.5 s later, above them; the
         highlighted row stays on its option as the notes land. A query ending in “!” gets notes
-        only.
+        only, and one ending in “?” fails.
       </DemoNote>
     </Stack>
   )

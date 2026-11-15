@@ -7490,7 +7490,7 @@ It takes its results one of two ways, never both:
   and falls back to the first row only when that option is gone; a new query starts on the first
   row. Once an early answer is listed, Enter picks the highlighted row at once, while "Searching…"
   may still show for the rest. A `show` after the promise settled, or from a stale call, is
-  ignored, and a rejection keeps the early rows beside the error. The palette does not read ">" in
+  ignored, and a rejection keeps the early rows, with the error beside the field. The palette does not read ">" in
   this mode: listing only the commands for it is `search`'s job. The "> for commands" hint shows on
   the empty query whenever the listed answer holds an option with `run`.
 

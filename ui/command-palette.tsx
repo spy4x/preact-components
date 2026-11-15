@@ -345,7 +345,7 @@ export interface CommandPaletteRemoteProps<T extends CommandPaletteOption>
    * replaces it. Once an early answer is listed, Enter picks the highlighted row without waiting,
    * and a later answer for the same query keeps the highlighted option, found by its `id`, rather
    * than moving the highlight to the first row. A call after the promise settled, or from a stale
-   * call, is ignored. A rejection after an early answer keeps its rows and says the error label.
+   * call, is ignored. A rejection after an early answer keeps its rows and says the error label beside the field.
    * The palette does not read a ">" itself in this mode: listing only the commands for a query that
    * starts with ">" is `search`'s job. The "> for commands" hint shows on the empty query while
    * the listed answer holds a command (an option with `run`).
@@ -715,10 +715,13 @@ export function CommandPalette<T extends CommandPaletteOption>(
             ? 0
             : Math.max(0, rows().findIndex((option) => option.id === kept.id))
         }
+        // An Enter that waited picks the first row the reader sees, the Best match one included.
+        // An early answer with no rows leaves it waiting for the next.
+        const first = rows()[0]
         const waiting = pickWhenAnswered.current
-        if (waiting && next.options.length > 0) {
+        if (waiting && first !== undefined) {
           pickWhenAnswered.current = null
-          choose(next.options[0], waiting.alternative)
+          choose(first, waiting.alternative)
         }
       }
       const settle = (next: Remote<T>) => {
@@ -1349,6 +1352,18 @@ export function CommandPalette<T extends CommandPaletteOption>(
               class="shrink-0 text-xs text-muted"
             >
               {labels.loading}
+            </span>
+          )}
+          {
+            /* The same for a search that failed after its early answer, whose rows stay listed. */
+          }
+          {remote.value.status === Status.ERROR && flat.length > 0 && (
+            <span
+              aria-hidden="true"
+              data-e2e={dataE2E === undefined ? undefined : `${dataE2E}-failed`}
+              class="shrink-0 text-xs text-danger"
+            >
+              {labels.error}
             </span>
           )}
           {showHint && (

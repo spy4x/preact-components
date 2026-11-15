@@ -364,6 +364,47 @@ function earlyAnswerSpecs(): Spec[] {
       },
     },
     {
+      name: "CommandPalette early answer: Enter pressed before it picks the first row it lists, " +
+        "the Best match, at once; with no row listed early, Enter waits for the notes",
+      pageId: "ui",
+      run: async (page) => {
+        let palette = await openEarlyPalette(page)
+        await palette.answeredAtLeast(1)
+        const before = await palette.answered()
+        // Typed and picked within the palette's 400 ms pause, before "s" is asked.
+        await page.keyboard.type("s")
+        await page.keyboard.press("Enter")
+        await palette.picked.filter({ hasText: /^Sign out$/ }).waitFor({ timeout: 1200 })
+        const after = await palette.answered()
+        if (after !== before) throw new Error(`the pick came after ${after - before} more answers`)
+        await palette.dialog.waitFor({ state: "hidden" })
+        palette = await openEarlyPalette(page)
+        await palette.rowsAre([...notes, ...commands])
+        // No command holds an "l": the early answer is empty, and Enter waits for the notes.
+        await page.keyboard.type("l")
+        await page.keyboard.press("Enter")
+        await palette.picked.filter({ hasText: /^Grocery list$/ }).waitFor({ timeout: 4000 })
+      },
+    },
+    {
+      name: "CommandPalette early answer: a search that fails after its early answer keeps the " +
+        "listed commands and says the error",
+      pageId: "ui",
+      run: async (page) => {
+        const palette = await openEarlyPalette(page)
+        await palette.rowsAre([...notes, ...commands])
+        await page.keyboard.type("o?")
+        await palette.rowsAre(commands)
+        // Beside the field for the eye, in the status region for a screen reader.
+        await palette.dialog.locator(`[data-e2e="palette-early-failed"]`)
+          .filter({ hasText: "Couldn't search. Try again." }).waitFor({ timeout: 4000 })
+        await palette.dialog.locator(`[data-e2e="palette-early-status"]`)
+          .filter({ hasText: "Couldn't search. Try again." }).waitFor({ state: "attached" })
+        await palette.rowsAre(commands)
+        await noViolationsIn(page, "palette-early")
+      },
+    },
+    {
       name: "CommandPalette early answer: show called by a superseded search, or after its " +
         "answer, lists nothing",
       pageId: "ui",
