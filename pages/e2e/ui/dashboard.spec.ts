@@ -126,15 +126,20 @@ const dashboardSpecs: Spec[] = [
     },
   },
   {
-    name: "LayoutCustomiser: the ✕ named Close in the header closes the dialog",
+    name:
+      "LayoutCustomiser: the ✕ named Close in the header closes the dialog through onClose, so it opens again",
     pageId: "ui",
     run: async (page) => {
       const card = page.locator("#demo-LayoutCustomiser")
-      await card.locator(`[data-e2e="layout-open"]`).click()
+      const open = card.locator(`[data-e2e="layout-open"]`)
+      await open.click()
       const dialog = page.locator(`dialog[data-e2e="layout-customiser"]`)
       await dialog.waitFor()
       await dialog.getByRole("button", { name: "Close", exact: true }).click()
       await dialog.waitFor({ state: "hidden" })
+      // Reopens only when onClose set the caller's `open` back to false.
+      await open.click()
+      await dialog.waitFor()
     },
   },
   {

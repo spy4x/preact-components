@@ -5,7 +5,7 @@ import type { Spec } from "../runner.ts"
 export const specs: readonly Spec[] = [
   {
     name:
-      "PasswordInput: the eye shows the password and back, renames itself, keeps focus, never submits the form, and the card passes axe",
+      "PasswordInput: the eye shows the password and back, renames itself, never submits the form, and the card passes axe",
     pageId: "ui",
     run: async (page) => {
       const card = page.locator("#demo-PasswordInput")
@@ -16,6 +16,8 @@ export const specs: readonly Spec[] = [
       await card.getByRole("button", { name: "Show password", exact: true }).click()
       await input.and(page.locator(`[type="text"]`)).waitFor()
       await toggle.and(page.locator(`[aria-pressed="true"][aria-label="Hide password"]`)).waitFor()
+      // The Enter below goes to the toggle. Chromium focuses a clicked button on its own, so this
+      // does not prove the component's own focus call, which is there for engines that do not.
       await toggle.and(page.locator(":focus")).waitFor()
 
       await page.keyboard.press("Enter")

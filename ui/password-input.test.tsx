@@ -22,7 +22,7 @@ describe("PasswordInput", () => {
     expect(toggleTag(html)).toContain('aria-label="Show password"')
   })
 
-  it("draws the toggle as a type=button sibling of the input, so it never submits the form", () => {
+  it("draws the toggle as a type=button sibling of the input", () => {
     const html = render(<PasswordInput name="password" />)
     expect(toggleTag(html)).toContain('type="button"')
     expect(html).toMatch(/<input[^>]*>\s*<button/)
