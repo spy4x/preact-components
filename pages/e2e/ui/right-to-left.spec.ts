@@ -155,7 +155,8 @@ function rightToLeftSpecs(): Spec[] {
           range.setEnd(text, 1)
           const first = range.getBoundingClientRect()
           return {
-            clipped: span.scrollWidth > span.clientWidth,
+            // Two lines on a phone: the clamp cuts the text below the box, not beside it.
+            clipped: span.scrollHeight > span.clientHeight || span.scrollWidth > span.clientWidth,
             first: { left: first.left, right: first.right },
             box: { left: box.left, right: box.right },
           }

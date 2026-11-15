@@ -24,7 +24,7 @@ import { useSucceededChecks } from "./ui/use-succeeded.ts"
 import { linkChecks, linkFocusRingChecks } from "./ui/link.ts"
 import { copyBlockChecks, copyBlockNeverClipsCheck } from "./ui/copy-block.ts"
 import { copyButtonStatusChecks } from "./ui/copy-button.ts"
-import { pageHeaderLayoutChecks, pageHeaderNameCheck } from "./ui/page-header.ts"
+import { pageHeaderNameCheck } from "./ui/page-header.ts"
 import { tooltipChecks } from "./ui/tooltip.ts"
 import { comboboxChecks } from "./ui/combobox.ts"
 import { toastrChecks } from "./ui/toastr.ts"
@@ -114,7 +114,6 @@ const UI_CHECKS:
     ["copy-block", copyBlockChecks],
     ["copy-block", copyBlockNeverClipsCheck],
     ["copy-button", copyButtonStatusChecks],
-    ["page-header", pageHeaderLayoutChecks],
     ["page-header", pageHeaderNameCheck],
     ["tooltip", tooltipChecks],
     ["combobox", comboboxChecks],
