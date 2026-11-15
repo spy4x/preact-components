@@ -338,15 +338,16 @@ export interface CommandPaletteRemoteProps<T extends CommandPaletteOption>
    * answer is ignored even when the function does not listen to `signal`. A rejection shows the
    * error label. While the next answer loads, the previous results stay listed as they are; past
    * 300 ms the loading label shows beside the field and is announced. Enter pressed
-   * while it loads waits for the answer and picks its first result.
+   * while it loads, before any answer for the query is listed, waits for one and picks its first
+   * row.
    *
    * `show` lists an early answer for the same query at once, such as the commands that match
    * before a server's results arrive; it can be called more than once, and the promise's answer
    * replaces it. Once an early answer is listed, Enter picks the highlighted row without waiting,
    * and a later answer for the same query keeps the highlighted option, found by its `id`, rather
    * than moving the highlight to the first row. A call after the promise settled, or from a stale
-   * call, is ignored. A rejection after an early answer keeps its rows and says the error label beside the field.
-   * The palette does not read a ">" itself in this mode: listing only the commands for a query that
+   * call, is ignored. A rejection after an early answer keeps its rows and shows the error label
+   * beside the field. The palette does not read a ">" itself in this mode: listing only the commands for a query that
    * starts with ">" is `search`'s job. The "> for commands" hint shows on the empty query while
    * the listed answer holds a command (an option with `run`).
    */
