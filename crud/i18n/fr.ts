@@ -8,7 +8,7 @@ export default {
   "AssociationEditor.conflictRemovedMessage": "Cet élément ({entity}) a été retiré plus tôt.",
   "AssociationEditor.deleteErrorLabel": "Suppression impossible",
   "AssociationEditor.deleteLabel": "Supprimer",
-  "AssociationEditor.removedLabel": "Retrait : {ago}",
+  "AssociationEditor.removedLabel": "Retrait : {ago}",
   "AssociationEditor.restoreErrorLabel": "Restauration impossible",
   "AssociationEditor.restoreHint":
     "Restaurez-le pour récupérer l’original au lieu d’en ajouter une copie.",
