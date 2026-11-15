@@ -13,7 +13,9 @@ import { LazyMap } from "./sections/map-leaflet.tsx"
  *
  * @param mapTiles The provider to hand the guide, or none.
  */
-function mapCardTiles(mapTiles?: MapTiles): Array<Pick<LeafletMapProps, "tileUrl" | "attribution">> {
+function mapCardTiles(
+  mapTiles?: MapTiles,
+): Array<Pick<LeafletMapProps, "tileUrl" | "attribution">> {
   const seen: Array<Pick<LeafletMapProps, "tileUrl" | "attribution">> = []
   const previous = options.vnode
   options.vnode = (vnode) => {
