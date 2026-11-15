@@ -3531,7 +3531,7 @@ function CommandPaletteDemo() {
           debounce={400}
           hotkeys={[]}
           dataE2E="palette-early"
-          labels={{ placeholder: "Find a note or a command…" }}
+          labels={{ placeholder: "Notes or commands…" }}
           onSelect={(option) => pickedEarly.value = option.label}
         />
         <Button

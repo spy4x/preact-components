@@ -347,9 +347,10 @@ export interface CommandPaletteRemoteProps<T extends CommandPaletteOption>
    * and a later answer for the same query keeps the highlighted option, found by its `id`, rather
    * than moving the highlight to the first row. A call after the promise settled, or from a stale
    * call, is ignored. A rejection after an early answer keeps its rows and shows the error label
-   * beside the field. The palette does not read a ">" itself in this mode: listing only the commands for a query that
-   * starts with ">" is `search`'s job. The "> for commands" hint shows on the empty query while
-   * the listed answer holds a command (an option with `run`).
+   * beside the field. The palette does not read a ">" itself in this mode: listing only the
+   * commands for a query that starts with ">" is `search`'s job. The "> for commands" hint shows on
+   * the empty query while the listed answer holds a command (an option with `run`) and nothing
+   * shows beside the field.
    */
   search: (
     query: string,
@@ -950,7 +951,11 @@ export function CommandPalette<T extends CommandPaletteOption>(
   const listbox = `${id}-results`
   const crumbId = `${id}-path`
   const hintId = `${id}-hint`
-  const showHint = level === undefined && query.value === "" &&
+  // "Searching…" or the error beside the field takes the hint's place: two quiet labels side by
+  // side read as one phrase and squeeze the field on a phone.
+  const sideLabel = flat.length > 0 &&
+    (remote.value.status === Status.SLOW || remote.value.status === Status.ERROR)
+  const showHint = level === undefined && query.value === "" && !(remoteMode && sideLabel) &&
     (props.search === undefined ? props.options : remote.value.options)
       .some((option) => option.run !== undefined)
   // Keyed by the option's own id, not its row: when an answer puts another option in the

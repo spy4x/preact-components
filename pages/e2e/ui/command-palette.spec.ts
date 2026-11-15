@@ -278,10 +278,16 @@ function earlyAnswerSpecs(): Spec[] {
         await palette.rowsAre(commands)
         const early = await palette.answered()
         if (early !== before) throw new Error(`the commands waited for ${early - before} answers`)
+        // "Searching…" takes the hint's place while the notes load, then the hint comes back.
+        await palette.dialog.locator(`[data-e2e="palette-early-searching"]`).waitFor()
+        const whileSearching = await palette.field.getAttribute("aria-describedby")
+        if (whileSearching !== null) {
+          throw new Error(`while searching, the field is described by ${whileSearching}`)
+        }
+        await palette.rowsAre([...notes, ...commands])
         const hint = await palette.field.getAttribute("aria-describedby")
         const words = hint === null ? "" : await page.locator(`[id="${hint}"]`).textContent()
         if (words !== "> for commands") throw new Error(`the field is described by "${words}"`)
-        await palette.rowsAre([...notes, ...commands])
         await page.keyboard.press("Escape")
         await palette.dialog.waitFor({ state: "hidden" })
         const fruit = await openRemotePalette(page)

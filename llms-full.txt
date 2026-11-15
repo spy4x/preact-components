@@ -7482,7 +7482,7 @@ It takes its results one of two ways, never both:
   the previous results stay listed, so the list does not blink on every keystroke; once the reader
   has waited 300 ms, "Searching…" shows beside the field (or in the list, when it is empty) and
   is announced; the rows neither move nor fade. Enter pressed while a call runs
-  waits for its answer and picks the answer's first result, never a row of the previous query. A
+  waits for its answer and picks the first row it lists, never a row of the previous query. A
   rejection says the search failed.
 - `search(query, signal, show)`: `show(options)` lists an early answer for the same query at once,
   such as the commands that match, before the server's results arrive; the promise's answer then
@@ -7492,7 +7492,7 @@ It takes its results one of two ways, never both:
   may still show for the rest. A `show` after the promise settled, or from a stale call, is
   ignored, and a rejection keeps the early rows, with the error beside the field. The palette does not read ">" in
   this mode: listing only the commands for it is `search`'s job. The "> for commands" hint shows on
-  the empty query whenever the listed answer holds an option with `run`.
+  the empty query whenever the listed answer holds an option with `run`, except while "Searching…" or the error shows beside the field.
 
 An option is `{ id, label, detail?, hint?, group?, aliases? }`, and `onSelect` receives the same
 object, so it can carry whatever the app needs, such as an `href`. Every result row carries how the
