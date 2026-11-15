@@ -2,7 +2,7 @@ import { check, CONTRAST_HELPERS, type Devtools, pointerToCorner } from "../harn
 
 /** One outline badge's label contrast, measured in one palette. */
 interface BadgeContrast {
-  /** The badge's text, which is its colour's name in the catalogue. */
+  /** The badge's text, which is its tone's name in the catalogue. */
   name: string
   /** Against what the badge really sits on (its own fill, when it has one). */
   onBackdrop: number
@@ -27,17 +27,17 @@ interface OutlineBadgeReading {
  * these alone.
  */
 const DARK_OUTLINE_BADGE_COLOURS: Record<string, string> = {
-  red: "oklch(0.704 0.191 22.216)", // red-400
-  orange: "oklch(0.75 0.183 55.934)", // orange-400
-  green: "oklch(0.792 0.209 151.711)", // green-400
-  blue: "oklch(0.707 0.165 254.624)", // blue-400
+  danger: "oklch(0.704 0.191 22.216)", // red-400
+  warning: "oklch(0.75 0.183 55.934)", // orange-400
+  success: "oklch(0.792 0.209 151.711)", // green-400
+  info: "oklch(0.707 0.165 254.624)", // blue-400
 }
 
 /**
  * In both palettes every outline `Badge` label reaches 4.5:1 against what it sits on: the
  * catalogue card behind it, the canvas and the surface (#396 for dark, #463 for light). A badge
- * with its own fill (`purpleNav`) is measured against that fill alone. The dark red, orange, green
- * and blue labels keep their 400 shades. The unpressed `ToggleChips` chip's contrast is a
+ * with its own fill (`primaryStrong`) is measured against that fill alone. The dark danger, warning,
+ * success and info labels keep their red, orange, green and blue 400 shades. The unpressed `ToggleChips` chip's contrast is a
  * Playwright spec in `pages/e2e/ui.spec.ts` since it stopped drawing the grey outline badge.
  *
  * @param devtools The connected session, on a hydrated page.
@@ -119,7 +119,7 @@ export async function outlineBadgeContrastCheck(devtools: Devtools): Promise<voi
     reading.dark.find((badge) => badge.name === name)?.color !== colour
   )
   check(
-    "in the dark palette the red, orange, green and blue outline Badges keep their 400 shades",
+    "in the dark palette the danger, warning, success and info outline Badges keep their 400 shades",
     darkMoved.length === 0,
     reading.dark.map((badge) => `${badge.name} ${badge.color}`).join(", "),
   )

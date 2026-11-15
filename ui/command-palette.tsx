@@ -1241,7 +1241,7 @@ export function CommandPalette<T extends CommandPaletteOption>(
           <TooltipCore
             merge={join}
             key={asLink ? "link" : "button"}
-            label={labels.placeholder}
+            ariaLabel={labels.placeholder}
             content={
               <span class="inline-flex items-center gap-2 whitespace-nowrap">
                 {labels.placeholder}

@@ -41,7 +41,7 @@ directly, so getting it is a short build-script recipe, not a plain `@import`.
 ```tsx
 import { Badge } from "@spy4x/preact-ui/badge"
 
-<Badge text="Active" color="green" />
+<Badge text="Active" tone="success" />
 ```
 
 Every component's own README under the directories below lists its full prop surface.

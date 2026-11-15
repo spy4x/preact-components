@@ -1,11 +1,17 @@
 import { expect } from "@std/expect"
 import { describe, it } from "@std/testing/bdd"
 import { render } from "preact-render-to-string"
-import { Badge, badgeClasses, type BadgeProps } from "./badge.tsx"
+import {
+  Badge,
+  BADGE_TONE_OF_COLOR,
+  badgeClasses,
+  type BadgeColor,
+  type BadgeProps,
+} from "./badge.tsx"
 import { StatusMark } from "./status-mark.tsx"
 
 describe("Badge", () => {
-  it("fills with the purple palette by default", () => {
+  it("fills with the primary tone by default", () => {
     const html = render(<Badge text="paid" />)
 
     expect(html).toMatch(/[" ]bg-selected[" ]/)
@@ -14,22 +20,22 @@ describe("Badge", () => {
   })
 
   it("draws an outline badge's border and text in its light shade, with no fill", () => {
-    const html = render(<Badge text="draft" color="red" type="outline" />)
+    const html = render(<Badge text="draft" tone="danger" variant="outline" />)
 
     expect(html).toContain("border-red-700")
     expect(html).toContain("text-red-700")
     expect(html).not.toMatch(/[" ]bg-red-/)
   })
 
-  it("renders a filled colour by name", () => {
-    const html = render(<Badge text="open" color="green" />)
+  it("renders a filled tone by name", () => {
+    const html = render(<Badge text="open" tone="success" />)
 
     expect(html).toContain("bg-success")
     expect(html).toContain("text-(--color-success-foreground)")
   })
 
-  it("draws the filled gray badge in the foreground colour, which the dark track needs", () => {
-    const html = render(<Badge text="draft" color="gray" />)
+  it("draws the filled neutral badge in the foreground colour, which the dark track needs", () => {
+    const html = render(<Badge text="draft" tone="neutral" />)
 
     expect(html).toContain("bg-track")
     expect(html).toContain("text-foreground")
@@ -62,14 +68,14 @@ describe("Badge", () => {
   })
 
   it("renders a text badge as a span carrying badgeClasses and nothing else", () => {
-    expect(render(<Badge text="x" color="gray" />)).toBe(
-      `<span class="${badgeClasses("gray")}">x</span>`,
+    expect(render(<Badge text="x" tone="neutral" />)).toBe(
+      `<span class="${badgeClasses("neutral")}">x</span>`,
     )
   })
 
   it("holds a StatusMark and a link as children, in the badge's own classes", () => {
     const html = render(
-      <Badge color="gray">
+      <Badge tone="neutral">
         <StatusMark status="ready" label="Passing" />
         <a href="/ci">CI</a>
       </Badge>,
@@ -105,7 +111,7 @@ describe("Badge", () => {
 
   it("renders the whole badge as a link with a focus ring when given href", () => {
     const html = render(
-      <Badge href="https://ci.example.com" color="gray">
+      <Badge href="https://ci.example.com" tone="neutral">
         <StatusMark status="ready" label="Passing" />
       </Badge>,
     )
@@ -120,7 +126,7 @@ describe("Badge", () => {
 
   it("refuses, as a type error, a badge with neither text nor children or with both", () => {
     // @ts-expect-error: a badge needs a text label or element content
-    const empty = <Badge color="gray" />
+    const empty = <Badge tone="neutral" />
     // @ts-expect-error: a text label and element content at once
     const both = <Badge text="x">y</Badge>
 
@@ -142,10 +148,50 @@ describe("Badge", () => {
   })
 })
 
+describe("Badge's deprecated color and type", () => {
+  it("draws every old colour name as the tone it maps to", () => {
+    for (const [color, tone] of Object.entries(BADGE_TONE_OF_COLOR)) {
+      for (const variant of ["filled", "outline"] as const) {
+        expect(render(<Badge text="x" color={color as BadgeColor} type={variant} />))
+          .toBe(render(<Badge text="x" tone={tone} variant={variant} />))
+      }
+    }
+  })
+
+  it("maps each old colour to the tone that keeps its look", () => {
+    expect(BADGE_TONE_OF_COLOR).toEqual({
+      red: "danger",
+      orange: "warning",
+      green: "success",
+      gray: "neutral",
+      blue: "info",
+      purple: "primary",
+      purpleNav: "primaryStrong",
+    })
+    expect(badgeClasses("info")).toContain("bg-blue-600")
+    expect(badgeClasses("danger")).toContain("bg-danger-fill")
+  })
+
+  it("lets tone and variant win over color and type", () => {
+    expect(render(<Badge text="x" tone="danger" color="green" variant="filled" type="outline" />))
+      .toBe(render(<Badge text="x" tone="danger" />))
+  })
+
+  it("still takes an old colour name in badgeClasses", () => {
+    expect(badgeClasses("purpleNav", "outline")).toBe(badgeClasses("primaryStrong", "outline"))
+    expect(badgeClasses("red")).toBe(badgeClasses("danger"))
+  })
+
+  it("draws primaryStrong, the old purpleNav, the same in both variants", () => {
+    expect(badgeClasses("primaryStrong")).toBe(badgeClasses("primaryStrong", "outline"))
+    expect(badgeClasses("primaryStrong")).toContain("bg-accent-900")
+  })
+})
+
 describe("badgeClasses", () => {
   it("returns the same classes Badge renders", () => {
-    const html = render(<Badge text="open" color="green" type="outline" />)
+    const html = render(<Badge text="open" tone="success" variant="outline" />)
 
-    expect(html).toContain(`class="${badgeClasses("green", "outline")}"`)
+    expect(html).toContain(`class="${badgeClasses("success", "outline")}"`)
   })
 })
