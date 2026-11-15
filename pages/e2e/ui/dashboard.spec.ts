@@ -46,12 +46,15 @@ const dashboardSpecs: Spec[] = [
           const box = el.closest("[data-e2e]") as HTMLElement
           const boxStyle = getComputedStyle(box)
           const outer = box.getBoundingClientRect()
-          const inner = el.getBoundingClientRect()
+          // The text's own extent, not the paragraph's box, which is always the card's width.
+          const range = document.createRange()
+          range.selectNodeContents(el)
+          const inner = range.getBoundingClientRect()
           const rem = parseFloat(getComputedStyle(document.documentElement).fontSize)
           return {
             fontSize: parseFloat(style.fontSize),
             text3xl: parseFloat(style.getPropertyValue("--text-3xl")) * rem,
-            lines: Math.round(inner.height / parseFloat(style.lineHeight)),
+            lines: Math.round(el.getBoundingClientRect().height / parseFloat(style.lineHeight)),
             overflow: el.scrollWidth - el.clientWidth,
             cardWidth: outer.width / rem,
             inside: inner.left >= outer.left + parseFloat(boxStyle.paddingLeft) - 0.5 &&
