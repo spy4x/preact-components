@@ -257,6 +257,12 @@ async function openEarlyPalette(page: Page) {
         count,
       ),
     picked: card.locator(`[data-e2e="palette-early-picked"]`),
+    /**
+     * Stops the page's clock until `page.clock.runFor` moves it, so the palette's 400 ms pause
+     * and the notes' 1.5 s wait pass only then: on a loaded host the key presses sent from here
+     * can outlast the pause. `page.clock.resume()` lets it run again.
+     */
+    pauseClock: async () => page.clock.pauseAt(await page.evaluate(() => Date.now() + 1_000)),
   }
 }
 
@@ -326,10 +332,12 @@ function earlyAnswerSpecs(): Spec[] {
       run: async (page) => {
         const palette = await openEarlyPalette(page)
         await palette.rowsAre([...notes, ...commands])
+        await palette.pauseClock()
         // The palette waits 400 ms before it asks; the arrows land on the old rows meanwhile.
         await page.keyboard.type("o")
         for (let step = 0; step < 5; step++) await page.keyboard.press("ArrowDown")
         await palette.highlightIs("New note", "on the old rows")
+        await page.clock.runFor(400)
         await palette.rowsAre(["Open settings", "New note", "Sign out"])
         await palette.highlightIs("Open settings", 'once the commands for "o" are listed')
       },
@@ -356,16 +364,16 @@ function earlyAnswerSpecs(): Spec[] {
       pageId: "ui",
       run: async (page) => {
         const palette = await openEarlyPalette(page)
-        await palette.answeredAtLeast(1)
-        const before = await palette.answered()
+        await palette.rowsAre([...notes, ...commands])
+        // Stopped past the palette's pause: the notes for "s" cannot answer, only the commands.
+        await palette.pauseClock()
         await page.keyboard.type("s")
+        await page.clock.runFor(400)
         // "Sign out" is the best match.
         await palette.rowsAre(["Sign out", "Open settings"])
         await page.keyboard.press("ArrowDown")
         await page.keyboard.press("Enter")
-        await palette.picked.filter({ hasText: /^Open settings$/ }).waitFor({ timeout: 1000 })
-        const after = await palette.answered()
-        if (after !== before) throw new Error(`the pick came after ${after - before} more answers`)
+        await palette.picked.filter({ hasText: /^Open settings$/ }).waitFor({ timeout: 5000 })
         await palette.dialog.waitFor({ state: "hidden" })
       },
     },
@@ -375,21 +383,25 @@ function earlyAnswerSpecs(): Spec[] {
       pageId: "ui",
       run: async (page) => {
         let palette = await openEarlyPalette(page)
-        await palette.answeredAtLeast(1)
-        const before = await palette.answered()
-        // Typed and picked within the palette's 400 ms pause, before "s" is asked.
+        await palette.rowsAre([...notes, ...commands])
+        // Typed and picked within the palette's 400 ms pause, before "s" is asked. The clock then
+        // passes the pause only: the notes for "s" cannot answer, only the commands.
+        await palette.pauseClock()
         await page.keyboard.type("s")
         await page.keyboard.press("Enter")
-        await palette.picked.filter({ hasText: /^Sign out$/ }).waitFor({ timeout: 1200 })
-        const after = await palette.answered()
-        if (after !== before) throw new Error(`the pick came after ${after - before} more answers`)
+        await page.clock.runFor(400)
+        await palette.picked.filter({ hasText: /^Sign out$/ }).waitFor({ timeout: 5000 })
         await palette.dialog.waitFor({ state: "hidden" })
+        await page.clock.resume()
         palette = await openEarlyPalette(page)
         await palette.rowsAre([...notes, ...commands])
         // No command holds an "l": the early answer is empty, and Enter waits for the notes.
+        await palette.pauseClock()
         await page.keyboard.type("l")
         await page.keyboard.press("Enter")
-        await palette.picked.filter({ hasText: /^Grocery list$/ }).waitFor({ timeout: 4000 })
+        // The pause, then the notes' 1.5 s.
+        await page.clock.runFor(1_900)
+        await palette.picked.filter({ hasText: /^Grocery list$/ }).waitFor({ timeout: 5000 })
       },
     },
     {
