@@ -342,6 +342,14 @@ function highlightCss(count: number): string {
 }
 
 /**
+ * Scrolls a focused node's whole box into the frame. Chromium scrolls on focus only when the box is
+ * fully out of view, so one barely inside the frame would stay almost hidden. No `behavior`: the
+ * frame's own `scroll-behavior` decides, so reduced motion is never overridden.
+ */
+const reveal = (event: JSX.TargetedFocusEvent<Element>) =>
+  event.currentTarget.scrollIntoView({ block: "nearest", inline: "nearest" })
+
+/**
  * A server-rendered SVG graph of boxes joined by arrows, laid out left to right by
  * {@link layoutGraph}: what comes first on the left, what waits on it to the right.
  *
@@ -351,7 +359,8 @@ function highlightCss(count: number): string {
  * script. A node with `href` is a link named by its label, badge and description, and Tab moves
  * through the links column by column. A list only screen readers read follows the graph and says
  * what each node depends on and what needs it. The frame scrolls sideways inside its parent and
- * never widens the page; it is a Tab stop, so a keyboard can scroll it too.
+ * never widens the page; it is a Tab stop, so a keyboard can scroll it too. Once hydrated, a
+ * focused link scrolls its whole box into the frame.
  *
  * @param props The nodes, edges and words, see {@link DependencyGraphProps}.
  * @returns The scrolling frame with the graph and the list, or the empty state.
@@ -524,6 +533,7 @@ export function DependencyGraph({
                   href={node.href}
                   aria-label={full}
                   class="group outline-hidden"
+                  onFocus={reveal}
                 >
                   {body}
                 </a>

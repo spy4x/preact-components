@@ -380,6 +380,49 @@ function dependencyGraphSpecs(): Spec[] {
         return `frame scrolled ${read.moved} of ${read.room} px, page 0 px`
       },
     },
+    {
+      name: "DependencyGraph: each Tab stop shows the whole focused box inside the frame",
+      pageId: "charts",
+      run: async (page) => {
+        const said: string[] = []
+        for (const width of [390, 1440]) {
+          await page.setViewportSize({ width, height: 900 })
+          const frame = page.locator(`${GRAPH} [data-graph]`)
+          await frame.evaluate((node) => node.scrollLeft = 0)
+          await frame.focus()
+          const links = await page.locator(`${GRAPH} a[data-node]`).count()
+          if (links === 0) throw new Error("the graph has no link to tab to")
+          for (let step = 0; step < links; step++) {
+            await page.keyboard.press("Tab")
+            // A smooth scroll may still be moving: wait for the box to settle inside the frame.
+            const settled = await page.waitForFunction(
+              () => {
+                const link = document.activeElement
+                const frame = link?.closest("[data-graph]")?.getBoundingClientRect()
+                const box = link?.querySelector("[title]")?.getBoundingClientRect()
+                return frame !== undefined && box !== undefined &&
+                  box.left >= frame.left - 0.5 && box.right <= frame.right + 0.5 &&
+                  box.top >= frame.top - 0.5 && box.bottom <= frame.bottom + 0.5
+              },
+              undefined,
+              { timeout: 2000 },
+            ).then(() => true, () => false)
+            if (!settled) {
+              const miss = await page.evaluate(() => {
+                const link = document.activeElement
+                const frame = link?.closest("[data-graph]")?.getBoundingClientRect()
+                const box = link?.querySelector("[title]")?.getBoundingClientRect()
+                const name = link?.getAttribute("aria-label")?.split(",")[0]
+                return `${name}: box ${box?.left}–${box?.right} px, frame ${frame?.left}–${frame?.right} px`
+              })
+              throw new Error(`${width} px, ${miss}`)
+            }
+          }
+          said.push(`${width} px: ${links} boxes in view`)
+        }
+        return said.join("; ")
+      },
+    },
     scrollRegionSpec({
       what: "DependencyGraph",
       pageId: "charts",
