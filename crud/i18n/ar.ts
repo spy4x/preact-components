@@ -8,7 +8,7 @@ export default {
   "AssociationEditor.conflictRemovedMessage": "سبقت إزالة {entity} بهذه القيمة.",
   "AssociationEditor.deleteErrorLabel": "تعذّر الحذف",
   "AssociationEditor.deleteLabel": "حذف",
-  "AssociationEditor.removedLabel": "أُزيل {ago}",
+  "AssociationEditor.removedLabel": "تمت الإزالة {ago}",
   "AssociationEditor.restoreErrorLabel": "تعذّرت الاستعادة",
   "AssociationEditor.restoreHint": "استعد الأصل بدل إضافة نسخة منه.",
   "AssociationEditor.restoreLabel": "استعادة",
