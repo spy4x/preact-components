@@ -53,12 +53,10 @@ steps:
       - deno task --cwd pages build
     depends_on: [check]
 
-  # The parts run two at a time, in three pairs balanced by their usual time: `verify-ui` with
-  # `verify-rest`, then `verify-e2e-1` with `verify-e2e-2`, then `verify-e2e-3` with
-  # `verify-e2e-4`. Woodpecker runs `depends_on` as levels: a pair starts only once the whole pair
-  # before it has finished, and a red part skips every later pair. Two at a time, not six: each
-  # part already drives four browser contexts, and the agent host runs other pipelines too, so
-  # more browsers at once push the heavy checks past their limits (#1052).
+  # All six parts start together once `pages-build` is done, so a green run waits for the slowest
+  # part, not for three pairs in a row (#1308). They ran two at a time before (#1052), while every
+  # push to `main` in the other repositories repeated its full browser run on the same host; those
+  # runs moved to a nightly cron (spy4x/ringmaster#294), which freed the CPU for six at once.
   # `e2e` runs as four shards (#975): as one step it ran past its 900-second ceiling whenever other
   # pipelines shared the agent. `pages/e2e/shard.test.ts` fails when a shard is missing here or
   # listed twice. `CHROME_PATH` names the image's Chromium, so the browser `verify` drives is the
@@ -83,7 +81,7 @@ steps:
     commands:
       - export PATH="/woodpecker/bin:$${PATH}" CHROME_PATH="$$(echo /ms-playwright/chromium-*/chrome-linux64/chrome)"
       - deno task --cwd pages verify --only=e2e --e2e-shard=1/4
-    depends_on: [verify-ui, verify-rest]
+    depends_on: [pages-build]
 
   verify-e2e-2:
     image: mcr.microsoft.com/playwright:v1.64.0-noble@sha256:06a9939e57531807f8d5fd76ce44b53165ffb7d7501d87ab10e285c20b1e971f
@@ -94,7 +92,7 @@ steps:
     commands:
       - export PATH="/woodpecker/bin:$${PATH}" CHROME_PATH="$$(echo /ms-playwright/chromium-*/chrome-linux64/chrome)"
       - deno task --cwd pages verify --only=e2e --e2e-shard=2/4
-    depends_on: [verify-ui, verify-rest]
+    depends_on: [pages-build]
 
   verify-e2e-3:
     image: mcr.microsoft.com/playwright:v1.64.0-noble@sha256:06a9939e57531807f8d5fd76ce44b53165ffb7d7501d87ab10e285c20b1e971f
@@ -105,7 +103,7 @@ steps:
     commands:
       - export PATH="/woodpecker/bin:$${PATH}" CHROME_PATH="$$(echo /ms-playwright/chromium-*/chrome-linux64/chrome)"
       - deno task --cwd pages verify --only=e2e --e2e-shard=3/4
-    depends_on: [verify-e2e-1, verify-e2e-2]
+    depends_on: [pages-build]
 
   verify-e2e-4:
     image: mcr.microsoft.com/playwright:v1.64.0-noble@sha256:06a9939e57531807f8d5fd76ce44b53165ffb7d7501d87ab10e285c20b1e971f
@@ -116,7 +114,7 @@ steps:
     commands:
       - export PATH="/woodpecker/bin:$${PATH}" CHROME_PATH="$$(echo /ms-playwright/chromium-*/chrome-linux64/chrome)"
       - deno task --cwd pages verify --only=e2e --e2e-shard=4/4
-    depends_on: [verify-e2e-1, verify-e2e-2]
+    depends_on: [pages-build]
 
   verify-rest:
     image: mcr.microsoft.com/playwright:v1.64.0-noble@sha256:06a9939e57531807f8d5fd76ce44b53165ffb7d7501d87ab10e285c20b1e971f
