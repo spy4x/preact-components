@@ -1,6 +1,9 @@
 /** The `charts` catalog in ja: `createTranslator({ catalogs: [{ source: en, translation: this }] })`. */
 export default {
   "Bars.emptyLabel": "データがありません",
+  "DependencyGraph.dependsOn": "{names} に依存",
+  "DependencyGraph.emptyLabel": "データがありません",
+  "DependencyGraph.neededBy": "{names} の前提",
   "DonutChart.chartLabel": {
     "other": "{count}個のセグメントがあるドーナツグラフ",
   },

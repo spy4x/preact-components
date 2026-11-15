@@ -6,6 +6,7 @@
     "./bars": "./bars.tsx",
     "./change": "./change.ts",
     "./colors": "./colors.ts",
+    "./dependency-graph": "./dependency-graph.tsx",
     "./donut-chart": "./donut-chart.tsx",
     "./dot-plot": "./dot-plot.tsx",
     "./kpi": "./kpi.tsx",

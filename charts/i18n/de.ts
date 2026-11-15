@@ -1,6 +1,9 @@
 /** The `charts` catalog in de: `createTranslator({ catalogs: [{ source: en, translation: this }] })`. */
 export default {
   "Bars.emptyLabel": "Keine Daten",
+  "DependencyGraph.dependsOn": "hängt ab von {names}",
+  "DependencyGraph.emptyLabel": "Keine Daten",
+  "DependencyGraph.neededBy": "Voraussetzung für {names}",
   "DonutChart.chartLabel": {
     "one": "Ringdiagramm mit {count} Segment",
     "other": "Ringdiagramm mit {count} Segmenten",

@@ -1,6 +1,8 @@
 /** Playwright specs for `charts/` components, on the guide's charts page. */
+import type { Page } from "playwright-core"
 import { axeCleanIn } from "./axe-clean.ts"
 import type { Spec } from "./runner.ts"
+import { scrollRegionSpec } from "./scroll-region.ts"
 
 /** The left and right edge of one X label, in pixels, with its text. */
 interface LabelBox {
@@ -251,6 +253,189 @@ function statsPieceSpecs(): Spec[] {
   ]
 }
 
+/** The guide's dependency graph of a website launch. */
+const GRAPH = `[data-e2e="dependency-graph"]`
+
+/**
+ * The graph's specs: Tab order by column, the chain highlight by focus and by hover with no script
+ * of its own, sideways scroll inside the frame at 390 px, and axe in both palettes.
+ */
+function dependencyGraphSpecs(): Spec[] {
+  /** Waits until each box, found by the start of its `title`, has the given opacity. */
+  const opacities = (page: Page, wanted: Record<string, string>) =>
+    page.waitForFunction(({ graph, wanted }) => {
+      const nodes = [...document.querySelectorAll(`${graph} [data-node]`)]
+      return Object.entries(wanted).every(([title, opacity]) => {
+        const node = nodes.find((node) =>
+          node.querySelector("[title]")?.getAttribute("title")?.startsWith(title)
+        )
+        return node !== undefined && getComputedStyle(node).opacity === opacity
+      })
+    }, { graph: GRAPH, wanted })
+
+  const axeSpec = (colorScheme: "light" | "dark"): Spec => ({
+    name:
+      `DependencyGraph: axe finds no violation at 390 and 1440 px in the ${colorScheme} palette`,
+    pageId: "charts",
+    colorScheme,
+    run: async (page) => {
+      const said: string[] = []
+      for (const width of [1440, 390]) {
+        await page.setViewportSize({ width, height: 900 })
+        await page.locator(GRAPH).scrollIntoViewIfNeeded()
+        said.push(`${width} px: ${await axeCleanIn(page, GRAPH)}`)
+      }
+      return said.join("; ")
+    },
+  })
+
+  return [
+    {
+      name: "DependencyGraph: Tab moves from the frame through the links column by column",
+      pageId: "charts",
+      run: async (page) => {
+        await page.setViewportSize({ width: 1440, height: 900 })
+        await page.locator(GRAPH).getByRole("group", { name: "Website launch" }).focus()
+        const order: string[] = []
+        for (let step = 0; step < 5; step++) {
+          await page.keyboard.press("Tab")
+          order.push(
+            await page.evaluate(() => document.activeElement?.getAttribute("aria-label") ?? ""),
+          )
+        }
+        const expected = [
+          "Write the brief, Done",
+          "Design the pages, 2 of 5 pages",
+          "Write the copy, Late",
+          "Build the site, Holds back 2, Everything after it waits on this step",
+          "Launch, #4",
+        ]
+        if (order.join(" | ") !== expected.join(" | ")) throw new Error(order.join(" | "))
+        return order.map((name) => name.split(",")[0]).join(" → ")
+      },
+    },
+    {
+      name: "DependencyGraph: focusing a link keeps its chain and dims an unrelated box, with CSS",
+      pageId: "charts",
+      run: async (page) => {
+        await page.setViewportSize({ width: 1440, height: 900 })
+        const copy = page.locator(GRAPH).getByRole("link", { name: "Write the copy, Late" })
+        // From the link before it, so the focus is a keyboard one and `:focus-visible` holds.
+        await page.locator(GRAPH).getByRole("link", { name: "Design the pages, 2 of 5 pages" })
+          .focus()
+        await page.keyboard.press("Tab")
+        await copy.and(page.locator(":focus")).waitFor()
+        await opacities(page, {
+          "Write the copy": "1",
+          "Write the brief": "1",
+          "Build the site": "1",
+          "Announce it": "1",
+          "Design the pages": "0.2",
+        })
+        const ring = await copy.locator("[title]").evaluate((box) =>
+          getComputedStyle(box).boxShadow
+        )
+        if (ring === "none") throw new Error("the focused box draws no ring")
+        return "chain kept, Design the pages dimmed, ring drawn"
+      },
+    },
+    {
+      name: "DependencyGraph: hovering a box without a link keeps its chain and dims the rest",
+      pageId: "charts",
+      run: async (page) => {
+        await page.setViewportSize({ width: 1440, height: 900 })
+        await page.locator(`${GRAPH} g[data-node]:has([title^="Legal review"])`).hover()
+        await opacities(page, {
+          "Legal review": "1",
+          "Write the copy": "1",
+          "Launch": "1",
+          "Build the site": "0.2",
+          "Design the pages": "0.2",
+        })
+        return "chain kept, Build the site and Design the pages dimmed"
+      },
+    },
+    {
+      name: "DependencyGraph: at 390 px the frame scrolls sideways and the page does not",
+      pageId: "charts",
+      run: async (page) => {
+        await page.setViewportSize({ width: 390, height: 844 })
+        const frame = page.locator(`${GRAPH} [data-graph]`)
+        await frame.scrollIntoViewIfNeeded()
+        // The guide's card clips what overflows it, so the page alone would stay put even with no
+        // scrolling frame: the frame must also move when it is scrolled.
+        const read = await frame.evaluate((node) => {
+          node.scrollLeft = node.scrollWidth
+          return {
+            room: node.scrollWidth - node.clientWidth,
+            moved: node.scrollLeft,
+            sideways: document.documentElement.scrollWidth - globalThis.innerWidth,
+          }
+        })
+        if (read.room <= 0 || read.moved <= 0 || read.sideways > 0) {
+          throw new Error(
+            `frame room ${read.room} px, scrolled ${read.moved} px, page sideways ${read.sideways} px`,
+          )
+        }
+        return `frame scrolled ${read.moved} of ${read.room} px, page 0 px`
+      },
+    },
+    {
+      name: "DependencyGraph: each Tab stop shows the whole focused box inside the frame",
+      pageId: "charts",
+      run: async (page) => {
+        const said: string[] = []
+        for (const width of [390, 1440]) {
+          await page.setViewportSize({ width, height: 900 })
+          const frame = page.locator(`${GRAPH} [data-graph]`)
+          await frame.evaluate((node) => node.scrollLeft = 0)
+          await frame.focus()
+          const links = await page.locator(`${GRAPH} a[data-node]`).count()
+          if (links === 0) throw new Error("the graph has no link to tab to")
+          for (let step = 0; step < links; step++) {
+            await page.keyboard.press("Tab")
+            // A smooth scroll may still be moving: wait for the box to settle inside the frame.
+            const settled = await page.waitForFunction(
+              () => {
+                const link = document.activeElement
+                const frame = link?.closest("[data-graph]")?.getBoundingClientRect()
+                const box = link?.querySelector("[title]")?.getBoundingClientRect()
+                return frame !== undefined && box !== undefined &&
+                  box.left >= frame.left - 0.5 && box.right <= frame.right + 0.5 &&
+                  box.top >= frame.top - 0.5 && box.bottom <= frame.bottom + 0.5
+              },
+              undefined,
+              { timeout: 2000 },
+            ).then(() => true, () => false)
+            if (!settled) {
+              const miss = await page.evaluate(() => {
+                const link = document.activeElement
+                const frame = link?.closest("[data-graph]")?.getBoundingClientRect()
+                const box = link?.querySelector("[title]")?.getBoundingClientRect()
+                const name = link?.getAttribute("aria-label")?.split(",")[0]
+                return `${name}: box ${box?.left}–${box?.right} px, frame ${frame?.left}–${frame?.right} px`
+              })
+              throw new Error(`${width} px, ${miss}`)
+            }
+          }
+          said.push(`${width} px: ${links} boxes in view`)
+        }
+        return said.join("; ")
+      },
+    },
+    scrollRegionSpec({
+      what: "DependencyGraph",
+      pageId: "charts",
+      selector: `${GRAPH} [data-graph]`,
+      name: "Website launch",
+      key: "ArrowRight",
+      width: 390,
+    }),
+    axeSpec("light"),
+    axeSpec("dark"),
+  ]
+}
+
 export const specs: readonly Spec[] = [
   labelsApartSpec(320),
   labelsApartSpec(1280),
@@ -259,4 +444,5 @@ export const specs: readonly Spec[] = [
   deferredChartSpec(),
   hiddenTableSpec(),
   ...statsPieceSpecs(),
+  ...dependencyGraphSpecs(),
 ]

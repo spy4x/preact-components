@@ -3,7 +3,8 @@
  * browser, plus the axis and loading helpers behind them.
  *
  * `LineChart`, `Bars`, `RankedBars`, `DotPlot`, `DonutChart` and `Kpi` render plain markup with no
- * JavaScript.
+ * JavaScript. `DependencyGraph` draws boxes joined by arrows as SVG, laid out by `layoutGraph`, and
+ * highlights a node's chain on hover and focus with CSS alone.
  * `LineChart` and `DonutChart` add a tooltip, by pointer and by keyboard, once they run in a
  * browser. Nothing in the package imports a charting library, and nothing reads an application
  * store or a global signal: colours and data arrive through props.
@@ -97,3 +98,13 @@ export {
   useInView,
 } from "./use-in-view.ts"
 export { TIME_FRAMES, type TimeFrame, type TimeSeriesPoint } from "./time-series.ts"
+export {
+  DependencyGraph,
+  type DependencyGraphProps,
+  type GraphEdge,
+  type GraphLayout,
+  type GraphNode,
+  layoutGraph,
+  type PlacedEdge,
+  type PlacedNode,
+} from "./dependency-graph.tsx"
