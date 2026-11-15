@@ -2334,7 +2334,8 @@ it opens. A site supplies only its index and its commands.
 - **Loading.** The index is fetched when the pointer reaches the trigger, when it takes focus, and
   when the palette opens, then kept. A failed fetch shows "Search couldn't load. Check your
   connection and type again.", and the next keystroke fetches again. Each query lists at most ten
-  entries, then the `commands` it matches; an empty query lists every command.
+  entries, then the `commands` it matches; an empty query lists every command, and a query
+  starting with ">" lists only the commands, as the "> for commands" hint beside the field says.
 - **Opening a result.** An entry opens with `location.assign`, or in a new tab on the palette's
   alternative (Ctrl/⌘+Enter, a Ctrl/⌘-click, a middle click). An entry that is a heading on the
   current page sets the hash and focuses the heading (`tabindex="-1"`), so the `:target` tint

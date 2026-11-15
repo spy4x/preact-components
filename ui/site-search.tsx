@@ -193,12 +193,17 @@ export function SiteSearch(props: SiteSearchProps): JSX.Element {
   const search = async (typed: string, signal: AbortSignal): Promise<SiteSearchOption[]> => {
     const text = typed.trim()
     query.value = text
-    let rows: SiteSearchOption[] = matchOptions(commandRows, text)
+    // A query starting with ">" lists only the commands, as the palette's "> for commands" says.
+    const commandsOnly = text.startsWith(">")
+    let rows: SiteSearchOption[] = matchOptions(
+      commandRows,
+      commandsOnly ? text.slice(1).trim() : text,
+    )
     let correction: Session["correction"]
     if (text === "") {
       // Opening the palette fetches the index; the commands show at once.
       load().catch(() => {})
-    } else {
+    } else if (!commandsOnly) {
       const hits = searchSite(await load(), text, RESULT_ROWS, location.href)
       correction = hits.correction
       rows = [
