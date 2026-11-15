@@ -239,15 +239,51 @@ export interface WidgetStatProps {
 }
 
 /**
+ * The value's size steps, by its estimated width: the most character units the step takes (a
+ * separator such as "," counts half), and the size at each width of the stat's box. A unit is taken
+ * as 0.6 em wide, so a step switches up once the box holds `units × 0.6 × size`: "₫1,234,567,890"
+ * (12.5 units) draws at `text-base` in a 10 rem card, `text-3xl` from a 14.75 rem box. Class names
+ * stay literal so Tailwind's scan finds them.
+ */
+const VALUE_SIZES: readonly { units: number; class: string }[] = [
+  { units: 4, class: "text-3xl" },
+  { units: 7, class: "text-xl @min-[6.5rem]:text-2xl @min-[8rem]:text-3xl" },
+  {
+    units: 10,
+    class: "text-lg @min-[7.5rem]:text-xl @min-[9rem]:text-2xl @min-[11.25rem]:text-3xl",
+  },
+  {
+    units: 13,
+    class:
+      "text-base @min-[8.875rem]:text-lg @min-[9.75rem]:text-xl @min-[11.75rem]:text-2xl @min-[14.75rem]:text-3xl",
+  },
+]
+
+/** The size classes for a value of this text: the first step of {@link VALUE_SIZES} it fits. */
+function valueSize(text: string): string {
+  const units = [...text].reduce((sum, char) => sum + (/[\s,.'’]/.test(char) ? 0.5 : 1), 0)
+  return VALUE_SIZES.find((step) => units <= step.units)?.class ?? "text-base"
+}
+
+/**
  * A stat widget's body: one large number in tabular figures, then muted lines in the text colour,
  * never coloured as good or bad.
+ *
+ * The number never runs out of its card and is never cut or shortened: it steps down from
+ * `text-3xl` to `text-base` by its length and its card's width (a container query), and a value
+ * too long even for `text-base` wraps rather than overflowing.
  *
  * @param props See {@link WidgetStatProps}.
  */
 export function WidgetStat({ value, valueLabel, lines = [] }: WidgetStatProps): JSX.Element {
   return (
-    <div class="flex flex-col gap-1">
-      <p class="text-3xl font-semibold tabular-nums text-foreground" aria-label={valueLabel}>
+    <div class="@container flex flex-col gap-1">
+      <p
+        class={`font-semibold tabular-nums text-foreground wrap-anywhere ${
+          valueSize(String(value))
+        }`}
+        aria-label={valueLabel}
+      >
         {value}
       </p>
       {lines.map((line, index) => <p key={index} class="text-sm text-muted">{line}</p>)}

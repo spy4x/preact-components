@@ -183,7 +183,7 @@ export const dashboardDemos = {
   },
   WidgetStat: {
     summary:
-      "A stat widget's body: one large number in tabular figures and muted lines under it, never coloured as good or bad.",
+      "A stat widget's body: one large number in tabular figures that steps down in size to fit its card, never cut or shortened, and muted lines under it, never coloured as good or bad.",
     wide: false,
     props: [
       { name: "value", type: "string | number", description: "The number, already formatted." },
@@ -195,7 +195,32 @@ export const dashboardDemos = {
     ],
     snippet: `<WidgetStat value="1.2M" valueLabel="1,234,567" lines={["In the group now"]} />`,
     render: () => (
-      <WidgetStat value={9} lines={["Added or edited in this range", "−2 vs previous 30 days"]} />
+      <div class="flex flex-col gap-4">
+        <div data-e2e="widget-stat-short">
+          <WidgetStat
+            value={9}
+            lines={["Added or edited in this range", "−2 vs previous 30 days"]}
+          />
+        </div>
+        <WidgetCard
+          title="Balance"
+          status="ready"
+          loadingLabel="Loading the balance"
+          class="w-40"
+          dataE2E="widget-stat-long"
+        >
+          <WidgetStat value="₫1,234,567,890" lines={["In a 10 rem card"]} />
+        </WidgetCard>
+        <WidgetCard
+          title="Balance"
+          status="ready"
+          loadingLabel="Loading the balance"
+          class="w-72"
+          dataE2E="widget-stat-long-wide"
+        >
+          <WidgetStat value="₫1,234,567,890" lines={["In an 18 rem card"]} />
+        </WidgetCard>
+      </div>
     ),
   },
   DashboardGrid: {

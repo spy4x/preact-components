@@ -1,3 +1,4 @@
+import { AxeBuilder } from "@axe-core/playwright"
 import type { Spec } from "../runner.ts"
 
 /** Specs of the dashboard cards: `WidgetCard`, `LayoutCustomiser`, and the picker's preset. */
@@ -25,6 +26,80 @@ const dashboardSpecs: Spec[] = [
       await widget.and(page.locator(":focus")).waitFor()
       await widget.and(page.locator(`[data-widget-status="ready"]`)).waitFor()
       await widget.and(page.locator(":focus")).waitFor()
+    },
+  },
+  {
+    name:
+      "WidgetStat: a long value fits a 10 rem card on one line, is text-3xl in a wide card, a short value is text-3xl, a value too long for every step wraps inside its card, and the card passes axe",
+    pageId: "ui",
+    run: async (page) => {
+      const card = page.locator("#demo-WidgetStat")
+      const short = card.locator(`[data-e2e="widget-stat-short"] p.tabular-nums`)
+      const narrow = card.locator(`[data-e2e="widget-stat-long"]`)
+      const wide = card.locator(`[data-e2e="widget-stat-long-wide"]`)
+      await short.waitFor()
+
+      /** The value's font size, its line count, and how it sits in its card's content box. */
+      const measure = (value: typeof short) =>
+        value.evaluate((el: HTMLElement) => {
+          const style = getComputedStyle(el)
+          const box = el.closest("[data-e2e]") as HTMLElement
+          const boxStyle = getComputedStyle(box)
+          const outer = box.getBoundingClientRect()
+          // The text's own extent, not the paragraph's box, which is always the card's width.
+          const range = document.createRange()
+          range.selectNodeContents(el)
+          const inner = range.getBoundingClientRect()
+          const rem = parseFloat(getComputedStyle(document.documentElement).fontSize)
+          return {
+            fontSize: parseFloat(style.fontSize),
+            text3xl: parseFloat(style.getPropertyValue("--text-3xl")) * rem,
+            lines: Math.round(el.getBoundingClientRect().height / parseFloat(style.lineHeight)),
+            overflow: el.scrollWidth - el.clientWidth,
+            cardWidth: outer.width / rem,
+            inside: inner.left >= outer.left + parseFloat(boxStyle.paddingLeft) - 0.5 &&
+              inner.right <= outer.right - parseFloat(boxStyle.paddingRight) + 0.5,
+          }
+        })
+      /** Throws with the measurement when it breaks a rule. */
+      const expectThat = (what: string, ok: boolean, seen: unknown) => {
+        if (!ok) throw new Error(`${what}: ${JSON.stringify(seen)}`)
+      }
+
+      const shortSize = await measure(short)
+      expectThat(
+        "a short value draws at text-3xl",
+        shortSize.fontSize === shortSize.text3xl,
+        shortSize,
+      )
+
+      const longValue = narrow.locator("p.tabular-nums")
+      const long = await measure(longValue)
+      expectThat("the long value's card is 10 rem wide", long.cardWidth === 10, long)
+      expectThat(
+        "a 14-character value fits a 10 rem card on one line, smaller than text-3xl",
+        long.overflow <= 0 && long.inside && long.lines === 1 && long.fontSize < long.text3xl,
+        long,
+      )
+
+      const wideLong = await measure(wide.locator("p.tabular-nums"))
+      expectThat(
+        "the same value in an 18 rem card draws at text-3xl on one line",
+        wideLong.fontSize === wideLong.text3xl && wideLong.lines === 1 && wideLong.inside,
+        wideLong,
+      )
+
+      const { violations } = await new AxeBuilder({ page }).include("#demo-WidgetStat").analyze()
+      expectThat("the card passes axe", violations.length === 0, violations.map((v) => v.id))
+
+      // Past the last step the value keeps its smallest size and wraps rather than overflowing.
+      await longValue.evaluate((el) => (el.textContent = "₫123,456,789,012,345,678"))
+      const absurd = await measure(longValue)
+      expectThat(
+        "a value too long for every step wraps inside its card",
+        absurd.overflow <= 0 && absurd.inside && absurd.lines > 1,
+        absurd,
+      )
     },
   },
   {

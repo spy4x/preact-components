@@ -75,6 +75,40 @@ describe("WidgetStat", () => {
     const html = render(<WidgetStat value="1.2M" valueLabel="1,234,567" />)
     expect(html).toContain('aria-label="1,234,567">1.2M</p>')
   })
+
+  const valueClass = (value: string | number) =>
+    render(<WidgetStat value={value} />).match(/<p class="([^"]*)"/)?.[1] ?? ""
+
+  it("draws a short value at text-3xl at every width", () => {
+    expect(valueClass(9)).toMatch(/(^| )text-3xl$/)
+    expect(valueClass("1.2M")).toMatch(/(^| )text-3xl$/)
+  })
+
+  it("gives a longer value smaller size steps for narrower boxes", () => {
+    expect(valueClass("$12,345")).toContain(
+      "text-xl @min-[6.5rem]:text-2xl @min-[8rem]:text-3xl",
+    )
+    expect(valueClass("₫27,000,000")).toContain(
+      "text-lg @min-[7.5rem]:text-xl @min-[9rem]:text-2xl @min-[11.25rem]:text-3xl",
+    )
+    expect(valueClass("₫1,234,567,890")).toContain(
+      "text-base @min-[8.875rem]:text-lg @min-[9.75rem]:text-xl @min-[11.75rem]:text-2xl @min-[14.75rem]:text-3xl",
+    )
+  })
+
+  it("counts a separator as half a character", () => {
+    // A comma counts: "1,234" is 4.5 units, past the short step that "1234" fits.
+    expect(valueClass("1234")).toMatch(/(^| )text-3xl$/)
+    expect(valueClass("1,234")).toContain("text-xl @min-[6.5rem]:text-2xl")
+    // But only half: "₫1,234,567,890" is 14 characters and 12.5 units, inside the 13-unit step.
+    expect(valueClass("₫1,234,567,890")).toContain("text-base @min-[8.875rem]:text-lg")
+  })
+
+  it("draws a value too long for every step at text-base, free to wrap", () => {
+    const value = valueClass("₫123,456,789,012,345")
+    expect(value).toMatch(/(^| )text-base$/)
+    expect(value).toContain("wrap-anywhere")
+  })
 })
 
 describe("dashboardRows", () => {
