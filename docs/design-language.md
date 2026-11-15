@@ -206,8 +206,9 @@ Pick the shell by the kind of app; all of them are library components.
 | Single-page tool (a status board) | A top bar with the brand mark and the page's one control (a search box), then the content column. No rail.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  |
 
 **Every signed-in page starts with `PageHeader`:** the title on the left; the one primary action
-and, if needed, one "More actions" menu on the right. On a phone the title stays on one line and
-the actions become icon buttons with accessible names. Nothing else draws a page title.
+and, if needed, one "More actions" menu on the right. On a phone the title wraps to at most two
+lines and the actions, beside it, become icon buttons with accessible names. Nothing else draws a
+page title.
 
 **A settings page with sub-pages is `SettingsLayout`:** a 200 px sticky nav beside one section
 in a `max-w-2xl` column from `md` up, the current item in the accent tint, a danger item such as
