@@ -323,21 +323,22 @@ function chains(
 }
 
 /**
- * The highlight as a stylesheet scoped to one graph: while a node is hovered or has keyboard focus,
- * everything else dims and the nodes and edges in its chains stay. Plain CSS (`:has()`), so it works
- * in markup a server rendered with no script at all.
+ * The highlight as a stylesheet scoped to the graph that holds it: while a node is hovered or has
+ * keyboard focus, everything else dims and the nodes and edges in its chains stay. Plain CSS
+ * (`:has()`), so it works in markup a server rendered with no script at all. `@scope` with no
+ * selector scopes it to the `<style>` element's parent, so the text carries no id and reads the
+ * same on the server and in the browser.
  */
-function highlightCss(scope: string, count: number): string {
-  const graph = `[data-graph="${scope}"]`
+function highlightCss(count: number): string {
   const active = ":is(:hover,:focus-visible)"
   const rules = [
-    `@media (prefers-reduced-motion: no-preference){${graph} [data-chain]{transition:opacity 150ms ease-out}}`,
-    `${graph}:has([data-node]${active}) [data-chain]{opacity:.2}`,
+    `@media (prefers-reduced-motion: no-preference){[data-chain]{transition:opacity 150ms ease-out}}`,
+    `:scope:has([data-node]${active}) [data-chain]{opacity:.2}`,
   ]
   for (let node = 0; node < count; node++) {
-    rules.push(`${graph}:has([data-node="${node}"]${active}) [data-chain~="${node}"]{opacity:1}`)
+    rules.push(`:scope:has([data-node="${node}"]${active}) [data-chain~="${node}"]{opacity:1}`)
   }
-  return rules.join("\n")
+  return `@scope{${rules.join("\n")}}`
 }
 
 /**
@@ -374,6 +375,7 @@ export function DependencyGraph({
     neededBy: neededByProp,
   }, { dependsOn: ["names"], neededBy: ["names"] })
   const language = useT().language
+  // Marker ids only: the highlight stylesheet needs no id (`highlightCss`).
   const scope = useId().replace(/[^\w-]/g, "")
 
   if (nodes.length === 0) {
@@ -427,12 +429,10 @@ export function DependencyGraph({
         role="group"
         aria-label={label}
         tabIndex={0}
-        data-graph={scope}
+        data-graph=""
         class="max-w-full overflow-x-auto rounded-lg focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2 focus-visible:ring-offset-focus"
       >
-        {chain && (
-          <style dangerouslySetInnerHTML={{ __html: highlightCss(scope, layout.nodes.length) }} />
-        )}
+        {chain && <style dangerouslySetInnerHTML={{ __html: highlightCss(layout.nodes.length) }} />}
         <svg width={width} height={height} viewBox={`0 0 ${width} ${height}`} class="max-w-none">
           <defs aria-hidden="true">
             {TONES.map((tone) => (
