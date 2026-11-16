@@ -44,8 +44,8 @@ Business wording, one app's data model, or a renamed copy of something generic d
   and `pages` have one.
 - Add the directory to `packageIds` or `helperPackageIds` (`ui-guide/registry-ids.ts`), or to
   `EXCLUDED_PACKAGES` (`ui-guide/coverage.ts`) with a reason, to `PUBLISHED_PACKAGES`
-  (`infra/scripts/private-names.ts`) and to `WORKSPACE_DIRECTORIES` (`pages/build-fingerprint.ts`; its test checks it against
-  `deno.jsonc`).
+  (`infra/scripts/private-names.ts`) and to `WORKSPACE_DIRECTORIES` (`pages/build-fingerprint.ts`;
+  its test checks it against `deno.jsonc`).
 - Add a row to the "Scope" table in `docs/maintaining.md`, a `deno add` line in `docs/usage.md`, a
   link in the README's "Packages" table and, for a package in `packageIds`, a complete list of its
   components in its own README; `infra/scripts/export-lists.test.ts` checks all four.

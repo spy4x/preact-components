@@ -1,5 +1,5 @@
 import { assertEquals, assertNotEquals } from "@std/assert"
-import { parse } from "@std/jsonc"
+import { workspaceMembers } from "../infra/scripts/workspace.ts"
 import { hashEntries, isCovered, WORKSPACE_DIRECTORIES } from "./build-fingerprint.ts"
 
 const encoder = new TextEncoder()
@@ -43,10 +43,7 @@ Deno.test("isCovered accepts a server package source", () => {
 })
 
 Deno.test("WORKSPACE_DIRECTORIES matches the workspace in deno.jsonc", async () => {
-  const text = await Deno.readTextFile(new URL("../deno.jsonc", import.meta.url))
-  const { workspace } = parse(text) as { workspace: string[] }
-  const members = workspace.map((member) => member.replace(/^\.\//, "")).sort()
-  assertEquals([...WORKSPACE_DIRECTORIES].sort(), members)
+  assertEquals([...WORKSPACE_DIRECTORIES].sort(), (await workspaceMembers()).sort())
 })
 
 Deno.test("isCovered accepts the root lockfile", () => {
