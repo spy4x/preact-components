@@ -1,4 +1,5 @@
 import { expect } from "@std/expect"
+import { parse } from "@std/jsonc"
 import { describe, it } from "@std/testing/bdd"
 import { playwrightBaseConfig } from "./+index.ts"
 
@@ -70,5 +71,25 @@ describe("playwrightBaseConfig", () => {
     const first = playwrightBaseConfig({ baseURL: "http://x.test", ci: false, chromium: DEVICE })
     expect(first.projects[0].use).not.toBe(DEVICE)
     expect(first.projects[0].use).toEqual(DEVICE)
+  })
+})
+
+describe("@spy4x/preact-playwright", () => {
+  it("has no dependencies: no import map and no import in any published file", async () => {
+    const config = parse(await Deno.readTextFile(new URL("./deno.json", import.meta.url)))
+    expect(config).not.toHaveProperty("imports")
+    const published: string[] = []
+    for await (const entry of Deno.readDir(new URL(".", import.meta.url))) {
+      if (entry.isFile && entry.name.endsWith(".ts") && !entry.name.endsWith(".test.ts")) {
+        published.push(entry.name)
+      }
+    }
+    expect(published).toContain("+index.ts")
+    for (const name of published) {
+      const source = await Deno.readTextFile(new URL(`./${name}`, import.meta.url))
+      // Comment lines are dropped first: the JSDoc example imports `@playwright/test` on purpose.
+      const code = source.split("\n").filter((line) => !/^\s*(\/\/|\/\*|\*)/.test(line)).join("\n")
+      expect(code, name).not.toMatch(/^\s*import\b|\bimport\s*\(|\bfrom\s+["']/m)
+    }
   })
 })
