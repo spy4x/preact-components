@@ -110,16 +110,18 @@
     // Validation — arktype only, never zod
     "arktype": "npm:arktype@2.2.3",
 
-    // spy4x/ts-libs, one exact version for every package that imports it. Shared helpers live
-    // there once and are imported, never copied (spy4x/ts-libs#69, #70, #72). The trailing-slash
-    // entries map every subpath of a package (`@spy4x/platform/universal/csv`) to the same release;
-    // `deno publish` rewrites each import to that exact `jsr:` version, so only a package that
+    // spy4x/ts-libs: caret ranges, like preact and signals above (#841). Shared helpers live there
+    // once and are imported, never copied (spy4x/ts-libs#69, #70, #72). `deno publish` copies these
+    // values into every published import, so a range lets an app on a newer compatible ts-libs
+    // resolve them to its own copy: one copy in its bundle, and an additive ts-libs type change
+    // needs no preact-components release before the app can bump. The trailing-slash entries map
+    // every subpath (`@spy4x/platform/universal/csv`) to the same range; only a package that
     // imports one of these gains it as a dependency.
-    "@spy4x/platform/": "jsr:/@spy4x/platform@1.126.0/",
-    "@spy4x/time/": "jsr:/@spy4x/time@1.126.0/",
-    "@spy4x/validation": "jsr:@spy4x/validation@1.126.0",
-    "@spy4x/validation/": "jsr:/@spy4x/validation@1.126.0/",
-    "@spy4x/search": "jsr:@spy4x/search@1.126.0",
+    "@spy4x/platform/": "jsr:/@spy4x/platform@^1.126.0/",
+    "@spy4x/time/": "jsr:/@spy4x/time@^1.126.0/",
+    "@spy4x/validation": "jsr:@spy4x/validation@^1.126.0",
+    "@spy4x/validation/": "jsr:/@spy4x/validation@^1.126.0/",
+    "@spy4x/search": "jsr:@spy4x/search@^1.126.0",
 
     // The HTML renderer every package's suite imports. One pin here (#133) replaces six identical
     // per-package copies that all resolved the same version. `server/` renders its pages with it,
