@@ -1686,6 +1686,11 @@ function ShortcutsDialogDemo() {
   const listed: Shortcut[] = [
     ...bindings,
     { keys: "g t", description: "A two-key sequence, listed only", group: "This demo" },
+    {
+      description: "Export the counts",
+      detail: "A command without keys. Also found by: download, save",
+      group: "This demo",
+    },
   ]
   return (
     <Stack>
@@ -2737,7 +2742,7 @@ const cursor = useRowCursor({ count: jobs.length, onOpen: (index) => open(jobs[i
         name: "shortcuts",
         type: "Shortcut[]",
         description:
-          "`{ keys, description, group? }` rows; the same array `useHotkeys` takes. `keys` may be a sequence such as `g t`.",
+          "`{ keys?, description, detail?, group? }` rows; the same array `useHotkeys` takes. `keys` may be a sequence such as `g t`; a row without keys lists only what it does, such as a command-palette command. `detail` is a second, muted line under the description, such as the other words that find that command.",
       },
       {
         name: "title",
@@ -2759,7 +2764,12 @@ const bindings = [
 ]
 useHotkeys(bindings)
 // A sequence row, bound by a sequence matcher of your own
-const rows = [...bindings, { keys: "g t", description: "Go to Today", group: "Navigation" }]
+const rows = [
+  ...bindings,
+  { keys: "g t", description: "Go to Today", group: "Navigation" },
+  // A command without keys, with the other words that find it
+  { description: "Export data", detail: "Also: download, backup", group: "Commands" },
+]
 
 <ShortcutsDialog
   open={open.value}

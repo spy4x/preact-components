@@ -2113,8 +2113,11 @@ of each key of one combination `Kbd` draws, and `KBD_LABELS` holds the English w
 which `labels` overrides one by one.
 
 `ShortcutsDialog` lists shortcuts under group headings, built on `Modal`.
-`groupShortcuts(shortcuts, defaultGroup)` is its grouping on its own: groups in the order they
-first appear, shortcuts without a description left out.
+A row without `keys` lists only what it does, such as a command a command palette runs, and a
+row's `detail` is a second, muted line under the description, such as the other words that find
+that command. `groupShortcuts(shortcuts, defaultGroup)` is its grouping on its own: groups in the
+order they first appear, shortcuts without a description left out. `activeShortcuts` keeps rows
+without keys.
 
 ### A hotkey on a button
 
