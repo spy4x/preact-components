@@ -198,6 +198,8 @@ export const specs: readonly Spec[] = [
       if (await first.getAttribute("data-e2e") !== "account-menu-header") {
         throw new Error("the header is not the menu's first item")
       }
+      const keys = await header.getAttribute("aria-keyshortcuts")
+      if (keys !== "P") throw new Error(`the header announces keys ${keys}, not the demo's "P"`)
       const before = page.url()
       await header.click()
       await card.locator(`[data-e2e="account-menu-demo-route"]`)
