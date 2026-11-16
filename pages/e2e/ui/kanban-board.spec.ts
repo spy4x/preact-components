@@ -70,14 +70,47 @@ function kanbanDragSpecs(): Spec[] {
           const doing = document.querySelector("#demo-KanbanBoard [data-kanban-column='doing']")
           return (doing?.getBoundingClientRect().left ?? Infinity) <= left
         }, board.x + 120)
+        // The board scrolls on while the finger stays at the edge, so a box read now goes stale and
+        // the finger lands in Review (#1276). Leave the edge zone, then wait until the scroll and
+        // the Doing card stay still for two frames, read in that same frame.
+        const middle = { x: Math.round(board.x + board.width / 2), y: from.y }
+        await touch("touchMove", middle.x, middle.y)
+        const { scroll, export_ } = await page.evaluate(async () => {
+          const root = document.querySelector("#demo-KanbanBoard")
+          const boardEl = root?.querySelector("ul[aria-label]")
+          const card = root?.querySelector(`[data-kanban-item="export"] [data-kanban-handle]`)
+          if (!boardEl || !card) throw new Error("the board or the Doing card is not drawn")
+          const read = () => {
+            const { x, y, width, height } = card.getBoundingClientRect()
+            return { scroll: boardEl.scrollLeft, export_: { x, y, width, height } }
+          }
+          const frame = () => new Promise((resolve) => requestAnimationFrame(resolve))
+          const deadline = performance.now() + 5_000
+          let last = ""
+          let still = 0
+          while (performance.now() < deadline) {
+            await frame()
+            const now = read()
+            const key = JSON.stringify(now)
+            still = key === last ? still + 1 : 0
+            last = key
+            if (still >= 2) return now
+          }
+          throw new Error(`the board never stopped scrolling: ${last}`)
+        })
         // Then over Doing, below the middle of its one card: the card lands second.
-        const export_ = await kanban.handle("export").boundingBox()
-        if (export_ === null) throw new Error("the Doing card is not drawn")
         const to = {
           x: Math.round(Math.max(export_.x + 24, board.x + 64)),
           y: Math.round(export_.y + export_.height * 0.75),
         }
-        await slide(edge, to)
+        if (to.x > export_.x + export_.width || to.x > board.x + board.width - 48) {
+          throw new Error(
+            `Doing is out of reach after the scroll settled: board scrollLeft ${scroll}, ` +
+              `Doing card at x ${export_.x}, width ${export_.width}; board x ${board.x}, ` +
+              `width ${board.width}`,
+          )
+        }
+        await slide(middle, to)
         const over = await kanban.read()
         await touch("touchEnd")
         // The drop reaches `onMove` and the live region in a render after the release, which a
