@@ -1471,9 +1471,9 @@ function PeriodStepperExample(
 
 /**
  * Months, opened on October while today is in November, so "This month" shows; `]` or › brings
- * November back and the button goes. Its return key is `m` here, because this page already gives
- * `t` to the theme toggle. Then weeks that start on Sunday, opened on the current week, with
- * `singleKeys` off: two steppers on one screen cannot both own `[` and `]`.
+ * November back and the button hides, keeping its place. Its return key is `m` here, because this
+ * page already gives `t` to the theme toggle. Then weeks that start on Sunday, opened on the
+ * current week, with `singleKeys` off: two steppers on one screen cannot both own `[` and `]`.
  */
 function PeriodStepperDemo() {
   return (
