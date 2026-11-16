@@ -573,7 +573,7 @@ function remotePaletteSpecs(): Spec[] {
             throw new Error(`the page is drawn ${dark ? "dark" : "light"}, not ${colorScheme}`)
           }
           const palette = await openRemotePalette(page, width)
-          // "slow" answers in twenty seconds: the kept rows and Searching… stay for the whole scan.
+          // "slow" never answers: the kept rows and Searching… stay for the whole scan, however long.
           await palette.field.fill("slow")
           await palette.dialog.locator(`[data-e2e="palette-remote-searching"]`).waitFor()
           // From `sm` up the seven rows overflow the list's 384 px, so the scan meets a list that
