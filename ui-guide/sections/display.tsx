@@ -3347,8 +3347,8 @@ const paletteLongFruit = {
 
 /**
  * The pretend server behind the remote demo: a one-letter query answers slowly and a longer one
- * quickly, so a stale answer arrives after the fresh one; `slow` takes twenty seconds, long enough to
- * look at the loading state; and `boom` fails. It answers even after
+ * quickly, so a stale answer arrives after the fresh one; `slow` never answers, so the loading state
+ * stays as long as anyone looks at it; and `boom` fails. Every other query answers even after
  * `signal` aborts, so the palette alone has to drop the stale answer, and it reports each aborted
  * query through `onAbort`.
  */
@@ -3358,10 +3358,11 @@ function paletteFruitSearch(
   onAbort: (query: string) => void,
 ): Promise<CommandPaletteOption[]> {
   const needle = query.trim().toLowerCase()
-  const delay = needle === "slow" ? 20_000 : needle.length === 1 ? 900 : 100
-  // Answers even after an abort, so the palette has to ignore the stale answer on its own; it only
-  // records which queries were aborted.
+  const delay = needle.length === 1 ? 900 : 100
+  // Every query but `slow` answers even after an abort, so the palette has to ignore the stale
+  // answer on its own; this only records which queries were aborted.
   signal.addEventListener("abort", () => onAbort(query), { once: true })
+  if (needle === "slow") return new Promise(() => {})
   return new Promise((resolve, reject) =>
     setTimeout(() => {
       if (needle === "boom") return reject(new Error("The pretend server failed"))
@@ -3560,9 +3561,9 @@ function CommandPaletteDemo() {
         <span data-e2e="palette-forgiving-picked">{pickedForgiving.value}</span>; theme{" "}
         <span data-e2e="palette-commands-theme">{theme.value}</span>; ran{" "}
         <span ref={log} tabIndex={-1} data-e2e="palette-commands-ran">{ran.value}</span>. One letter
-        answers slowly, longer queries quickly, “slow” takes twenty seconds, “dragon” finds a long
-        name, and “boom” fails. The field above opens on “combobx”; try “ещфые” or “календарь”. In
-        the commands, Ctrl+Shift+P opens them, “Commands only” opens them with “{">"}” typed, which
+        answers slowly, longer queries quickly, “slow” never answers, “dragon” finds a long name,
+        and “boom” fails. The field above opens on “combobx”; try “ещфые” or “календарь”. In the
+        commands, Ctrl+Shift+P opens them, “Commands only” opens them with “{">"}” typed, which
         lists only commands, Tab enters Account or Add a task, Backspace goes back, PageDown jumps a
         group, and Ctrl+Enter picks the alternative way. “dark” pins Theme as the best match. The
         last palette remembers its picks across reloads and lists them on the empty query.
