@@ -80,13 +80,15 @@ const arrow = "size-11 sm:size-9"
 const fromStartEdge = "start-0 translate-x-0 [&:dir(rtl)]:translate-x-0"
 
 /**
- * Steps a screen through weeks or months: "‹ › November 2026  This month".
+ * Steps a screen through weeks or months: "This month  ‹ › November 2026".
  *
- * Two joined arrow buttons, the period's name, and a button back to the current period that shows
- * only while another period is on screen. `[` goes back, `]` forward and `t` to today's period,
+ * A button back to the current period, two joined arrow buttons and the period's name, which
+ * takes its own line below `sm`. The return button comes first and shows only while another
+ * period is on screen; on the current period it is hidden but keeps its width, so the arrows and
+ * the name never move under the pointer. `[` goes back, `]` forward and `t` to today's period,
  * anywhere outside a text field and an open dialog; each tooltip shows its key. The name is a
  * polite live region, so a screen reader hears the new period after each step. Pressing the
- * return button removes it, so focus moves to the next arrow rather than falling to the page.
+ * return button hides it, so focus moves to the next arrow rather than falling to the page.
  *
  * The period maths is `@spy4x/time/period`; the stepper keeps no state of its own.
  */
@@ -135,6 +137,18 @@ export function PeriodStepper({
       aria-label={week ? words.groupWeek : words.groupMonth}
       class={cn("flex min-w-0 flex-wrap items-center gap-x-3 gap-y-2", className)}
     >
+      <Button
+        ref={returnRef}
+        variant="ghost"
+        size="sm"
+        class={isCurrent ? "invisible" : undefined}
+        hotkey={singleKeys && !isCurrent ? currentHotkey : undefined}
+        onClick={goToCurrent}
+      >
+        {back}
+        {/* Hidden, it binds no key but keeps the hint the bound key draws, so its width holds. */}
+        {isCurrent && singleKeys && <HotkeyHint keys={currentHotkey} apple={apple} />}
+      </Button>
       <div class="flex shrink-0">
         <Tooltip
           content={tip(previous, "[")}
@@ -169,20 +183,17 @@ export function PeriodStepper({
           </Button>
         </Tooltip>
       </div>
-      <span aria-live="polite" aria-atomic="true" class="pc-num text-sm font-semibold">
+      {
+        /* Below `sm` the name always takes its own line, so a long month's name cannot wrap alone,
+        and starts at the line's start: `pc-num` would align it right, so its start would move. */
+      }
+      <span
+        aria-live="polite"
+        aria-atomic="true"
+        class="basis-full text-sm font-semibold tabular-nums sm:basis-auto"
+      >
         {periodLabel(period, locale ?? language)}
       </span>
-      {!isCurrent && (
-        <Button
-          ref={returnRef}
-          variant="ghost"
-          size="sm"
-          hotkey={singleKeys ? currentHotkey : undefined}
-          onClick={goToCurrent}
-        >
-          {back}
-        </Button>
-      )}
     </div>
   )
 }
