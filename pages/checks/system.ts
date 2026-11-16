@@ -6840,6 +6840,10 @@ async function shellCollapseChecks(devtools: Devtools): Promise<void> {
     { id: "shell-collapse-frame", src: pageHref("system"), label: "Shell collapse" },
     async (frame) => {
       const doc = `${frame}?.contentDocument`
+      // A fresh load of the whole guide in the frame: under `--cpu-throttle=4` on a loaded machine
+      // it took over 15 s, and the reading just after showed the sidebar collapsed. The session's call
+      // budget is 15 s and grows with the throttle, so a slower page is not reported as wrong.
+      const started = Date.now()
       const restored = await poll(async () => {
         const hydrated = await read(
           devtools,
@@ -6849,12 +6853,13 @@ async function shellCollapseChecks(devtools: Devtools): Promise<void> {
         if (!hydrated) return false
         const state = await readShellCollapse(devtools, doc)
         return state.found && state.expanded === "false" && !state.sidebarShown
-      }, 15_000)
+      }, devtools.callTimeoutMs)
+      const waited = Date.now() - started
       const state = await readShellCollapse(devtools, doc)
       check(
         "a fresh load of the guide draws Shell's sidebar collapsed, as the card remembered it",
         restored,
-        JSON.stringify(state),
+        `${JSON.stringify(state)} after ${waited} ms`,
       )
     },
   )
