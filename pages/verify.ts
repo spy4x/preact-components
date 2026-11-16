@@ -667,7 +667,7 @@ const STALL_LIMIT_MS = 150_000
  * run that never stops making progress, not the limit a hang meets first ({@link STALL_LIMIT_MS}
  * is). `pages/README.md` ("How long a run may take") has how it was sized.
  */
-const PHASE_CEILING_MS = 15 * 60_000
+const PHASE_CEILING_MS = 30 * 60_000
 
 /**
  * One Chromium launch attempt: a fresh profile, a spawned process, a bounded wait for its DevTools
@@ -820,7 +820,7 @@ async function launchChromium(
  *
  * The whole phase races a watchdog (#466): everything below runs inside `work`, and the watchdog
  * stops the phase when no check has finished and no block has started for 150 seconds, or when the
- * phase has run 15 minutes in all, both multiplied by `--cpu-throttle` (see {@link phaseVerdict}).
+ * phase has run 30 minutes in all, both multiplied by `--cpu-throttle` (see {@link phaseVerdict}).
  * So a hang anywhere inside `work` — a `DevTools` call with no timeout of its own would be the
  * classic case, which is why every one now has one — still lets `verify` exit non-zero instead of
  * waiting forever. The watchdog cannot know what `work` was doing, so it reads

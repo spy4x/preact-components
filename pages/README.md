@@ -214,7 +214,7 @@ full runs go on in another terminal, noting `uptime` with each:
 
 ```bash
 systemd-run --user --scope --quiet -p TasksMax=100 timeout 1200 stress-ng --cpu 0 --timeout 1100s
-uptime && systemd-run --user --scope --quiet -p TasksMax=500 -p MemoryMax=8G timeout 900 deno task --cwd pages verify
+uptime && systemd-run --user --scope --quiet -p TasksMax=500 -p MemoryMax=8G timeout 1800 deno task --cwd pages verify
 ```
 
 On a 16-core machine that holds the load average near 20. It is what the issue asked for, and it is
@@ -251,10 +251,13 @@ last check that finished:
 - **No progress for 150 seconds**: no check finished and no block started. This is the limit a hang
   meets, so a hung run dies about 150 seconds after its last check, however many checks came
   before. It bounds the gap between two checks, not the run, so adding checks does not move it.
-- **15 minutes for the whole phase**, however steadily it records checks: a backstop for a run that
-  never stops. A full run as one command came to 13 of those minutes in CI and crossed them on a
-  busy workstation (#696), which is why a full run can be split: each part has its own 15 minutes
-  and the longest takes about five and a half in CI (see "Running a full run in parts").
+- **30 minutes for the whole phase**, however steadily it records checks: a backstop for a run that
+  never stops. A full run as one command came to 13 minutes in CI and crossed the 15 the ceiling
+  was then on a busy workstation (#696), which is why a full run can be split: each part has the
+  whole ceiling (see "Running a full run in parts"). It became 30 minutes (#979) when e2e shards
+  that take 250 to 810 seconds in a green run were stopped at 900 seconds, still finishing checks,
+  on CI agents at a load average of 15 to 25: pipeline 3733's first shard had 203 of its 213
+  checks done. A hang never needs the ceiling, since the 150-second limit above stops it first.
 
 Both are multiplied by `--cpu-throttle`, and so is the 15-second budget a single DevTools call,
 or a wait for one DevTools event such as a page load, gets when its caller names none. Each launch
