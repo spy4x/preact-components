@@ -1,5 +1,6 @@
 import { assertEquals, assertNotEquals } from "@std/assert"
-import { hashEntries, isCovered } from "./build-fingerprint.ts"
+import { workspaceMembers } from "../infra/scripts/workspace.ts"
+import { hashEntries, isCovered, WORKSPACE_DIRECTORIES } from "./build-fingerprint.ts"
 
 const encoder = new TextEncoder()
 
@@ -35,6 +36,14 @@ Deno.test("the order of entries does not change the fingerprint", async () => {
 
 Deno.test("isCovered accepts a workspace package source", () => {
   assertEquals(isCovered("ui/badge.tsx"), true)
+})
+
+Deno.test("isCovered accepts a server package source", () => {
+  assertEquals(isCovered("server/app.ts"), true)
+})
+
+Deno.test("WORKSPACE_DIRECTORIES matches the workspace in deno.jsonc", async () => {
+  assertEquals([...WORKSPACE_DIRECTORIES].sort(), (await workspaceMembers()).sort())
 })
 
 Deno.test("isCovered accepts the root lockfile", () => {
