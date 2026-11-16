@@ -260,9 +260,9 @@ export function AccountMenu(props: AccountMenuProps): JSX.Element {
         menuLabel={labels?.menu ?? translate(translator, "AccountMenu.menu", "Account menu")}
         vertical={vertical}
         horizontal={horizontal}
-        // Never wider than the viewport, so a long name truncates before a key hint pushes the
-        // menu off a narrow window's edge.
-        panelClasses={cn("z-30 max-w-[calc(100vw-2rem)]", full && "min-w-full", panelClasses)}
+        // At most 20 rem wide, so a long name truncates before a key hint pushes the menu off a
+        // narrow window's edge.
+        panelClasses={cn("z-30 max-w-80", full && "min-w-full", panelClasses)}
       >
         {headerHref !== undefined && (
           <DropdownItem
