@@ -146,6 +146,8 @@ export function PeriodStepper({
         onClick={goToCurrent}
       >
         {back}
+        {/* Hidden, it binds no key but keeps the hint the bound key draws, so its width holds. */}
+        {isCurrent && singleKeys && <HotkeyHint keys={currentHotkey} apple={apple} />}
       </Button>
       <div class="flex shrink-0">
         <Tooltip

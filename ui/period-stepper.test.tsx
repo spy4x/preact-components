@@ -46,11 +46,12 @@ describe("PeriodStepper", () => {
     expect(html).toMatch(/aria-live="polite" aria-atomic="true"[^>]*>November 2026</)
   })
 
-  it("hides the return button and binds no key while the current period is on screen", () => {
+  it("hides the return button on the current period, keeping its key hint but binding no key", () => {
     const november = returnButton(stepper())
     expect(november).toContain("This month")
     expect(isHidden(november)).toBe(true)
     expect(november).not.toContain("aria-keyshortcuts")
+    expect(november).toMatch(/<kbd[^>]*>T<\/kbd>/)
     const august = returnButton(stepper({ period: AUGUST }))
     expect(isHidden(august)).toBe(false)
     expect(august).toContain(`aria-keyshortcuts="T"`)
@@ -93,9 +94,11 @@ describe("PeriodStepper", () => {
   })
 
   it("binds no key and shows no key hint with singleKeys off", () => {
-    const html = stepper({ period: AUGUST, singleKeys: false })
-    expect(html).not.toContain("aria-keyshortcuts")
-    expect(html).not.toContain("<kbd")
+    for (const period of [AUGUST, NOVEMBER]) {
+      const html = stepper({ period, singleKeys: false })
+      expect(html).not.toContain("aria-keyshortcuts")
+      expect(html).not.toContain("<kbd")
+    }
   })
 
   it("names its buttons by the week when it steps through weeks", () => {
