@@ -79,6 +79,7 @@ export const COMPONENTS_WITHOUT_CARD: Record<PackageId, readonly AllowedExport[]
         "Moves its children into the head of a page the server renders, so it shows nothing on a page of its own; `server/render.test.tsx` proves it.",
     },
   ],
+  playwright: [],
 }
 
 /**

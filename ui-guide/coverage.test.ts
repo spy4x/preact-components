@@ -9,6 +9,7 @@ import * as charts from "@spy4x/preact-charts"
 import * as cn from "@spy4x/preact-cn"
 import * as crud from "@spy4x/preact-crud"
 import * as map from "@spy4x/preact-map"
+import * as playwright from "@spy4x/preact-playwright"
 import * as signals from "@spy4x/preact-signals"
 import * as server from "@spy4x/preact-server"
 import * as system from "@spy4x/preact-system"
@@ -58,6 +59,7 @@ const BARRELS: Record<PackageId, object> = {
   theme,
   cn,
   server,
+  playwright,
 }
 
 /** A component name no package exports and no section demonstrates. */

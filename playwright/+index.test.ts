@@ -1,6 +1,6 @@
 import { expect } from "@std/expect"
 import { describe, it } from "@std/testing/bdd"
-import { playwrightBaseConfig } from "./playwright.ts"
+import { playwrightBaseConfig } from "./+index.ts"
 
 const DEVICE = { viewport: { width: 1280, height: 720 }, userAgent: "Chrome" }
 

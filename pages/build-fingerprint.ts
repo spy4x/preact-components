@@ -51,6 +51,7 @@ const WORKSPACE_DIRECTORIES = [
   "icons",
   "map",
   "pages",
+  "playwright",
   "signals",
   "system",
   "theme",
