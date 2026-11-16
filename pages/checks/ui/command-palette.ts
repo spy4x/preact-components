@@ -576,6 +576,17 @@ export async function compositionCommandPaletteChecks(devtools: Devtools): Promi
       `picked "${chosen}" (highlight "${highlighted}")`,
   )
 
+  // Where the trigger sits before the second click, so a missed click names what was under it. The
+  // page can move between the two clicks (a guide demo's timer, a late font), so the trigger is
+  // centred again before the coordinate click.
+  const where = await devtools.evaluate<string>(`(() => {
+    const box = document.querySelector('${trigger}')?.getBoundingClientRect()
+    if (!box) return "no trigger"
+    const hit = document.elementFromPoint(box.x + box.width / 2, box.y + box.height / 2)
+    const under = hit?.closest('${trigger}') ? "the trigger" : (hit?.outerHTML.slice(0, 80) ?? "nothing")
+    return "scrollY " + Math.round(scrollY) + ", trigger top " + Math.round(box.top) + ", under it " + under
+  })()`)
+  await centreInView(devtools, `document.querySelector('${trigger}')`)
   const reclicked = await clickSelector(devtools, trigger)
   const reopened = await poll(
     () => devtools.evaluate<boolean>(`document.activeElement === ${field}`),
@@ -586,7 +597,7 @@ export async function compositionCommandPaletteChecks(devtools: Devtools): Promi
   check(
     "plain typing still filters the CommandPalette results on every keystroke",
     reclicked && reopened && narrowedEachTime(all, typed),
-    `reopened ${reclicked && reopened}; ${typingDetail("se", all, typed)}`,
+    `reopened ${reclicked && reopened} (before it: ${where}); ${typingDetail("se", all, typed)}`,
   )
   await pressKey(devtools, "Escape")
   await poll(async () => !(await isOpen()), 3_000)
