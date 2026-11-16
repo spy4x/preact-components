@@ -93,10 +93,31 @@ const opensDownSpec: Spec = {
     }
     await bar.tags.click()
     await bar.tagsMenu.waitFor()
-    const [trigger, menu] = await Promise.all(
-      [bar.tags, bar.tagsMenu].map((el) => el.boundingBox()),
-    )
-    if (!trigger || !menu) throw new Error("the trigger or the menu is not drawn")
+    // The page scrolls smoothly to show the menu. Two separate reads can straddle a scroll step
+    // and put the menu above the trigger (#1267), so wait until both boxes stay still for two
+    // frames, and read both in that same frame.
+    const menuElement = await bar.tagsMenu.elementHandle()
+    const { trigger, menu } = await page.evaluate(async ([triggerEl, menuEl]) => {
+      if (!triggerEl || !menuEl) throw new Error("the trigger or the menu is not drawn")
+      const read = () => {
+        const t = triggerEl.getBoundingClientRect()
+        const m = menuEl.getBoundingClientRect()
+        return { trigger: { y: t.y, height: t.height }, menu: { y: m.y, height: m.height } }
+      }
+      const frame = () => new Promise((resolve) => requestAnimationFrame(resolve))
+      const deadline = performance.now() + 5_000
+      let last = ""
+      let still = 0
+      while (performance.now() < deadline) {
+        await frame()
+        const now = read()
+        const key = JSON.stringify(now)
+        still = key === last ? still + 1 : 0
+        last = key
+        if (still >= 2) return now
+      }
+      throw new Error(`the trigger and the menu never stopped moving: ${last}`)
+    }, [await bar.tags.elementHandle(), menuElement] as const)
     if (menu.height + 8 <= below || menu.height + 8 <= before.y) {
       throw new Error(
         `the ${menu.height} px menu fits on one side (above ${before.y}, below ${below}), ` +
@@ -106,8 +127,7 @@ const opensDownSpec: Spec = {
     if (menu.y < trigger.y + trigger.height) {
       throw new Error(`the menu opened up: trigger at y ${trigger.y}, menu at y ${menu.y}`)
     }
-    // The page scrolls smoothly, so wait for the scroll to bring the menu's bottom into the window.
-    const menuElement = await bar.tagsMenu.elementHandle()
+    // The scroll has settled, so the menu's bottom must already be in the window.
     await page.waitForFunction(
       (el) => el !== null && el.getBoundingClientRect().bottom <= globalThis.innerHeight + 1,
       menuElement,
