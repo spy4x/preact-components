@@ -469,9 +469,12 @@ export const specs: readonly Spec[] = [
       same("step timers while running", await heldSteps(page), 1)
       await tl.run.click()
       await tl.run.filter({ hasText: "Start the run" }).waitFor()
+      // The effect's cleanup waits for the paused clock's next frame, as in livePage.
+      await page.clock.runFor(100)
       same("step timers after Stop", await heldSteps(page), 0)
       await tl.run.click()
       await tl.run.filter({ hasText: "Stop the run" }).waitFor()
+      await page.clock.runFor(100)
       same("step timers after Start again", await heldSteps(page), 1)
       await page.evaluate(() => location.hash = "#/icons")
       await tl.live.waitFor({ state: "detached" })
