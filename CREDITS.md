@@ -46,6 +46,6 @@ the guide.
 
 ## What this file is not
 
-This is attribution, not a licence statement. It grants and transfers no rights, and says nothing
-about what rights anyone holds. The MIT licence in [`LICENSE`](./LICENSE) covers the code in this
-repository.
+This is attribution plus a record of the design author's consent, not a licence. The terms are in
+[`LICENSE`](./LICENSE): the MIT licence covers the code in this repository and, with Eirene's
+agreement above, her design CSS, styling and markup.
