@@ -15,8 +15,8 @@ function periodAndUsageSpecs(): Spec[] {
       name: example.locator(`[aria-live="polite"]`),
       value: example.locator(`[data-e2e="guide-period-month-value"]`),
       back: example.getByRole("button", { name: "This month" }),
-      /** The return button found by place, so it is found while hidden too. */
-      backSlot: example.locator(`[role="group"] > button`).first(),
+      /** The return button, the only button directly in the stepper; found while hidden too. */
+      backSlot: example.locator(`:scope > [role="group"] > button`),
       previous: example.getByRole("button", { name: "Previous month" }),
       next: example.getByRole("button", { name: "Next month" }),
     }
