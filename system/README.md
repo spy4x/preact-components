@@ -934,11 +934,12 @@ signed in reads as a way to their settings. Given, the row is the menu's first i
 or not `header` is set, named by its text and followed through `navigate` like the other link
 items. `AppShell` passes `account.headerHref` on, and links its phone sheet's header row the same
 way. Without it the row stays hidden from assistive technology and does nothing.
-`headerKeyshortcuts`, such as `["p"]`, names the keys the app binds to that link: the row announces
-them all in `aria-keyshortcuts` and shows the first with `Kbd` where the pointer is fine, as an
-item's `keyshortcuts` does, and binds none. `AppShell` takes it as `account.headerKeyshortcuts` and
-shows the hint in its sheet's header row too, before the chevron. Without `headerHref` it is
-ignored.
+`headerKeyshortcuts`, such as `["g p"]`, names the keys the app binds to that link: the row shows
+the first with `Kbd` where the pointer is fine ("G then P"), announces each single press in
+`aria-keyshortcuts`, as an item's `keyshortcuts` does, and binds none. A sequence is shown but not
+announced: the attribute has no syntax for one. `AppShell` takes it as
+`account.headerKeyshortcuts` and shows the hint in its sheet's header row too, before the chevron.
+Without `headerHref` it is ignored.
 
 **The panel sits at `z-30`,** above `Shell`'s drawer (`z-20`) and `Rail`'s tab bar (`z-10`).
 Inside an `overflow` container, such as the phone overlay, the panel can be clipped; a caller that
@@ -1440,12 +1441,14 @@ the same fill, hover, focus ring and `aria-current`. `current` is the caller's a
 The `Icon` may draw any element, such as a site's portrait photo. In the sheet, a `RailEntry` with
 no `href` carries `data-rail-close`, so choosing it closes the sheet.
 
-**Key shortcuts.** An item's `keyshortcuts`, such as `["mod+k", "/"]`, names the combinations the
-app binds to what the entry does, written the way `useHotkeys` takes them. The rail binds nothing:
-the entry announces every combination in `aria-keyshortcuts`, in every place, and the icons
-variant's tooltip shows the first after the label as the platform writes it, "Search (Ctrl K)" or
-"Search (⌘K)". `labels.kbd` overrides the words, such as "Ctrl". The phone's tab and sheet row show
-no hint.
+**Key shortcuts.** An item's `keyshortcuts`, such as `["mod+k", "/"]` or `["g x"]`, names the
+combinations or sequences the app binds to what the entry does, written the way `useHotkeys` takes
+them. The rail binds nothing: the entry announces every combination in `aria-keyshortcuts`, in
+every place, and the icons variant's tooltip shows the first after the label as the platform writes
+it, "Search (Ctrl K)" or "Search (⌘K)", with a space between a sequence's presses, "Transactions
+(G X)". A sequence is shown but not announced, since the attribute has no syntax for one; an entry
+with only sequences has no `aria-keyshortcuts`. `labels.kbd` overrides the words, such as "Ctrl".
+The phone's tab and sheet row show no hint.
 
 **Sheet-only items.** An item with `sheetOnly: true` is drawn only as a row of the phone sheet,
 never in the column or as a tab, such as a site's Home, which the column reaches through the
@@ -1544,7 +1547,7 @@ draws no brand mark and no top bar: the page starts with its own `PageHeader`.
 - **The bottom zone,** in order: the connection while it is news (`"idle"`, `"closed"` or `"reconnecting"`), a
   warning cell with a tooltip; the bell, a link named with its count ("Notifications, 3 unread"),
   with `notifications.keyshortcuts` treated like an item's `keyshortcuts`: announced in the rail
-  and the sheet, the first in its tooltip ("Notifications (N)"), never bound;
+  and the sheet, the first in its tooltip ("Notifications (G I)"), never bound;
   and the account, `AccountMenu` drawn as the avatar with its `header` row, opening beside the
   column. While `account.user` is unknown, a plain placeholder stands in its place and no menu is
   drawn; it fades in only after 300 ms, so a fast load shows nothing.

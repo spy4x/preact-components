@@ -1017,6 +1017,7 @@ activeFilterChips	helper	@spy4x/preact-ui	Every active filter as a chip: one per
 activeShortcuts	helper	@spy4x/preact-ui	The shortcuts that work now: all of them, or, while single keys are off, the ones that are not `isSingleKey`.
 addTags	helper	@spy4x/preact-ui	Add typed texts to a tag list: each is trimmed, a blank one is skipped, and one the list already holds — compared without regard to case — is left out and reported.
 applyScrollLock	helper	@spy4x/preact-ui	Lock page scrolling without moving the page, and hand back how to undo it.
+ariaKeyShortcutList	helper	@spy4x/preact-ui	The `aria-keyshortcuts` value of a control the app reaches with several keys: each single press through `ariaKeyShortcuts`, separated by spaces, or `undefined` when none is left.
 ariaKeyShortcuts	helper	@spy4x/preact-ui	A combination written the way `useHotkeys` takes it (`"mod+k"`), in the syntax of the `aria-keyshortcuts` attribute (`"Control+K"`): modifiers first, named as `KeyboardEvent.key` names them, joined by `+`.
 attachmentImages	helper	@spy4x/preact-ui	The images of `items` the lightbox can show, in order: ready images with a `src`, named by their file name.
 avatarFace	helper	@spy4x/preact-ui	Pick an avatar's face: the image while it is usable, then the initials, then the generic icon.
@@ -1129,6 +1130,7 @@ rowKeyAttribute	helper	@spy4x/preact-ui	Attribute a row's first cell carries so 
 scrollLockPadding	helper	@spy4x/preact-ui	Padding, in pixels, that keeps a scroll-locked page from shifting.
 selectTextareaLine	helper	@spy4x/preact-ui	Focuses a textarea, selects one of its lines and scrolls the textarea so that line sits in the middle of it.
 selectableIndex	helper	@spy4x/preact-ui	Index a freshly opened list should highlight: `preferred` when it is still in the list and taking it is allowed, else the first enabled item, else `-1` when nothing can be highlighted.
+sequenceSteps	helper	@spy4x/preact-ui	The presses of a sequence such as `"g t"`, in order: the text split at whitespace that is not next to a `+`, so `"mod + k"` stays one combination.
 setLayoutHidden	helper	@spy4x/preact-ui	`layout` with the entry `id` hidden or shown; unchanged when `id` is not in it.
 shouldRetargetFocus	helper	@spy4x/preact-ui	Decide whether focus should go back to the element that opened the dialog.
 sliderFraction	helper	@spy4x/preact-ui	Where a value sits along the track, as a fraction from `0` to `1`.

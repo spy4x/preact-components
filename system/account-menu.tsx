@@ -59,7 +59,8 @@ export interface AccountMenuItem {
   /**
    * The keys the app binds to the same action, such as `["?"]` for "Keyboard shortcuts". The item
    * announces them all in `aria-keyshortcuts` and shows the first with `Kbd` at its right, where
-   * the pointer is fine; it binds none of them, as `RailItem.keyshortcuts` does not.
+   * the pointer is fine; it binds none of them, as `RailItem.keyshortcuts` does not. A sequence
+   * such as `"g x"` is shown, "G then X", but not announced: the attribute has no syntax for one.
    */
   keyshortcuts?: readonly string[]
   /** `data-e2e` on the rendered menu item, for an app's end-to-end tests. */
@@ -155,9 +156,10 @@ export interface AccountMenuProps {
    */
   headerHref?: string
   /**
-   * The keys the app binds to the header row's link, such as `["p"]` for the profile. The row
-   * announces them all in `aria-keyshortcuts` and shows the first with `Kbd` at its right, where
-   * the pointer is fine, as {@link AccountMenuItem.keyshortcuts} does; it binds none of them.
+   * The keys the app binds to the header row's link, such as `["g p"]` for the profile. The row
+   * shows the first with `Kbd` at its right, where the pointer is fine, and announces each single
+   * press in `aria-keyshortcuts`, as {@link AccountMenuItem.keyshortcuts} does: a sequence is
+   * shown, not announced. It binds none of them.
    * Ignored without {@link headerHref}, as the row is then no item to reach.
    */
   headerKeyshortcuts?: readonly string[]

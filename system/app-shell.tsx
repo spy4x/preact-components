@@ -72,9 +72,10 @@ export interface AppShellNotifications {
   /** Drawn as a badge on the bell and the account tab; "99+" past 99. */
   unread?: number
   /**
-   * The keys the app binds to the bell, such as `["n"]`, as {@link RailItem.keyshortcuts}: the
-   * bell announces them all in `aria-keyshortcuts` in the rail and the phone sheet, and the rail
-   * cell's tooltip shows the first, such as "Notifications (N)". It binds none of them.
+   * The keys the app binds to the bell, such as `["g i"]`, as {@link RailItem.keyshortcuts}: the
+   * rail cell's tooltip shows the first, such as "Notifications (G I)", and the bell announces each
+   * single press in `aria-keyshortcuts` in the rail and the phone sheet; a sequence is shown, not
+   * announced. It binds none of them.
    */
   keyshortcuts?: readonly string[]
 }
@@ -93,10 +94,11 @@ export interface AppShellAccount {
    */
   headerHref?: string
   /**
-   * The keys the app binds to the header row's link, such as `["p"]`: the row announces them all
-   * in `aria-keyshortcuts` and shows the first with `Kbd` where the pointer is fine, in the rail's
-   * menu and in the phone sheet (before the chevron), as `AccountMenuProps.headerKeyshortcuts`
-   * does. It binds none of them. Ignored without {@link headerHref}.
+   * The keys the app binds to the header row's link, such as `["g p"]`: the row shows the first
+   * with `Kbd` where the pointer is fine, in the rail's menu and in the phone sheet (before the
+   * chevron), and announces each single press in `aria-keyshortcuts`, as
+   * `AccountMenuProps.headerKeyshortcuts` does; a sequence is shown, not announced. It binds none
+   * of them. Ignored without {@link headerHref}.
    */
   headerKeyshortcuts?: readonly string[]
   /** The menu's own items, first, such as "Profile". */

@@ -2111,7 +2111,7 @@ export const inputDemos = {
         name: "keyshortcuts",
         type: "string[]",
         description:
-          "Keys the app binds itself to the same action, such as `?`: announced in `aria-keyshortcuts`, the first shown as the hint, none bound by the item.",
+          'Keys the app binds itself to the same action, such as `?`: announced in `aria-keyshortcuts`, the first shown as the hint, none bound by the item. A sequence such as `"g p"` is shown, not announced.',
       },
       {
         name: "checked",
