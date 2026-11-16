@@ -104,8 +104,7 @@ export interface UIGuideLabels {
   /** The search dialog's close button's name. Defaults to `"Close the search"`. */
   closeSearch?: string
   /**
-   * The word beside a search result, by kind. Defaults to `"Page"`, `"Component"`, `"Helper"` and
-   * `"Classes"`.
+   * The word beside a search result, by kind. Defaults to `"Page"`, `"Component"` and `"Classes"`.
    */
   searchKinds?: Partial<SearchKindWords>
   /** Where the search says a page outside any package lives. Defaults to `"Guide"`. */
