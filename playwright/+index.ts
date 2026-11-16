@@ -106,7 +106,7 @@ export function playwrightBaseConfig<
   const use = { ...shared, ...options.use } as unknown as Omit<PlaywrightBaseUse, keyof Use> & Use
   return {
     testDir: "./e2e",
-    testMatch: /.*\.e2e\.ts/,
+    testMatch: /\.e2e\.ts$/,
     outputDir: "./e2e/results",
     forbidOnly: options.ci,
     retries: options.ci ? 2 : 0,
