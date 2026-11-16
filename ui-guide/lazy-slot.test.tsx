@@ -20,7 +20,7 @@ describe("LazySlot", () => {
     expect(html).not.toContain("<svg")
   })
 
-  it("shows a danger-toned alert naming what did not load and why when the load failed", () => {
+  it("shows a danger-toned alert saying plainly what did not load, with Try again and without the error's own text", () => {
     const html = render(
       <LazySlot state={{ status: "failed", message: "offline" }} boxClass="" {...SLOT}>
         {() => <svg />}
@@ -31,7 +31,8 @@ describe("LazySlot", () => {
     // The theme's danger tokens, so an app's repainted danger colour and the ink palette apply.
     expect(html).toContain("border-danger bg-danger-soft")
     expect(html).not.toMatch(/red-\d/)
-    expect(html.replace(/<[^>]+>/g, "")).toBe("Revenue: the chart module did not load — offline")
+    expect(html).toMatch(/<button [^>]*data-e2e="demo-retry"[^>]*>Try again<\/button>/)
+    expect(html.replace(/<[^>]+>/g, "")).toBe("Revenue: the chart module did not load.Try again")
   })
 
   it("renders the loaded module's component inside the same slot and drops the placeholder", () => {

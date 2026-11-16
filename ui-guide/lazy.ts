@@ -11,8 +11,10 @@
  * only from an effect, so the first render on either side is the caller's placeholder. The load
  * starts one task after the effect, so a card that hydration mounts and the host's first route read
  * unmounts again never starts it. Once one card has loaded the module, a card mounted later renders
- * with it straight away. A failed load is not cached: the card shows the failure, and the next card
- * that mounts loads again.
+ * with it straight away. A failed load is not cached here: the card shows the failure, and the next
+ * card that mounts calls the import again. Chromium keeps a failed module fetch for the life of the
+ * page and answers that call with the same error without a request, so the failure line's "Try
+ * again" reloads the page (`./lazy-slot.tsx`).
  */
 
 import { useEffect, useState } from "preact/hooks"
@@ -21,7 +23,11 @@ import { useEffect, useState } from "preact/hooks"
 export type LazyModuleState<T> =
   | { status: "loading" }
   | { status: "loaded"; module: T }
-  | { status: "failed"; message: string }
+  | {
+    status: "failed"
+    /** The error's own text. The card does not show it; the console has the whole error. */
+    message: string
+  }
 
 /** A module loaded on first use, shared by every card that uses it. */
 export interface LazyModule<T> {
@@ -52,9 +58,10 @@ export function lazyModule<T>(load: () => Promise<T>): LazyModule<T> {
     pending ??= load().then(
       (module): LazyModuleState<T> => (settled = { status: "loaded", module }),
       (error: unknown): LazyModuleState<T> => {
-        // Forget the failure, so a card mounted later tries again: a dropped connection or a
-        // deploy between two chunk names must not need a reload of the whole page.
+        // Forget the failure, so a card mounted later calls the import again, which helps where
+        // the browser does not keep the failed fetch (see the module comment).
         pending = undefined
+        console.error(error)
         return { status: "failed", message: error instanceof Error ? error.message : String(error) }
       },
     )

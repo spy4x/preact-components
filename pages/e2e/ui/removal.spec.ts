@@ -8,7 +8,18 @@ function removalDemo(page: Page) {
   const dialog = page.locator(`[data-e2e="removal-dialog"]`)
   const error = dialog.locator(`[data-e2e="removal-error"]`)
   const open = (name: string) => demo.getByRole("button", { name: `Remove ${name}`, exact: true })
+  const controls = demo.locator(`[data-e2e="removal-test-controls"]`)
   return {
+    controls,
+    /**
+     * Opens the collapsed "Test controls" disclosure, unless it is open already. Every control
+     * below except "Refuse the next removal" and "Bring everyone back" lives inside it.
+     */
+    showTestControls: async () => {
+      if (await controls.evaluate((details) => (details as HTMLDetailsElement).open)) return
+      await controls.locator("summary").click()
+      await controls.and(page.locator("details[open]")).waitFor()
+    },
     dialog,
     error,
     open,
@@ -18,13 +29,14 @@ function removalDemo(page: Page) {
     leave: demo.locator(`[data-e2e="removal-leave"]`),
     /** The button that ends a request left running by "Take the row at once". */
     end: demo.locator(`[data-e2e="removal-end"]`),
-    /** Ticks one of the demo's checkboxes. */
+    /** Ticks one of the demo's checkboxes; one under "Test controls" needs them shown first. */
     tick: (name: string) => demo.getByRole("checkbox", { name }).check(),
-    /** Picks what each row starts with. */
+    /** Picks what each row starts with. Needs the test controls shown first. */
     startRowsWith: (name: string) => demo.getByRole("radio", { name }).check(),
     /**
      * Waits for the demo's last line to read this. The demo writes it from an effect that runs
-     * after the hook's, so once it shows, the hook has done all it does for that state.
+     * after the hook's, so once it shows, the hook has done all it does for that state. Needs the
+     * test controls shown first.
      */
     settledIs: (text: string) =>
       demo.locator(`[data-e2e="removal-settled"]`).getByText(text, { exact: true }).waitFor(),
@@ -46,6 +58,24 @@ function removalDemo(page: Page) {
 /** `ErrorState` with `focusOnAppear`, `useFreshError` and `useFocusAfterRemoval`, on one list. */
 function removalSpecs(): Spec[] {
   return [
+    {
+      name:
+        "ErrorState card: the test controls start folded away, with the refusal checkbox and the fallback button in view",
+      pageId: "ui",
+      run: async (page) => {
+        const { controls, reset, showTestControls } = removalDemo(page)
+        const demo = page.locator(`#demo-ErrorState [data-e2e="removal-demo"]`)
+        await demo.getByRole("checkbox", { name: "Refuse the next removal" }).waitFor()
+        await reset.waitFor()
+        if (await controls.evaluate((details) => (details as HTMLDetailsElement).open)) {
+          throw new Error("the test controls are open on load")
+        }
+        const skip = demo.getByRole("checkbox", { name: "Skip earlier rows" })
+        await skip.waitFor({ state: "hidden" })
+        await showTestControls()
+        await skip.waitFor()
+      },
+    },
     {
       name:
         "ErrorState with focusOnAppear: a refusal that appears in the dialog that asked takes focus, and axe passes the dialog",
@@ -117,7 +147,8 @@ function removalSpecs(): Spec[] {
         "useFocusAfterRemoval with earlier off: the last of several rows hands focus to the fallback, past the rows before it",
       pageId: "ui",
       run: async (page) => {
-        const { reset, tick, confirm, removedWithFocusOn } = removalDemo(page)
+        const { reset, showTestControls, tick, confirm, removedWithFocusOn } = removalDemo(page)
+        await showTestControls()
         await tick("Skip earlier rows")
         await confirm("Linus")
         await removedWithFocusOn(reset)
@@ -128,9 +159,17 @@ function removalSpecs(): Spec[] {
         "useFocusAfterRemoval: a row taken off the list while its request still runs hands focus on at once, and the end of the request moves nothing more",
       pageId: "ui",
       run: async (page) => {
-        const { open, end, tick, confirm, removedWithFocusOn, settledIs, focusIsOn } = removalDemo(
-          page,
-        )
+        const {
+          open,
+          end,
+          showTestControls,
+          tick,
+          confirm,
+          removedWithFocusOn,
+          settledIs,
+          focusIsOn,
+        } = removalDemo(page)
+        await showTestControls()
         await tick("Take the row at once")
         await confirm("Grace")
         await removedWithFocusOn(open("Linus"))
@@ -146,9 +185,18 @@ function removalSpecs(): Spec[] {
         "useFocusAfterRemoval: a row that leaves by itself, after its removal was refused, moves nothing",
       pageId: "ui",
       run: async (page) => {
-        const { dialog, error, keep, leave, tick, confirm, settledIs, focusIsOn } = removalDemo(
-          page,
-        )
+        const {
+          dialog,
+          error,
+          keep,
+          leave,
+          showTestControls,
+          tick,
+          confirm,
+          settledIs,
+          focusIsOn,
+        } = removalDemo(page)
+        await showTestControls()
         await tick("Refuse the next removal")
         await confirm("Grace")
         await error.waitFor()
@@ -164,7 +212,10 @@ function removalSpecs(): Spec[] {
         "useFocusAfterRemoval with a target: the control the caller picks takes focus, not the link the row starts with",
       pageId: "ui",
       run: async (page) => {
-        const { open, startRowsWith, confirm, removedWithFocusOn } = removalDemo(page)
+        const { open, showTestControls, startRowsWith, confirm, removedWithFocusOn } = removalDemo(
+          page,
+        )
+        await showTestControls()
         await startRowsWith("A link")
         await confirm("Grace")
         await removedWithFocusOn(open("Linus"))
@@ -175,7 +226,10 @@ function removalSpecs(): Spec[] {
         "useFocusAfterRemoval: a hidden field at the start of a row is passed over for the row's button",
       pageId: "ui",
       run: async (page) => {
-        const { open, startRowsWith, confirm, removedWithFocusOn } = removalDemo(page)
+        const { open, showTestControls, startRowsWith, confirm, removedWithFocusOn } = removalDemo(
+          page,
+        )
+        await showTestControls()
         await startRowsWith("A hidden field")
         await confirm("Grace")
         await removedWithFocusOn(open("Linus"))
@@ -186,13 +240,29 @@ function removalSpecs(): Spec[] {
         "useFocusAfterRemoval: a row whose control does not take focus is passed over for another row, and for the fallback when no row is left",
       pageId: "ui",
       run: async (page) => {
-        const { open, reset, startRowsWith, confirm, removedWithFocusOn } = removalDemo(page)
+        const { open, reset, showTestControls, startRowsWith, confirm, removedWithFocusOn } =
+          removalDemo(page)
+        await showTestControls()
         // Linus's row starts with a button that is not shown, which the default target picks.
         await startRowsWith("A button that is not shown")
         await confirm("Grace")
         await removedWithFocusOn(open("Ada"))
         await confirm("Ada")
         await removedWithFocusOn(reset)
+      },
+    },
+    {
+      name:
+        "useFocusAfterRemoval: a disabled button at the start of a row is passed over for the row's enabled button",
+      pageId: "ui",
+      run: async (page) => {
+        const { open, showTestControls, startRowsWith, confirm, removedWithFocusOn } = removalDemo(
+          page,
+        )
+        await showTestControls()
+        await startRowsWith("A button that cannot be pressed")
+        await confirm("Grace")
+        await removedWithFocusOn(open("Linus"))
       },
     },
   ]
