@@ -85,11 +85,10 @@ const fromStartEdge = "start-0 translate-x-0 [&:dir(rtl)]:translate-x-0"
  * A button back to the current period, two joined arrow buttons and the period's name, which
  * takes its own line below `sm`. The return button comes first and shows only while another
  * period is on screen; on the current period it is hidden but keeps its width, so the arrows and
- * the name never move under the pointer. `[`
- * goes back, `]` forward and `t` to today's period, anywhere outside a text field and an open
- * dialog; each tooltip shows its key. The name is a polite live region, so a screen reader hears
- * the new period after each step. Pressing the return button hides it, so focus moves to the next
- * arrow rather than falling to the page.
+ * the name never move under the pointer. `[` goes back, `]` forward and `t` to today's period,
+ * anywhere outside a text field and an open dialog; each tooltip shows its key. The name is a
+ * polite live region, so a screen reader hears the new period after each step. Pressing the
+ * return button hides it, so focus moves to the next arrow rather than falling to the page.
  *
  * The period maths is `@spy4x/time/period`; the stepper keeps no state of its own.
  */
