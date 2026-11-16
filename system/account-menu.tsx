@@ -154,6 +154,13 @@ export interface AccountMenuProps {
    * stays the hidden row {@link header} describes.
    */
   headerHref?: string
+  /**
+   * The keys the app binds to the header row's link, such as `["p"]` for the profile. The row
+   * announces them all in `aria-keyshortcuts` and shows the first with `Kbd` at its right, where
+   * the pointer is fine, as {@link AccountMenuItem.keyshortcuts} does; it binds none of them.
+   * Ignored without {@link headerHref}, as the row is then no item to reach.
+   */
+  headerKeyshortcuts?: readonly string[]
   /** Utilities merged over the trigger's own, such as a rail cell's shape. */
   triggerClasses?: string
   /** Utilities merged over the open menu's own, such as a placement beside a rail. */
@@ -202,6 +209,7 @@ export function AccountMenu(props: AccountMenuProps): JSX.Element {
     tag,
     header = false,
     headerHref,
+    headerKeyshortcuts,
     triggerClasses,
     panelClasses,
     labels,
@@ -256,6 +264,7 @@ export function AccountMenu(props: AccountMenuProps): JSX.Element {
           <DropdownItem
             href={headerHref}
             navigate={navigate}
+            keyshortcuts={headerKeyshortcuts}
             class="mb-1 gap-3 border-b border-subtle"
             dataE2E="account-menu-header"
           >

@@ -202,6 +202,44 @@ describe("AppShell", () => {
     expect(sheet).toMatch(/<a href="\/profile"(?![^>]*aria-keyshortcuts)[^>]*>Profile<\/a>/)
   })
 
+  it("announces the bell's keyshortcuts in the rail and the sheet and names them in its tooltip", () => {
+    const html = shell({ notifications: { href: "/notifications", keyshortcuts: ["n", "mod+i"] } })
+    const column = whole(html, "rail-shell-column", "aside")
+    expect(column).toMatch(/<a href="\/notifications"[^>]*aria-keyshortcuts="N Control\+I"/)
+    expect(column).toContain(">Notifications (N)<")
+    const relabelled = shell({
+      notifications: { href: "/notifications", keyshortcuts: ["shift+i"] },
+      labels: { kbd: { shift: "Umschalt" } },
+    })
+    expect(relabelled).toContain(">Notifications (Umschalt I)<")
+    const sheet = whole(html, "rail-shell-dialog", "dialog")
+    expect(sheet).toMatch(/<a href="\/notifications"[^>]*aria-keyshortcuts="N Control\+I"/)
+    const plain = shell()
+    expect(plain).not.toContain("aria-keyshortcuts")
+    expect(whole(plain, "rail-shell-column", "aside")).toContain(">Notifications<")
+  })
+
+  it("announces headerKeyshortcuts on the linked header in the menu and the sheet, hint before the chevron", () => {
+    const html = shell({
+      account: { user, headerHref: "/profile", headerKeyshortcuts: ["p", "mod+p"] },
+    })
+    expect(html).toMatch(
+      /<a [^>]*href="\/profile"[^>]*aria-keyshortcuts="P Control\+P"[^>]*data-e2e="account-menu-header"/,
+    )
+    expect(region(html, "account-menu-header", "a")).toContain("data-hotkey-hint")
+    const header = region(html, "app-shell-sheet-account-header", "a")
+    expect(html).toMatch(
+      /<a href="\/profile"[^>]*aria-keyshortcuts="P Control\+P"[^>]*data-e2e="app-shell-sheet-account-header"/,
+    )
+    expect(header).toMatch(
+      /data-account-key-hint class="ms-auto hidden pointer-fine:inline-flex"><kbd[^]*<\/span><svg[^>]*><path d="m9 18 6-6-6-6"/,
+    )
+    const plain = shell({ account: { user, headerHref: "/profile" } })
+    expect(plain).not.toContain("aria-keyshortcuts")
+    expect(plain).not.toContain("data-account-key-hint")
+    expect(region(plain, "account-menu-header", "a")).not.toContain("data-hotkey-hint")
+  })
+
   it("draws a plain placeholder and no menu while the person is unknown", () => {
     const html = shell({ account: {} })
     expect(html).toContain('data-e2e="app-shell-account-pending"')

@@ -202,6 +202,21 @@ describe("AccountMenu", () => {
     expect(both).not.toMatch(/<div[^>]*aria-hidden="true"[^>]*data-e2e="account-menu-header"/)
   })
 
+  it("announces headerKeyshortcuts on the linked header and shows the first at its right", () => {
+    const html = render(
+      <AccountMenu user={user} headerHref="/profile" headerKeyshortcuts={["p", "mod+p"]} />,
+    )
+    expect(html).toMatch(
+      /<a [^>]*aria-keyshortcuts="P Control\+P"[^>]*data-e2e="account-menu-header"[^>]*>[^]*?<span aria-hidden="true" data-hotkey-hint[^>]*><kbd[^>]*>P<\/kbd><\/span><\/a>/,
+    )
+    const plain = render(<AccountMenu user={user} headerHref="/profile" />)
+    expect(plain).not.toContain("aria-keyshortcuts")
+    expect(plain).not.toContain("data-hotkey-hint")
+    const unlinked = render(<AccountMenu user={user} header headerKeyshortcuts={["p"]} />)
+    expect(unlinked).not.toContain("aria-keyshortcuts")
+    expect(unlinked).not.toContain("data-hotkey-hint")
+  })
+
   it("merges the caller's trigger and panel classes over its own", () => {
     const html = render(
       <AccountMenu

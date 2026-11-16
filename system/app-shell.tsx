@@ -71,6 +71,12 @@ export interface AppShellNotifications {
   href: string
   /** Drawn as a badge on the bell and the account tab; "99+" past 99. */
   unread?: number
+  /**
+   * The keys the app binds to the bell, such as `["n"]`, as {@link RailItem.keyshortcuts}: the
+   * bell announces them all in `aria-keyshortcuts` in the rail and the phone sheet, and the rail
+   * cell's tooltip shows the first, such as "Notifications (N)". It binds none of them.
+   */
+  keyshortcuts?: readonly string[]
 }
 
 /** {@link AppShellProps.account}: the signed-in person and what their menu offers. */
@@ -86,6 +92,13 @@ export interface AppShellAccount {
    * page. Left out, it is plain text.
    */
   headerHref?: string
+  /**
+   * The keys the app binds to the header row's link, such as `["p"]`: the row announces them all
+   * in `aria-keyshortcuts` and shows the first with `Kbd` where the pointer is fine, in the rail's
+   * menu and in the phone sheet (before the chevron), as `AccountMenuProps.headerKeyshortcuts`
+   * does. It binds none of them. Ignored without {@link headerHref}.
+   */
+  headerKeyshortcuts?: readonly string[]
   /** The menu's own items, first, such as "Profile". */
   items?: readonly AccountMenuItem[]
   /**
@@ -237,11 +250,13 @@ function PendingAvatar({ size }: { size: "size-6" | "size-8" }): JSX.Element {
 /**
  * The control of one row of the sheet's account section, for `AccountEntry`: a link through the
  * router, or a button. A button closes the sheet through `data-rail-close`; `Rail` closes it on a
- * link's plain click itself, and leaves it open on a modified one.
+ * link's plain click itself, and leaves it open on a modified one. `after` follows the key hint,
+ * so a trailing mark such as the header row's chevron stays last.
  */
 function SheetControl(
-  { href, navigate, onClick, type = "button", keyshortcuts, dataE2E, children }:
-    AccountControlProps,
+  { href, navigate, onClick, type = "button", keyshortcuts, dataE2E, children, after }:
+    & AccountControlProps
+    & { after?: ComponentChildren },
 ): JSX.Element {
   const apple = useApplePlatform()
   const shortcuts = entryKeyShortcuts(keyshortcuts, apple)
@@ -270,6 +285,7 @@ function SheetControl(
       >
         {children}
         {hint}
+        {after}
       </a>
     )
   }
@@ -284,6 +300,7 @@ function SheetControl(
     >
       {children}
       {hint}
+      {after}
     </button>
   )
 }
@@ -355,10 +372,17 @@ export function AppShell(props: AppShellProps): JSX.Element {
     href: notifications.href,
     Icon: IconBell,
     counter: notifications.unread,
+    keyshortcuts: notifications.keyshortcuts,
   }
   const bellCurrent = bell && currentStates([bell], undefined, currentPath).get(bell)
   const navigateLink = navigate && ((_key: string, href: string) => navigate(href))
-  const entryPorts = { navigateLink, counterWords, variant: "icons" as const, primary: false }
+  const entryPorts = {
+    navigateLink,
+    counterWords,
+    variant: "icons" as const,
+    primary: false,
+    kbdLabels: labels?.kbd,
+  }
   const themes: readonly [AccountMenuTheme, string][] = [
     [
       "system",
@@ -391,6 +415,7 @@ export function AppShell(props: AppShellProps): JSX.Element {
             <AccountMenu
               user={user}
               headerHref={account.headerHref}
+              headerKeyshortcuts={account.headerKeyshortcuts}
               items={account.items}
               language={account.language}
               theme={account.theme}
@@ -436,10 +461,11 @@ export function AppShell(props: AppShellProps): JSX.Element {
               <SheetControl
                 href={account.headerHref}
                 navigate={navigate}
+                keyshortcuts={account.headerKeyshortcuts}
                 dataE2E="app-shell-sheet-account-header"
+                after={<IconChevronRight class="size-4 shrink-0 text-muted" />}
               >
                 <AccountIdentity user={user} tag={tag} />
-                <IconChevronRight class="size-4 shrink-0 text-muted" />
               </SheetControl>
             )}
           {(account.items ?? []).map((item, index) => (
