@@ -238,9 +238,13 @@ export interface CommandPaletteTrigger {
 /** Props every {@link CommandPalette} takes, whichever data mode it uses. */
 export interface CommandPaletteBaseProps<T extends CommandPaletteOption> {
   /**
-   * Called with the option the reader picked, after the palette has closed. An option with `run`
-   * runs that instead, and a disabled one (`disabledReason`) neither. `details` says whether the
-   * pick was the alternative one and carries a `takesText` option's text.
+   * Called with the option the reader picked, right after the palette's dialog is told to close:
+   * the browser has already put focus back where it was before the palette opened, but the
+   * palette's own close handling, which focuses the trigger, runs later, as a separate task. Focus
+   * `onSelect` moves to an element outside the palette other than the trigger and the element
+   * focused before it stays there. An option with `run` runs that instead, and a disabled one
+   * (`disabledReason`) neither. `details` says whether the pick was the alternative one and carries
+   * a `takesText` option's text.
    */
   onSelect: (option: T, details: CommandPaletteSelectDetails) => void
   /** Called with `true` when the palette opens and with `false` when it closes. */

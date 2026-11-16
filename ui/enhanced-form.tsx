@@ -62,9 +62,10 @@ function requiredMessage(control: FormControl, labels: Required<EnhancedFormLabe
 }
 
 /**
- * The live region's text for one status — the one piece of {@link EnhancedForm}'s behaviour a
- * render-to-string test can assert directly, since the status it runs against never leaves
- * `"idle"` without an effect or an event `preact-render-to-string` does not run.
+ * The live region's text for one status, so a test can assert every message directly. A string
+ * render of {@link EnhancedForm} shows the message for whatever `status` the caller passes; without
+ * that prop, the form's own status leaves `"idle"` only through an effect or an event, which
+ * `preact-render-to-string` does not run.
  *
  * @param status Current {@link EnhancedFormStatus}.
  * @param labels Resolved copy — defaults already merged with any override.

@@ -11,50 +11,47 @@ Preact + Tailwind primitives extracted from earlier source applications.
   glyphs come from `@spy4x/preact-icons`.
 - **Server-renderable.** `document`, `navigator` and timers are touched inside effects or event
   handlers only.
-- **A `class` is merged, except on twenty-eight exports.** Components pass a caller's `class`
+- **A `class` is merged, except on the exports listed here.** Components pass a caller's `class`
   through `cn` from `@spy4x/preact-cn`, so a caller's utility replaces the component's own of the
   same group: `<Button class="px-8">` replaces the size's padding. `Button`, `buttonClasses`,
   `Input`, `Textarea`, `Select`, `EnhancedForm` and `CopyButton` merge too since #861, so a browser
-  bundle that renders one of them carries `tailwind-merge`, about 28 KB minified. `ImageGallery`,
-  `Lightbox` (#471), `DemoVideo`, `DialogActions`, `YouTubeVideo`, `ScreenTour`, `PricingTable`,
-  `PlanCard`, `ThemePreview`, `ThemeToggle`, `RadioChips` (its `optionsClass`), `CommandPalette`,
-  `LanguagePicker`, `Combobox` (with its `inputClass` and `listboxClass`), `Modal`, `Toastr`
-  (#943), `Explorable` and `Slider` (#958), `LookTile`, `LookGrid`, `SwatchChips`, `OrderBar` and
-  `LoopVideo` use `join` instead; `ConfirmDialog` and `ShortcutsDialog` hand their `class` to
+  bundle that renders one of them carries `tailwind-merge`, about 28 KB minified. `Breadcrumbs`,
+  `Combobox` (with its `inputClass` and `listboxClass`), `CommandPalette`, `DecisionCard`,
+  `DemoVideo`, `DialogActions`, `Explorable`, `FactList`, `ImageGallery`, `LanguagePicker`,
+  `Lightbox` (#471), `ListField`, `LookGrid`, `LookTile`, `LoopVideo`, `Modal`, `OrderBar`,
+  `PlanCard`, `PostList`, `PricingTable`, `Prose`, `RadioChips` (its `optionsClass`), `ScreenTour`,
+  `Slider`, `StoryTile`, `ThemePreview`, `ThemeToggle`, `TldrBox`, `Toastr`, `UpgradePrompt` and
+  `YouTubeVideo` use `join` instead; `ConfirmDialog` and `ShortcutsDialog` hand their `class` to
   `Modal`, `SiteSearch` hands its to `CommandPalette`, `ZoomableImages` hands its to `Lightbox`, and
-  `Field` puts its `class` on its wrapper unchanged. Their `class` is appended after their own
+  `SwatchChips` passes `optionsClass` on to `RadioChips`. Their `class` is appended after their own
   classes, and replaces one of them only when it is marked important, `<Lightbox class="p-8!">`.
   Their own classes bring no `tailwind-merge`, but one that renders a `Button` or an `Input` brings
-  it through that. `tailwind-merge` sees `pc-input` and the other theme classes as one opaque class
+  it through that. A component whose element has no classes of its own, such as `Field`,
+  `RadioChips` or `Tabs`, puts `class` there unchanged, so there is nothing to merge.
+  `tailwind-merge` sees `pc-input` and the other theme classes as one opaque class
   each, so `pc-input` stays beside a caller's `h-10`, and the stylesheet's order decides which
   height applies. Every component the library renders keeps one utility per group on an
   element; `ui-guide/class-conflicts.test.tsx` holds that for every card in the guide.
-- **One Preact option hook, for four components' refs.** `./forward-ref.ts`'s hook, installed on
-  Preact's shared `options` object, is what lets `Input`, `Button`, `Checkbox` and `Radio` forward
-  the `ref` each is given to the native element it renders instead of Preact applying it to the
-  component itself. Fifteen of this package's exports load it — counted once, by hand, by walking
-  each subpath's own module graph for `forward-ref.ts`; no check repeats the count: the four
-  components themselves — `./button`'s only other export is `buttonClasses`, so a caller who imports
-  that alone still installs the hook; the package root (`.`), which carries every export;
-  `./confirm-dialog`, `./copy-button`, `./date-range-picker`, `./language-picker`, `./modal`, `./on-off-buttons` and
-  `./pagination`, each of which renders a `Button` of its own; `./dropdown`, which uses
-  `buttonClasses` without ever rendering a `Button`; and `./copy-block` and `./data-table`, which
-  load it transitively — through `./copy-button` and `./pagination` respectively.
-  `@spy4x/preact-crud` loads it too, transitively, through `./dropdown`. It acts only on the four
-  components it forwards refs for; nothing else in this package or a caller's own markup is
-  affected.
+- **One Preact option hook, for the refs of the components that forward one.** `./forward-ref.ts`'s
+  hook, installed on Preact's shared `options` object, is what lets `Button`, `Card`, `Checkbox`,
+  `Input`, `InputButton`, `Radio`, `Select` and `Textarea` forward the `ref` each is given to the
+  native element it renders instead of Preact applying it to the component itself. Any subpath
+  whose module graph reaches one of them loads the hook: the package root (`.`), each of those
+  components' own subpaths (`./button` even when only `buttonClasses` is imported), and every
+  subpath that renders one of them, directly or through another component. `@spy4x/preact-crud`
+  loads it too. To check one subpath, look for `forward-ref.ts` in
+  `deno info ui/<file>.tsx`. It acts only on the components it forwards refs for; nothing else in
+  this package or a caller's own markup is affected.
 
 ## Ledger rows (#257)
 
 A line with no real columns — an outcome sentence, a price line — is not a new component. Apply
 `theme/preset.css`'s own `border-subtle` token directly: `class="border-subtle flex
 items-baseline justify-between gap-4 border-b py-2 last:border-b-0"` on each row, inside whatever
-wraps the list (a `<ul>`, a `<div>`, `Card`'s `CardBody`). This is not what `Table` itself does —
-`Table`'s own row dividers are `divide-gray-200 dark:divide-gray-600` (and `divide-gray-100` in the
-body), literal Tailwind grays that do not read `border-subtle` or any other design token, so they
-do not repaint under `ink` or any other palette. The recipe here is deliberately the token-based
-one `Table` does not use, on markup that is not a table because the content has no columns to be
-one. See #257's own "What I suggest" for the two options this decides between.
+wraps the list (a `<ul>`, a `<div>`, `Card`'s `CardBody`). It is the same token `Table`'s own row
+dividers read through `divide-subtle`, so both repaint under every palette, on markup that is not a
+table because the content has no columns to be one. See #257's own "What I suggest" for the two
+options this decides between.
 
 ## Components
 
@@ -2871,9 +2868,11 @@ shows as a sheet until the target is back on screen, and never points at the wro
 ## Billing
 
 `PricingTable`, `PlanCard` and `UpgradePrompt` take everything as props and fetch nothing, so they
-work with any provider. `SubscriptionStatus` numbers, from 1, the five statuses spy4x/ts-libs#362
-proposes for `@spy4x/billing`, in its order, and adds `Paused` as 6. `status` and `interval` also take the plain numbers, so
-an app passes a same-valued enum of its own, or that package's, without a cast. Amounts are integers
+work with any provider. `SubscriptionStatus` has the same six members and numbers as
+`SubscriptionStatus` in `@spy4x/billing` (spy4x/ts-libs), from `Trialing` as 1 to `Paused` as 6,
+and `BillingInterval`'s `Month` and `Year` match its `BillingPeriod`'s `Monthly` and `Yearly`.
+`status` and `interval` also take the plain numbers, so an app passes a same-valued enum of its
+own, or that package's, without a cast. Amounts are integers
 in the currency's smallest unit, formatted with `formatMoney` from `@spy4x/platform`.
 
 `PricingTable` lists each price as its own plan: a plan sold monthly and yearly is two entries with

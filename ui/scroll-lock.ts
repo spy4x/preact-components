@@ -1,5 +1,7 @@
 /**
- * The page-level scroll lock every overlay in this package shares.
+ * The page-level scroll lock `Modal` and `CommandPalette` share. Components built on them, such as
+ * `ConfirmDialog` and `SiteSearch`, get it through them; `Lightbox` and `ZoomableImages` lock
+ * nothing.
  *
  * `Modal` and `CommandPalette` both lock the page behind them, and either can open over the other,
  * so the lock counts its holders: the first one records the page's styles and locks, the last one
