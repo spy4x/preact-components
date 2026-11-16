@@ -74,6 +74,19 @@ describe("AccountMenu", () => {
     expect(html.match(/aria-keyshortcuts/g)?.length).toBe(1)
   })
 
+  it("shows an item's key sequence at its right and announces none of it", () => {
+    const html = render(
+      <AccountMenu
+        user={user}
+        items={[{ label: "Transactions", href: "/tx", keyshortcuts: ["g x"] }]}
+      />,
+    )
+    expect(html).not.toContain("aria-keyshortcuts")
+    expect(html).toMatch(
+      /Transactions<span aria-hidden="true" data-hotkey-hint[^>]*><kbd[^>]*><kbd[^>]*>G<\/kbd> then <kbd[^>]*>X<\/kbd>/,
+    )
+  })
+
   // Before hydration `DropdownItem` is a plain button, where the choice is `aria-current`; the
   // hydrated `menuitemradio` with `aria-checked` is proven in `pages/e2e/system.spec.ts`.
   it("marks only the current theme in a group named by its heading", () => {
@@ -202,17 +215,22 @@ describe("AccountMenu", () => {
     expect(both).not.toMatch(/<div[^>]*aria-hidden="true"[^>]*data-e2e="account-menu-header"/)
   })
 
-  it("announces headerKeyshortcuts on the linked header and shows the first at its right", () => {
+  it("announces the linked header's single keys and shows its first key, a sequence too, at its right", () => {
     const html = render(
-      <AccountMenu user={user} headerHref="/profile" headerKeyshortcuts={["p", "mod+p"]} />,
+      <AccountMenu user={user} headerHref="/profile" headerKeyshortcuts={["g p", "mod+p"]} />,
     )
     expect(html).toMatch(
-      /<a [^>]*aria-keyshortcuts="P Control\+P"[^>]*data-e2e="account-menu-header"[^>]*>[^]*?<span aria-hidden="true" data-hotkey-hint[^>]*><kbd[^>]*>P<\/kbd><\/span><\/a>/,
+      /<a [^>]*aria-keyshortcuts="Control\+P"[^>]*data-e2e="account-menu-header"[^>]*>[^]*?<span aria-hidden="true" data-hotkey-hint[^>]*><kbd[^>]*><kbd[^>]*>G<\/kbd> then <kbd[^>]*>P<\/kbd><\/kbd><\/span><\/a>/,
     )
+    const sequence = render(
+      <AccountMenu user={user} headerHref="/profile" headerKeyshortcuts={["g p"]} />,
+    )
+    expect(sequence).not.toContain("aria-keyshortcuts")
+    expect(sequence).toContain("data-hotkey-hint")
     const plain = render(<AccountMenu user={user} headerHref="/profile" />)
     expect(plain).not.toContain("aria-keyshortcuts")
     expect(plain).not.toContain("data-hotkey-hint")
-    const unlinked = render(<AccountMenu user={user} header headerKeyshortcuts={["p"]} />)
+    const unlinked = render(<AccountMenu user={user} header headerKeyshortcuts={["g p"]} />)
     expect(unlinked).not.toContain("aria-keyshortcuts")
     expect(unlinked).not.toContain("data-hotkey-hint")
   })

@@ -11,8 +11,8 @@
  */
 
 import { cn } from "@spy4x/preact-cn"
-import { ariaKeyShortcuts, useApplePlatform } from "@spy4x/preact-ui/hotkeys"
-import { KBD_LABELS, type KbdLabels, keyFaces } from "@spy4x/preact-ui/kbd"
+import { ariaKeyShortcutList, useApplePlatform } from "@spy4x/preact-ui/hotkeys"
+import { KBD_LABELS, type KbdLabels, keyFaces, sequenceSteps } from "@spy4x/preact-ui/kbd"
 import { followLinkClick, isPlainClick } from "@spy4x/preact-ui/link"
 import { type ComponentChildren, createContext, type JSX } from "preact"
 import { useContext } from "preact/hooks"
@@ -311,20 +311,20 @@ export interface EntryProps {
 }
 
 /**
- * An entry's `aria-keyshortcuts`: every combination of {@link RailItem.keyshortcuts}, separated by
- * spaces, or `undefined` without one.
+ * An entry's `aria-keyshortcuts`: every single press of {@link RailItem.keyshortcuts}, separated
+ * by spaces, or `undefined` without one. A sequence such as `"g x"` is shown, not announced.
  */
 export function entryKeyShortcuts(
   keyshortcuts: readonly string[] | undefined,
   apple: boolean,
 ): string | undefined {
-  if (keyshortcuts === undefined || keyshortcuts.length === 0) return undefined
-  return keyshortcuts.map((keys) => ariaKeyShortcuts(keys, apple)).join(" ")
+  return ariaKeyShortcutList(keyshortcuts ?? [], apple)
 }
 
 /**
  * A cell's tooltip words: the label, and the first of {@link RailItem.keyshortcuts} in brackets as
- * the platform writes it, such as "Search (Ctrl K)" or "Search (⌘K)".
+ * the platform writes it, such as "Search (Ctrl K)" or "Search (⌘K)". A sequence's presses are
+ * separated by a space on every platform: "Transactions (G X)".
  */
 export function entryTip(
   label: string,
@@ -334,8 +334,11 @@ export function entryTip(
 ): string {
   const first = keyshortcuts?.[0]
   if (first === undefined) return label
-  const faces = keyFaces(first, apple, { ...KBD_LABELS, ...kbdLabels }).map((face) => face.text)
-  return `${label} (${faces.join(apple ? "" : " ")})`
+  const words = { ...KBD_LABELS, ...kbdLabels }
+  const presses = sequenceSteps(first).map((press) =>
+    keyFaces(press, apple, words).map((face) => face.text).join(apple ? "" : " ")
+  )
+  return `${label} (${presses.join(" ")})`
 }
 
 /**
