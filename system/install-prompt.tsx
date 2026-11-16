@@ -50,17 +50,19 @@ export const DEFAULT_INSTALL_PROMPT_LABELS: InstallPromptLabels = {
 export interface InstallPromptProps {
   /**
    * What to offer: `prompt` shows the Install button, `ios` the Share steps, and `installed` or
-   * `unavailable` render nothing. `createInstallPrompt().mode` in `@spy4x/preact-signals` fits.
+   * `unavailable` render nothing, except that a card whose action is running or failed stays on
+   * `unavailable` to show `labels.failed`. `createInstallPrompt().mode` in `@spy4x/preact-signals`
+   * fits.
    */
   mode: "prompt" | "ios" | "installed" | "unavailable"
   /**
    * Opens the browser's install dialog. A returned promise keeps the button busy until it ends; a
-   * rejection is caught here and shows `labels.failed`.
+   * rejection or a throw is caught here and shows `labels.failed`.
    */
   onInstall: () => void | Promise<unknown>
   /**
-   * Hides the card for good. The caller stores that and stops rendering it. A returned promise that
-   * rejects is caught here and shows `labels.failed`.
+   * Hides the card for good. The caller stores that and stops rendering it. A throw, or a returned
+   * promise that rejects, is caught here and shows `labels.failed`.
    */
   onDismiss: () => void | Promise<unknown>
   /**
@@ -87,7 +89,13 @@ export function InstallPrompt(
   const [busy, setBusy] = useState(false)
   const [failed, setFailed] = useState(false)
   const card = useRef<HTMLElement>(null)
-  const shown = mode === "prompt" || mode === "ios"
+  /** The last mode that offered something, to draw the card by while it shows a failure. */
+  const offered = useRef<"prompt" | "ios">("prompt")
+  if (mode === "prompt" || mode === "ios") offered.current = mode
+  const drawn = offered.current
+  // A store ends the offer when the install dialog fails to open, so an `unavailable` card stays
+  // while Install runs and while its failure shows: it says what happened instead of vanishing.
+  const shown = mode === drawn || (mode === "unavailable" && (busy || failed))
   // The card leaving, by `mode` or by the caller unmounting it, hands focus to `returnFocus`.
   useFocusFallback(card, () => returnFocus?.())
 
@@ -95,7 +103,14 @@ export function InstallPrompt(
 
   const run = (action: () => void | Promise<unknown>, showBusy: boolean) => {
     setFailed(false)
-    const result = action()
+    let result: void | Promise<unknown>
+    try {
+      result = action()
+    } catch {
+      // A port that throws at once, such as blocked storage, fails like a rejected promise.
+      setFailed(true)
+      return
+    }
     if (!result) return
     if (showBusy) setBusy(true)
     result.then(() => {}, () => setFailed(true)).finally(() => setBusy(false))
@@ -105,7 +120,7 @@ export function InstallPrompt(
     <section
       ref={card}
       aria-label={words.title}
-      data-install-mode={mode}
+      data-install-mode={drawn}
       class={cn("pc-card flex flex-col gap-3 p-4 sm:flex-row sm:items-center", className)}
     >
       <div class="flex min-w-0 flex-1 items-start gap-3">
@@ -114,7 +129,7 @@ export function InstallPrompt(
         </span>
         <div class="flex min-w-0 flex-col gap-1">
           <p class="font-medium">{words.title}</p>
-          {mode === "prompt"
+          {drawn === "prompt"
             ? <p class="text-sm text-muted">{words.body}</p>
             : (
               <p class="text-sm text-muted">
@@ -129,7 +144,7 @@ export function InstallPrompt(
         </div>
       </div>
       <div class="flex flex-wrap gap-2">
-        {mode === "prompt"
+        {drawn === "prompt"
           ? (
             <Button variant="primary" busy={busy} onClick={() => run(onInstall, true)}>
               {words.install}
