@@ -1028,7 +1028,9 @@ function DismissibleNoticeDemo() {
  * which drives every one: a removal that takes the row at once and ends by hand, a person who
  * leaves with no removal running, and rows that start with something other than their button. The
  * status line there is written from an effect that runs after the hook's, so a check that reads it
- * knows the hook has finished with that state.
+ * knows the hook has finished with that state. The disclosure is a `group/code`, the name the
+ * card's own Code disclosure uses, so its chevron needs no class outside the theme's class list;
+ * the nearest `group/code` to that chevron is this disclosure.
  */
 function RemovalDemo() {
   const [people, setPeople] = useState(REMOVAL_PEOPLE)
@@ -1095,9 +1097,9 @@ function RemovalDemo() {
           Bring everyone back
         </Button>
       </Cluster>
-      <details class="group/controls" data-e2e="removal-test-controls">
+      <details class="group/code" data-e2e="removal-test-controls">
         <summary class="flex min-h-11 cursor-pointer list-none items-center gap-2 rounded-md text-sm font-medium text-muted select-none hover:text-foreground focus-visible:ring-2 focus-visible:ring-focus focus-visible:outline-hidden sm:min-h-9 [&::-webkit-details-marker]:hidden">
-          <IconChevronRight class="size-4 shrink-0 transition-transform group-open/controls:rotate-90 group-open/controls:[&:dir(rtl)]:-rotate-90" />
+          <IconChevronRight class="size-4 shrink-0 transition-transform group-open/code:rotate-90 group-open/code:[&:dir(rtl)]:-rotate-90" />
           Test controls
         </summary>
         <Stack class="pt-2">
