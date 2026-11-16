@@ -16,12 +16,13 @@ type Probe = typeof globalThis & {
   e2eSpoken?: string[]
   /** The batching timers of `TIMELINE_ANNOUNCE_MS` that are still set. */
   e2eAnnounceTimers?: Set<unknown>
-  /** The demo's step timers, held back: each call adds one step. */
-  e2eSteps?: (() => void)[]
+  /** The demo's step timers that are set and not cleared, held back: each call adds one step. */
+  e2eSteps?: Map<number, () => void>
 }
 
 /**
- * The live timeline of the `Timeline` card. The demo's step timer is held back from the first
+ * The live timeline of the `Timeline` card, its run started with the demo's button after checking
+ * that no step timer was set before the press. The demo's step timer is held back from the first
  * script on, so a step arrives only when the spec calls `step()`, and the page's clock is paused,
  * so the batching timer fires only when the spec moves it.
  *
@@ -35,15 +36,28 @@ async function livePage(page: Page, { short = false }: { short?: boolean } = {})
   await page.addInitScript((stepMs) => {
     const probe = globalThis as Probe
     const realInterval = globalThis.setInterval
-    probe.e2eSteps = []
+    const realClear = globalThis.clearInterval
+    const steps = new Map<number, () => void>()
+    probe.e2eSteps = steps
+    let next = -1
     globalThis.setInterval = ((handler: TimerHandler, ms?: number, ...rest: unknown[]) => {
       if (ms !== stepMs || typeof handler !== "function") return realInterval(handler, ms, ...rest)
-      probe.e2eSteps?.push(() => handler(...rest))
-      return -1
+      const id = next--
+      steps.set(id, () => handler(...rest))
+      return id
     }) as typeof globalThis.setInterval
+    globalThis.clearInterval = ((id?: number) => {
+      if (id !== undefined && steps.delete(id)) return
+      realClear(id)
+    }) as typeof globalThis.clearInterval
   }, LIVE_TIMELINE_TICK_MS)
   await page.reload()
   await page.locator(`html[data-hydrated="true"]`).waitFor()
+  const run = page.locator(`#demo-Timeline [data-e2e="timeline-live-run"]`)
+  await run.scrollIntoViewIfNeeded()
+  same("step timers before the run starts", await heldSteps(page), 0)
+  await run.click()
+  await run.filter({ hasText: "Stop the run" }).waitFor()
   await page.clock.pauseAt(await page.evaluate(() => Date.now() + 1_000))
   const card = page.locator("#demo-Timeline")
   const box = card.locator(`[data-e2e="timeline-live-box"]`)
@@ -67,9 +81,9 @@ async function livePage(page: Page, { short = false }: { short?: boolean } = {})
   /** The demo adds one step; the clock moves a frame or two, so the timeline's effects run. */
   const step = async () => {
     const held = await page.evaluate(() => {
-      const steps = (globalThis as Probe).e2eSteps ?? []
-      for (const step of steps) step()
-      return steps.length
+      const steps = (globalThis as Probe).e2eSteps ?? new Map()
+      for (const step of steps.values()) step()
+      return steps.size
     })
     if (held !== 1) throw new Error(`held ${held} step timers, not 1`)
     await page.clock.runFor(100)
@@ -136,6 +150,7 @@ async function livePage(page: Page, { short = false }: { short?: boolean } = {})
   const endIs = (state: "in" | "out") => page.locator(`body[data-e2e-end="${state}"]`).waitFor()
   const scrolls = () => page.evaluate(() => [...((globalThis as Probe).e2eScrolls ?? [])])
   return {
+    run,
     live,
     box,
     announcer,
@@ -180,6 +195,11 @@ function same(what: string, actual: unknown, expected: unknown): void {
   if (JSON.stringify(actual) !== JSON.stringify(expected)) {
     throw new Error(`${what}: ${JSON.stringify(actual)}, not ${JSON.stringify(expected)}`)
   }
+}
+
+/** How many of the demo's step timers are set and not cleared. */
+function heldSteps(page: Page): Promise<number> {
+  return page.evaluate(() => (globalThis as Probe).e2eSteps?.size ?? -1)
 }
 
 /** The live `Timeline` with the "N new events" button showing passes axe in one palette. */
@@ -437,6 +457,26 @@ export const specs: readonly Spec[] = [
       await tl.live.waitFor({ state: "detached" })
       same("batching timers after leaving", await tl.announceTimers(), 0)
       return "pulse; 1 timer, then 0"
+    },
+  },
+  {
+    name: "Timeline live: the demo sets no step timer until its button starts the run, the same " +
+      "button stops it and clears the timer, and leaving the page clears a running one",
+    pageId: "ui",
+    run: async (page) => {
+      // livePage checks that no timer is set before the press, then presses Start.
+      const tl = await livePage(page, { short: true })
+      same("step timers while running", await heldSteps(page), 1)
+      await tl.run.click()
+      await tl.run.filter({ hasText: "Start the run" }).waitFor()
+      same("step timers after Stop", await heldSteps(page), 0)
+      await tl.run.click()
+      await tl.run.filter({ hasText: "Stop the run" }).waitFor()
+      same("step timers after Start again", await heldSteps(page), 1)
+      await page.evaluate(() => location.hash = "#/icons")
+      await tl.live.waitFor({ state: "detached" })
+      same("step timers after leaving", await heldSteps(page), 0)
+      return "0 before Start; 1, 0 after Stop, 1 again, 0 after leaving"
     },
   },
   liveAxe("light"),

@@ -1,10 +1,12 @@
 /**
- * The live `Timeline` demo: a made-up build run that adds a step every couple of seconds, inside
- * a box that scrolls, so following, the "new events" button and Pause can be tried in place.
+ * The live `Timeline` demo: a made-up build run that, once started, adds a step every couple of
+ * seconds inside a box that scrolls, so following, the "new events" button and Pause can be tried
+ * in place. It waits for a press: a run ticking from load would re-render, scroll and announce under
+ * every other check that walks the guide page.
  */
 
 import { useSignal } from "@preact/signals"
-import { Timeline, type TimelineItem, type TimelineTone } from "@spy4x/preact-ui"
+import { Button, Timeline, type TimelineItem, type TimelineTone } from "@spy4x/preact-ui"
 import type { JSX } from "preact"
 import { useEffect } from "preact/hooks"
 
@@ -44,26 +46,40 @@ function step(index: number): TimelineItem {
 export const LIVE_TIMELINE_START = 2
 
 /**
- * A live timeline fed by a timer, stopped when the card unmounts. The box has a fixed height, so a
- * new step never moves the rest of the page while the run fills it.
+ * A live timeline fed by a timer that runs only between the presses of its start and stop button,
+ * and is cleared when the card unmounts. The box has a fixed height, so a new step never moves the
+ * rest of the page while the run fills it.
  */
 export function LiveTimelineDemo(): JSX.Element {
   const items = useSignal<TimelineItem[]>(
     Array.from({ length: LIVE_TIMELINE_START }, (_, index) => step(index)),
   )
+  const running = useSignal(false)
   useEffect(() => {
+    if (!running.value) return
     const timer = setInterval(() => {
       const last = items.value[items.value.length - 1]
       items.value = [...items.value, step(Number(last.id) + 1)].slice(-LIVE_TIMELINE_KEEP)
     }, LIVE_TIMELINE_TICK_MS)
     return () => clearInterval(timer)
-  }, [])
+  }, [running.value])
   return (
-    <div
-      class="h-72 overflow-y-auto rounded-lg border border-subtle p-4"
-      data-e2e="timeline-live-box"
-    >
-      <Timeline live label="Build run" items={items.value} dataE2E="timeline-live" />
+    <div class="flex flex-col items-start gap-3">
+      <Button
+        variant="outline"
+        size="sm"
+        class="min-h-11 sm:min-h-9"
+        data-e2e="timeline-live-run"
+        onClick={() => (running.value = !running.value)}
+      >
+        {running.value ? "Stop the run" : "Start the run"}
+      </Button>
+      <div
+        class="h-72 w-full overflow-y-auto rounded-lg border border-subtle p-4"
+        data-e2e="timeline-live-box"
+      >
+        <Timeline live label="Build run" items={items.value} dataE2E="timeline-live" />
+      </div>
     </div>
   )
 }
