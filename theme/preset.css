@@ -739,10 +739,16 @@
  * it, the device's bottom inset the bar pads itself by, and step 2 (8 px) more so the focus ring
  * clears the band too. `RailShell` sets it on the root element below `md`, while the bar is on the
  * page.
+ *
+ * It also sets that room as `--pc-tab-bar-room` on the same element, inherited by the whole page,
+ * so anything that sticks to the bottom of the window can sit above the bar:
+ * `bottom-[calc(--spacing(4)+var(--pc-tab-bar-room,0px))]`. Outside `RailShell`, and from `md` up,
+ * the property is unset and the `0px` fallback applies. The live `Timeline`'s jump button uses it.
  */
 @utility pc-scroll-pb-tab-bar {
-  scroll-padding-bottom: calc(--spacing(16) + --spacing(6) + --spacing(2) + 1px +
+  --pc-tab-bar-room: calc(--spacing(16) + --spacing(6) + --spacing(2) + 1px +
     env(safe-area-inset-bottom, 0px));
+  scroll-padding-bottom: var(--pc-tab-bar-room);
 }
 
 /* #endregion Spacing */
