@@ -62,8 +62,13 @@ export interface FilterField<T = string | number | null> {
   urlParam: string
   /** Value that means "no filter"; cleared from the URL rather than written to it. */
   initialValue: T
-  /** Custom URL-to-value coercion. Defaults to `parseInt` for numbers, identity otherwise. */
-  parser?: (value: string | null) => T
+  /**
+   * Custom URL-to-value coercion, called only with a parameter the address has; an absent one means
+   * `initialValue` without asking it. Without a parser, a field whose `initialValue` is a number
+   * parses with `parseInt`, and every other field gets the raw string, so a `number | null` field
+   * starting at `null` needs one to read `?zone=5` as `5`.
+   */
+  parser?: (value: string) => T
 }
 
 /** Result of {@link useUrlFilters}. */

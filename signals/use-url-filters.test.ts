@@ -47,21 +47,46 @@ describe("resolveFilterValue", () => {
       signal: signal<string[]>([]),
       urlParam: "tags",
       initialValue: [],
-      parser: (value) => value ? value.split("|") : [],
+      parser: (value) => value.split("|"),
     }
     expect(resolveFilterValue(field, "a|b")).toEqual(["a", "b"])
-    expect(resolveFilterValue(field, null)).toEqual([])
   })
 
-  it("lets a parser see the raw null for an absent parameter", () => {
+  it("answers the default for an absent parameter without calling the parser", () => {
+    const seen: string[] = []
     const field: FilterField<number | null> = {
       signal: signal<number | null>(null),
-      urlParam: "zoneId",
+      urlParam: "zone",
       initialValue: null,
-      parser: (value) => value === null ? null : Number(value),
+      parser: (value) => {
+        seen.push(value)
+        return Number(value)
+      },
+    }
+    expect(resolveFilterValue(field, null)).toBeNull()
+    expect(resolveFilterValue(field, "3")).toBe(3)
+    expect(seen).toEqual(["3"])
+  })
+
+  it("reads a number field that starts as null as a string when it has no parser", () => {
+    const field: FilterField<number | null> = {
+      signal: signal<number | null>(null),
+      urlParam: "zone",
+      initialValue: null,
+    }
+    expect(resolveFilterValue(field, "5")).toBe("5")
+  })
+
+  it("still takes a parser written for a null parameter", () => {
+    // `parser` used to be typed as taking `string | null`; one written that way still type-checks.
+    const parser = (value: string | null): number | null => value === null ? null : Number(value)
+    const field: FilterField<number | null> = {
+      signal: signal<number | null>(null),
+      urlParam: "zone",
+      initialValue: null,
+      parser,
     }
     expect(resolveFilterValue(field, "3")).toBe(3)
-    expect(resolveFilterValue(field, null)).toBeNull()
   })
 })
 
