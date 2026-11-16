@@ -82,9 +82,10 @@ const fromStartEdge = "start-0 translate-x-0 [&:dir(rtl)]:translate-x-0"
 /**
  * Steps a screen through weeks or months: "This month  ‹ › November 2026".
  *
- * A button back to the current period, two joined arrow buttons and the period's name. The return
- * button comes first and shows only while another period is on screen; on the current period it
- * is hidden but keeps its width, so the arrows and the name never move under the pointer. `[`
+ * A button back to the current period, two joined arrow buttons and the period's name, which
+ * takes its own line below `sm`. The return button comes first and shows only while another
+ * period is on screen; on the current period it is hidden but keeps its width, so the arrows and
+ * the name never move under the pointer. `[`
  * goes back, `]` forward and `t` to today's period, anywhere outside a text field and an open
  * dialog; each tooltip shows its key. The name is a polite live region, so a screen reader hears
  * the new period after each step. Pressing the return button hides it, so focus moves to the next
@@ -183,7 +184,12 @@ export function PeriodStepper({
           </Button>
         </Tooltip>
       </div>
-      <span aria-live="polite" aria-atomic="true" class="pc-num text-sm font-semibold">
+      {/* Below `sm` the name always takes its own line, so a long month's name cannot wrap alone. */}
+      <span
+        aria-live="polite"
+        aria-atomic="true"
+        class="pc-num basis-full text-sm font-semibold sm:basis-auto"
+      >
         {periodLabel(period, locale ?? language)}
       </span>
     </div>
