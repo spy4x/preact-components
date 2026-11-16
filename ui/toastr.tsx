@@ -42,6 +42,7 @@ export interface ToastAction {
   dataE2E?: string
 }
 
+/** One toast in a `Toastr` stack: its id, heading, body, kind and optional action. */
 export interface ToastItem {
   id: ToastId
   /**

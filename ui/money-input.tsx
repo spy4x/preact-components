@@ -12,6 +12,7 @@ import type { Translator } from "@spy4x/platform/universal/i18n"
 import { useFormat } from "./format.tsx"
 import { ENGLISH, translate, useT } from "./i18n.tsx"
 
+/** The bounds a `MoneyInputRangeMessage` reports, in the currency's smallest unit. */
 export interface MoneyInputBounds {
   /** Smallest-unit lower bound, when one is set. */
   min?: number

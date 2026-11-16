@@ -17,9 +17,9 @@ DEFAULT_TEXT_COLOR	constant	@spy4x/preact-charts	Axis label and legend text colo
 DEFAULT_TRACK_COLOR	constant	@spy4x/preact-charts	Track colour behind a bar or an empty donut ring.
 DependencyGraph	component	@spy4x/preact-charts	A server-rendered SVG graph of boxes joined by arrows, laid out left to right by `layoutGraph`: what comes first on the left, what waits on it to the right.
 DonutChart	component	@spy4x/preact-charts	Server-rendered donut built from a single CSS `conic-gradient`.
-DonutDatum	type	@spy4x/preact-charts	
-DonutGeometry	type	@spy4x/preact-charts	
-DonutSegment	type	@spy4x/preact-charts	
+DonutDatum	type	@spy4x/preact-charts	One slice of a `DonutChart`: its label, its value and an optional colour and link.
+DonutGeometry	type	@spy4x/preact-charts	What `donutGeometry` returns: the ring's `conic-gradient`, its slices and their total.
+DonutSegment	type	@spy4x/preact-charts	One slice as `donutGeometry` lays it out: its colour, its share and its arc on the ring.
 DotPlot	component	@spy4x/preact-charts	A server-rendered dot plot: one row per item, a dot on a shared scale, and shaded bands.
 DotPlotBand	type	@spy4x/preact-charts	A shaded stretch of the scale behind every row, such as "Typical range".
 DotPlotRow	type	@spy4x/preact-charts	One row of a `DotPlot`: a label, a value and the words around it.
@@ -35,9 +35,9 @@ KpiGrid	component	@spy4x/preact-charts	Responsive grid for `Kpi` cards: two colu
 KpiTone	type	@spy4x/preact-charts	Colour role of a `Kpi` value.
 LineChart	component	@spy4x/preact-charts	The line chart: drawn complete on the server, interactive once it runs in a browser.
 LinePoint	type	@spy4x/preact-charts	One reading of a `LineSeries`: where it sits on the X axis and its value.
-LineSeries	type	@spy4x/preact-charts	
+LineSeries	type	@spy4x/preact-charts	One line of a `LineChart`: its name, its points and how it is drawn.
 LineX	type	@spy4x/preact-charts	A point's place on the X axis: a label, or — on a time axis — an instant.
-NiceScale	type	@spy4x/preact-charts	
+NiceScale	type	@spy4x/preact-charts	What `niceScale` returns: a rounded domain, its tick step and the ticks across it.
 PeriodChange	type	@spy4x/preact-charts	A number in the current period and the same number in the period before it.
 PlacedEdge	type	@spy4x/preact-charts	An edge `layoutGraph` keeps, between two known, different nodes.
 PlacedNode	type	@spy4x/preact-charts	Where `layoutGraph` put one node.
@@ -49,7 +49,7 @@ RankedBars	component	@spy4x/preact-charts	A ranked list with several numbers per
 StackedBarDatum	type	@spy4x/preact-charts	A row drawn as stacked segments instead of one value: its total is the sum of the segments, and each series keeps one colour across every row.
 TIME_FRAMES	constant	@spy4x/preact-charts	The bucket granularities a series can be aggregated at.
 TimeFrame	type	@spy4x/preact-charts	Bucket granularity of a series.
-TimeSeriesPoint	type	@spy4x/preact-charts	
+TimeSeriesPoint	type	@spy4x/preact-charts	One bucket of a time series: when it starts and the value aggregated into it.
 barPercent	helper	@spy4x/preact-charts	Percentage of the longest bar, clamped to `[0, 100]`.
 barTotal	helper	@spy4x/preact-charts	A row's total: its value, or the sum of its segments' finite, positive values.
 changeText	helper	@spy4x/preact-charts	A change as one neutral line of text: `+3 vs previous 7 days`, `−1 vs yesterday`, or `No change vs previous 7 days`.
@@ -842,7 +842,7 @@ MatchableOption	type	@spy4x/preact-ui	What `matchOptions` and `matchOption` read
 Modal	component	@spy4x/preact-ui	Built on the platform's dialog element, in the top layer.
 MoneyDisplay	component	@spy4x/preact-ui	Renders an amount in `currency`'s smallest unit as display text, through `Intl.NumberFormat`, in the person's region format: `<MoneyDisplay amount={123456} currency="EUR" />` is `1.234,56 €` under a `FormatContext` for `de-DE` and `€1,234.56` for `en-US`, whatever language the words around it are in.
 MoneyInput	component	@spy4x/preact-ui	A text field for an amount in `currency`'s smallest unit: `value`/`onChange` carry the integer, exactly the way `MoneyDisplay` renders it.
-MoneyInputBounds	type	@spy4x/preact-ui	
+MoneyInputBounds	type	@spy4x/preact-ui	The bounds a `MoneyInputRangeMessage` reports, in the currency's smallest unit.
 MoneyInputDecimalsMessage	type	@spy4x/preact-ui	A `MoneyInputProps.decimalsMessage` function: `decimals` is how many the currency takes, `0` for one with whole amounts only.
 MoneyInputEdit	type	@spy4x/preact-ui	What one edit of `MoneyInput`'s text resolves to — see `resolveMoneyInputEdit`.
 MoneyInputEditOptions	type	@spy4x/preact-ui	The optional inputs of `resolveMoneyInputEdit`.
@@ -970,7 +970,7 @@ TldrBox	component	@spy4x/preact-ui	The few points a reader takes away from an ar
 ToastAction	type	@spy4x/preact-ui	A button on a toast, such as "Undo" after a delete.
 ToastCorner	type	@spy4x/preact-ui	The window corner a `Toastr` stack sits in.
 ToastId	type	@spy4x/preact-ui	What identifies one toast in a stack: the type of `ToastItem.id` and of the id `ToastrProps.onDismiss` is called with.
-ToastItem	type	@spy4x/preact-ui	
+ToastItem	type	@spy4x/preact-ui	One toast in a `Toastr` stack: its id, heading, body, kind and optional action.
 ToastVariant	type	@spy4x/preact-ui	Kind of a toast, selecting its colour and glyph.
 Toastr	component	@spy4x/preact-ui	Stack of transient notifications in a corner of the window — top right unless `corner` says otherwise.
 ToggleChangeProps	type	@spy4x/preact-ui	The value port of a toggle: `onChange`, or its deprecated alias `onToggle`.

@@ -39,6 +39,7 @@ export interface LinePoint {
   hollow?: boolean
 }
 
+/** One line of a `LineChart`: its name, its points and how it is drawn. */
 export interface LineSeries {
   name: string
   points: LinePoint[]
