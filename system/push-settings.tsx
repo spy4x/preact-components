@@ -2,7 +2,7 @@
  * `PushSettings` — the block in an app's settings that answers "will this device notify me?" and
  * turns notifications on or off for this device.
  *
- * It takes the state and three callbacks and touches no browser API, so it renders from
+ * It takes the state and three callbacks and calls no push or permission API, so it renders from
  * `usePushSubscription` in `@spy4x/preact-signals` or from anything else that knows the same
  * states. It never asks for permission by itself: the caller does, from `onEnable`.
  */

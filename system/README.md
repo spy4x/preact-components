@@ -45,9 +45,9 @@ Extracted from earlier source applications.
 | `RailShell`           | `rail-shell`            | `items`, `currentKey?`, `currentPath?`, `primary?`, `navigate?`, `navigateLink?`, `sidebarTop?`, `sidebarBottom?`, `moreTab?`, `children`, `labels?`, `class?`                                           |
 | `SyncStatus`          | `sync-status`           | `online`, `pending`, `syncing?`, `failed?`, `onRetry?`, `labels?`, `class?`                                                                                                                              |
 | `SavedCopyNotice`     | `saved-copy-notice`     | `savedAt`, `formatTime?`, `labels?`, `class?`, other `<div>` attributes                                                                                                                                  |
-| `ConflictChooser`     | `conflict-chooser`      | `conflicts`, `onKeepMine`, `onUseTheirs`, `labels?`, `class?`                                                                                                                                            |
+| `ConflictChooser`     | `conflict-chooser`      | `conflicts`, `onKeepMine`, `onUseTheirs`, `labels?`, `headingLevel?`, `class?`                                                                                                                           |
 | `UnsentChangesDialog` | `unsent-changes-dialog` | `unsent`, `conflicts?`, `sent?`, `state?`, `onSend`, `onSignOut`, `onCancel`, `onReview`, `labels?`, `class?`                                                                                            |
-| `InstallPrompt`       | `install-prompt`        | `mode`, `onInstall`, `onDismiss`, `labels?`, `class?`                                                                                                                                                    |
+| `InstallPrompt`       | `install-prompt`        | `mode`, `onInstall`, `onDismiss`, `returnFocus?`, `labels?`, `class?`                                                                                                                                    |
 | `PushSettings`        | `push-settings`         | `status`, `busy?`, `failed?`, `sent?`, `onEnable`, `onDisable`, `onTest?`, `labels?`, `class?`                                                                                                           |
 | `SettingsLayout`      | `settings-layout`       | `title`, `href`, `sections`, `current`, `defaultSection?`, `navigate?`, `headingLevel?`, `intro?`, `children?`, `labels?`                                                                                |
 
@@ -553,10 +553,10 @@ not otherwise normalised. `FormData` hands back the input's raw string and this 
 straight through; an app's own auth code, with the rules of its account store behind it, is better
 placed to decide whether a login is trimmed than a component that has never seen that store.
 
-**`Field`'s `required` does not yet put `required` on the control it wraps (#116)**, so every field
-here passes `required` to both: to `Field`, for the visible `*`, and to the `Input` directly, for
-the native constraint validation a password manager and a browser's own "please fill this in" both
-rely on.
+**Every field passes `required` to both `Field` and its control.** `Field` draws the `*` and hands
+`required` to an element child, but a function child, such as the password's, sets it on its
+control itself. Passing it to the control too keeps the native constraint validation a password
+manager and a browser's own "please fill this in" rely on, however the child is passed.
 
 **The show/hide password control is a real, named button.** It is an eye icon, not a word: a
 32 px square sits inside the field's on-scale `pr-12`, while a "Show password" label was 105 px
@@ -1148,7 +1148,10 @@ plain values and callbacks, so they work with any outbox and ship on their own.
   focus, focus moves to the next item, or to the heading once none is left. "All conflicts
   resolved" is said once: by that heading taking focus, or else by a polite live region. A
   callback may return a promise: its item's buttons stay busy until it settles, and a rejection
-  shows `labels.failed` under the item and announces it, with nothing left uncaught.
+  shows `labels.failed` under the item and announces it after the item's label, so a second
+  item's failure is announced too, with nothing left uncaught. Focus follows the chosen item by its
+  `id`, so a parent that hands over a new `conflicts` array while the choice saves still gets the
+  focus move once the item leaves.
   `DEFAULT_CONFLICT_CHOOSER_LABELS` holds its English words; `labels` replaces any of them, per
   reason inside the records.
 - **`UnsentChangesDialog`** asks before a person signs out while changes wait to reach the
@@ -1173,14 +1176,16 @@ plain values and callbacks, so they work with any outbox and ship on their own.
   leaves while focus is inside it, after "Not now" or an accepted install, focus moves to the
   element `returnFocus` returns, which must be focusable: a button, or an element with
   `tabIndex={-1}`; `pageHeading` from the `route-announcer` subpath is the page's heading, for a
-  card above the page. Without one, focus falls to the page body. A rejected `onInstall` shows `labels.failed` in the card.
+  card above the page. Without one, focus falls to the page body. An `onInstall` or `onDismiss`
+  that rejects or throws shows `labels.failed` in the card; when the install dialog fails to open
+  and the store turns `unavailable`, the card stays to say so, with focus on Install.
   `DEFAULT_INSTALL_PROMPT_LABELS` holds its English words.
 - **`PushSettings`** is the block in an app's settings that says whether this device gets
   notifications and turns them on or off. It shows one state: `checking`, `unsupported`,
   `needs-install` (an iPhone or iPad in a browser tab: add the app to the home screen first),
   `unavailable` (the server has no keys), `blocked` (how to allow them, in words that hold in a
   browser tab and in an installed app, and no button, because none could work), `off` (Turn on) or `on` (Turn off and, with `onTest`, Send a
-  test notification). It touches no browser API and never asks for permission: `onEnable` does,
+  test notification). It calls no push or permission API and never asks for permission: `onEnable` does,
   so the browser's prompt opens only after the press. `usePushSubscription` in
   `@spy4x/preact-signals` returns exactly these props. `busy` names the action whose button shows
   a spinner, and `failed` the one whose message shows under the buttons. An always-present
