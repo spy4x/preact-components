@@ -135,6 +135,8 @@ export const specs: readonly Spec[] = [
 
       await page.keyboard.press("3")
       await last.getByText("Last answer: Drop the fix", { exact: true }).waitFor()
+      // The dialog hears Escape, and focus sits on the page until the next question takes it.
+      await focusedHeading("Which region should the new server run in?").waitFor()
       await page.keyboard.press("Escape")
       await dialog.waitFor({ state: "detached" })
       return axe
