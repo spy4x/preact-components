@@ -42,9 +42,9 @@ export const BUILD_HASH_FILE = ".build-hash"
  * `"workspace"` list. Kept as a literal copy rather than read from that file: reading it back would
  * add JSONC parsing to a hot path that runs on every `verify`, for a list that only changes in the
  * same commit as a new package's own `deno.json` (see `AGENTS.md` → "Adding a package") — a commit
- * that touches this file too.
+ * that touches this file too. `pages/build-fingerprint.test.ts` fails when the two lists differ.
  */
-const WORKSPACE_DIRECTORIES = [
+export const WORKSPACE_DIRECTORIES = [
   "charts",
   "cn",
   "crud",
@@ -52,6 +52,7 @@ const WORKSPACE_DIRECTORIES = [
   "map",
   "pages",
   "playwright",
+  "server",
   "signals",
   "system",
   "theme",
