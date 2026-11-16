@@ -392,6 +392,10 @@ export function useUrlFilters<T extends Record<string, FilterField>>(fields: T):
   const latestSearch = useRef(search)
   latestSearch.current = search
   const agreed = useRef(search)
+  // The address the hook last read or wrote. A render that reports anything else means someone
+  // else moved the address, and a write before that address is read would answer it with filters
+  // that do not know about it.
+  const seen = useRef(search)
 
   // What every filter held when the filters and the address last agreed: at the first render, after
   // a read (which sets the entries it loads) and after the write effect has run. Taken with `peek`
@@ -414,6 +418,7 @@ export function useUrlFilters<T extends Record<string, FilterField>>(fields: T):
     // render that reports the address it wrote runs this effect again.
     if (search !== latestSearch.current) return
     isInitializing.value = true
+    seen.current = search
     agreed.current = readAddress(fields, search, held.current)
     isInitializing.value = false
   }, [search])
@@ -435,6 +440,12 @@ export function useUrlFilters<T extends Record<string, FilterField>>(fields: T):
   useSignalEffect(() => {
     const pending = Object.values(fields).map((field) => filterWrite(field, field.signal.value))
     if (isInitializing.value) return
+    // The address moved since the hook last read or wrote it — a link clicked in the same task as
+    // a key press does this. Writing now would put every filter's old value over the link's, so
+    // the write waits: the read of that address keeps the filter the reader changed (it no longer
+    // holds what `held` says), loads the rest, and flips `isInitializing`, which runs this again.
+    // `hold()` is skipped for the same reason; it would make the read forget the change.
+    if (latestSearch.current !== seen.current) return
 
     const unchanged = filterSearch(agreed.current, pending) === agreed.current
     hold()
@@ -452,6 +463,7 @@ export function useUrlFilters<T extends Record<string, FilterField>>(fields: T):
     const next = filterSearch(latestSearch.current, pending)
     latestSearch.current = next
     agreed.current = next
+    seen.current = next
     typed.current = into === null ? undefined : { into, search: next, at: now }
 
     // Read the fragment here, at the moment of the write, rather than once when the hook mounted.

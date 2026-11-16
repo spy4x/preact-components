@@ -191,6 +191,40 @@ export const specs: readonly Spec[] = [
     },
   },
   {
+    name: "useUrlFilters: a link clicked in the same task as a key press keeps the link's " +
+      "filters and the typed letter",
+    pageId: "ui",
+    run: async (page) => {
+      // The key press wakes the hook's write for the next frame; the link navigates now. The
+      // write must not answer the link with the filters as they were before it.
+      await page.locator(QUERY).evaluate((field: HTMLInputElement) => {
+        field.value = "x"
+        field.dispatchEvent(new Event("input", { bubbles: true }))
+        document.querySelector<HTMLElement>(`[data-e2e="url-filters-link-open"]`)?.click()
+      })
+      // The field, the status and the address agree once the hook has settled, whoever won.
+      await page.waitForFunction((selector) => {
+        const params = new URLSearchParams(location.search)
+        const status = document.querySelector(`[data-e2e="url-filters-status"]`)?.textContent
+        return document.querySelector<HTMLInputElement>(selector)?.value ===
+            (params.get("q") ?? "") &&
+          status === (params.get("status") ?? "(any)")
+      }, QUERY)
+      // Two more frames: a read and a write woken by the last change have both run by then.
+      await page.evaluate(() =>
+        new Promise((done) => requestAnimationFrame(() => requestAnimationFrame(done)))
+      )
+      const after = await page.evaluate(() =>
+        `${location.search} ${
+          document.querySelector(`[data-e2e="url-filters-status"]`)?.textContent
+        }`
+      )
+      if (after !== "?status=open&q=x open") {
+        throw new Error(`a key press and a click on ?status=open left "${after}"`)
+      }
+    },
+  },
+  {
     name: "useUrlFilters: an address that changes again as the last change is read costs no " +
       "history entry of the hook's own",
     pageId: "ui",
