@@ -225,6 +225,31 @@ export const specs: readonly Spec[] = [
     },
   },
   {
+    name: "useUrlFilters: a filter change still writes after other code put back the address " +
+      "the hook's last write replaced",
+    pageId: "ui",
+    run: async (page) => {
+      // The next push, the hook's, is undone in the same task, before the router renders. The
+      // router then reports the address it reported before, and the hook has nothing to read.
+      await page.evaluate(() => {
+        const push = history.pushState
+        history.pushState = function (...args: Parameters<History["pushState"]>) {
+          const before = location.href
+          push.apply(this, args)
+          history.pushState = push
+          history.replaceState(history.state, "", before)
+        }
+      })
+      await page.locator(SET_CLOSED).click()
+      await page.locator(`[data-e2e="url-filters-status"]`).filter({ hasText: "closed" }).waitFor()
+      await page.evaluate(() =>
+        new Promise((done) => requestAnimationFrame(() => requestAnimationFrame(done)))
+      )
+      await page.locator(NEXT_PAGE).click()
+      await page.waitForFunction(() => location.search === "?status=closed&page=2")
+    },
+  },
+  {
     name: "useUrlFilters: an address that changes again as the last change is read costs no " +
       "history entry of the hook's own",
     pageId: "ui",
