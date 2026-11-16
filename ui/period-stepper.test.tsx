@@ -27,6 +27,18 @@ function stepper(props: Partial<Parameters<typeof PeriodStepper>[0]> = {}): stri
   )
 }
 
+/** The markup of the button back to the current period: the `<button>` holding `name`. */
+function returnButton(html: string, name = "This month"): string {
+  const button = html.match(new RegExp(`<button[^>]*>${name}.*?</button>`))?.[0]
+  if (!button) throw new Error(`no "${name}" button in ${html}`)
+  return button
+}
+
+/** Whether a button is hidden with `invisible`, keeping its place. */
+function isHidden(button: string): boolean {
+  return /class="[^"]*\binvisible\b/.test(button)
+}
+
 describe("PeriodStepper", () => {
   it("names the group by its unit and puts the period's name in a polite live region", () => {
     const html = stepper()
@@ -34,11 +46,21 @@ describe("PeriodStepper", () => {
     expect(html).toMatch(/aria-live="polite" aria-atomic="true"[^>]*>November 2026</)
   })
 
-  it("shows the return button only while another period is on screen", () => {
-    expect(stepper()).not.toContain(">This month<")
-    const august = stepper({ period: AUGUST })
-    expect(august).toContain("August 2026")
-    expect(august).toContain("This month")
+  it("hides the return button and binds no key while the current period is on screen", () => {
+    const november = returnButton(stepper())
+    expect(november).toContain("This month")
+    expect(isHidden(november)).toBe(true)
+    expect(november).not.toContain("aria-keyshortcuts")
+    const august = returnButton(stepper({ period: AUGUST }))
+    expect(isHidden(august)).toBe(false)
+    expect(august).toContain(`aria-keyshortcuts="T"`)
+  })
+
+  it("puts the return button before the arrows, so it sits on the start side in both directions", () => {
+    const html = stepper({ period: AUGUST })
+    const back = html.indexOf(">This month<")
+    expect(back).toBeGreaterThan(-1)
+    expect(back).toBeLessThan(html.indexOf(`aria-label="Previous month"`))
   })
 
   it("binds [, ] and t, and says so in aria-keyshortcuts", () => {
@@ -87,10 +109,9 @@ describe("PeriodStepper", () => {
 
   it("finds today's week by the first weekday it is given", () => {
     const sundayWeek = periodOf(PeriodUnit.Week, "2026-11-01", { firstWeekday: 7 })
-    expect(stepper({ period: sundayWeek, options: { firstWeekday: 7 } })).not.toContain(
-      "This week",
-    )
-    expect(stepper({ period: sundayWeek })).toContain("This week")
+    const sundayFirst = stepper({ period: sundayWeek, options: { firstWeekday: 7 } })
+    expect(isHidden(returnButton(sundayFirst, "This week"))).toBe(true)
+    expect(isHidden(returnButton(stepper({ period: sundayWeek }), "This week"))).toBe(false)
   })
 
   it("speaks the catalog's language when one is provided", () => {
