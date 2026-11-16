@@ -3561,9 +3561,9 @@ function CommandPaletteDemo() {
         <span data-e2e="palette-forgiving-picked">{pickedForgiving.value}</span>; theme{" "}
         <span data-e2e="palette-commands-theme">{theme.value}</span>; ran{" "}
         <span ref={log} tabIndex={-1} data-e2e="palette-commands-ran">{ran.value}</span>. One letter
-        answers slowly, longer queries quickly, “slow” never answers, “dragon” finds a long
-        name, and “boom” fails. The field above opens on “combobx”; try “ещфые” or “календарь”. In
-        the commands, Ctrl+Shift+P opens them, “Commands only” opens them with “{">"}” typed, which
+        answers slowly, longer queries quickly, “slow” never answers, “dragon” finds a long name,
+        and “boom” fails. The field above opens on “combobx”; try “ещфые” or “календарь”. In the
+        commands, Ctrl+Shift+P opens them, “Commands only” opens them with “{">"}” typed, which
         lists only commands, Tab enters Account or Add a task, Backspace goes back, PageDown jumps a
         group, and Ctrl+Enter picks the alternative way. “dark” pins Theme as the best match. The
         last palette remembers its picks across reloads and lists them on the empty query.
