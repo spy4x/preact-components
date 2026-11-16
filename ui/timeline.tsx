@@ -149,8 +149,9 @@ function entries(items: readonly TimelineItem[]): JSX.Element[] {
  * `live` follows a stream, oldest first: a toolbar says "Following" or "Paused" beside a Pause or
  * Follow button, a new entry scrolls into view while following with the end on screen (at once
  * under reduced motion), and otherwise a sticky "3 new events" button counts what arrived and
- * jumps to the newest. One polite live region announces new entries, gathered over
- * `TIMELINE_ANNOUNCE_MS`. `following` with `onFollowingChange` lets the caller drive the state.
+ * jumps to the newest, clear of `RailShell`'s phone tab bar (`--pc-tab-bar-room`). One polite live
+ * region announces new entries, gathered over `TIMELINE_ANNOUNCE_MS`. `following` with
+ * `onFollowingChange` lets the caller drive the state.
  */
 export function Timeline(props: TimelineProps): JSX.Element {
   const { items, label: labelProp, empty: emptyProp, live, class: className, dataE2E } = props
@@ -357,7 +358,8 @@ function LiveTimeline(
         )}
         <div ref={end} aria-hidden="true" data-timeline-end="" class="h-px" />
         {unseen.value > 0 && (
-          <div class="pointer-events-none sticky bottom-4 flex h-0 justify-center">
+          // Above `RailShell`'s phone tab bar, whose room the theme's `pc-scroll-pb-tab-bar` sets.
+          <div class="pointer-events-none sticky bottom-[calc(--spacing(4)+var(--pc-tab-bar-room,0px))] flex h-0 justify-center">
             <Button
               variant="secondary"
               size="sm"

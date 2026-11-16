@@ -1255,7 +1255,8 @@ ones. A toolbar above the list says "Following", with a dot that pulses only whe
 allowed, or "Paused", beside a Pause or Follow button. While following with the end of the list on
 screen, a new entry scrolls into view (at once under reduced motion). With the end off screen, or
 paused, nothing moves: a sticky "3 new events" button counts what arrived and jumps to the newest
-without resuming. An entry is new when its `id` was not in the previous `items`, so keeping only the
+without resuming. It sits 1 rem above the bottom of the scroll area, and above `RailShell`'s phone
+tab bar by the theme's `--pc-tab-bar-room`. An entry is new when its `id` was not in the previous `items`, so keeping only the
 latest entries counts right. One polite live region says "3 new events" for everything that
 arrives within `TIMELINE_ANNOUNCE_MS` (3 seconds). `following` with `onFollowingChange` hands the
 state to the caller, such as a `.` hotkey; following again jumps to the newest. The words are
