@@ -7,11 +7,17 @@ import { useLabels } from "./i18n.tsx"
 export interface Shortcut {
   /**
    * The combination, such as `"mod+k"`, or a sequence of presses, such as `"g t"`, drawn with
-   * `Kbd`, the way `useHotkeys` binds it.
+   * `Kbd`, the way `useHotkeys` binds it. Left out or empty, the row is listed without keys, such
+   * as a command that only a command palette runs.
    */
-  keys: string
+  keys?: string
   /** What it does. A shortcut without one is not listed. */
   description?: string
+  /**
+   * A second, muted line under the description, read after it, such as the other words that find
+   * a command in a command palette.
+   */
+  detail?: string
   /** The heading it is listed under. Left out, it goes under the dialog's default group. */
   group?: string
 }
@@ -85,7 +91,8 @@ const SHORTCUTS_DIALOG_LABELS: Required<
 
 /**
  * A dialog that lists keyboard shortcuts, each with what it does and its keys, under group
- * headings. Headings show only when there is more than one group.
+ * headings. Headings show only when there is more than one group. A row without keys lists only
+ * what it does, and a row's `detail` is a second, muted line under that.
  *
  * `footer` goes below the list, in `Modal`'s footer.
  *
@@ -133,10 +140,17 @@ export function ShortcutsDialog(
             <dl class="flex flex-col gap-2">
               {group.shortcuts.map((shortcut, index) => (
                 <div key={index} class="flex items-center justify-between gap-4">
-                  <dt class="text-sm text-foreground">{shortcut.description}</dt>
-                  <dd>
-                    <Kbd keys={shortcut.keys} apple={apple} labels={kbdLabels} />
-                  </dd>
+                  <dt class="min-w-0 text-sm text-foreground wrap-anywhere">
+                    {shortcut.description}
+                    {shortcut.detail !== undefined && shortcut.detail !== "" && (
+                      <span class="block text-xs text-muted">{shortcut.detail}</span>
+                    )}
+                  </dt>
+                  {shortcut.keys !== undefined && shortcut.keys !== "" && (
+                    <dd class="shrink-0">
+                      <Kbd keys={shortcut.keys} apple={apple} labels={kbdLabels} />
+                    </dd>
+                  )}
                 </div>
               ))}
             </dl>
