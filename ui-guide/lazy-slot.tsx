@@ -8,7 +8,7 @@
 
 import type { ComponentChildren, JSX } from "preact"
 import { cn } from "@spy4x/preact-cn"
-import { Notice } from "@spy4x/preact-ui"
+import { Button, Notice } from "@spy4x/preact-ui"
 import type { LazyModuleState } from "./lazy.ts"
 
 /** What {@link LazySlot} needs to show a lazily loaded component, or stand in for it. */
@@ -23,7 +23,7 @@ export interface LazySlotProps<T> {
   module: string
   /**
    * Prefix of the `data-e2e` names the browser checks find the pieces by: `<prefix>-slot`,
-   * `<prefix>-placeholder` and `<prefix>-failed`.
+   * `<prefix>-placeholder`, `<prefix>-failed` and its button `<prefix>-retry`.
    */
   e2e: string
   /** Size and corner classes of the placeholder box, so it keeps the place the component takes. */
@@ -38,7 +38,10 @@ export interface LazySlotProps<T> {
  * The outer element stays the same element across the swap, so `pages/checks/ui-guide.ts` can leave
  * exactly this part out when it compares a card's served text with the browser's. The placeholder's
  * wording holds without JavaScript too: with scripts off the served box never changes, so it says
- * where the component is drawn rather than promising a load.
+ * where the component is drawn rather than promising a load. A failure says plainly that the part
+ * did not load, and its "Try again" reloads the page: Chromium keeps a failed module fetch for the
+ * page's life, so only a reload fetches it again. The error's own text goes only to the console
+ * (`./lazy.ts`).
  *
  * @param props See {@link LazySlotProps}.
  */
@@ -50,8 +53,22 @@ export function LazySlot<T>(
     content = children(state.module)
   } else if (state.status === "failed") {
     content = (
-      <Notice tone="danger" urgent data-e2e={`${e2e}-failed`}>
-        {label}: {module} did not load — {state.message}
+      <Notice
+        tone="danger"
+        urgent
+        data-e2e={`${e2e}-failed`}
+        action={
+          <Button
+            size="sm"
+            variant="outline"
+            data-e2e={`${e2e}-retry`}
+            onClick={() => location.reload()}
+          >
+            Try again
+          </Button>
+        }
+      >
+        {`${label}: ${module} did not load.`}
       </Notice>
     )
   } else {
