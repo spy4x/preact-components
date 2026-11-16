@@ -96,6 +96,15 @@ describe("Slider", () => {
     expect(html).toMatch(/<p id="rate-hint"[^>]*>Drag or use the arrow keys\.<\/p>/)
   })
 
+  it("draws each tick 2 px wide and 12 px tall, so it shows beside the thumb on a phone", () => {
+    const html = render(
+      <Slider id="rate" label="Rate" value={50} marks={[{ value: 68, label: "" }]} />,
+    )
+    expect(html).toMatch(
+      /<span aria-hidden="true" class="h-3 w-0\.5 bg-\[var\(--color-border-strong/,
+    )
+  })
+
   it("keeps a mark label at an end aligned to that end, so it stays over the track", () => {
     const html = render(
       <Slider
