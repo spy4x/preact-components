@@ -225,6 +225,32 @@ export const specs: readonly Spec[] = [
     },
   },
   {
+    name: "useUrlFilters: a push back to the address the hook last wrote, in the same task as a " +
+      "key press, still wins over the write",
+    pageId: "ui",
+    run: async (page) => {
+      const field = page.locator(QUERY)
+      await field.fill("ab")
+      await queryBecomes(page, "ab")
+      await page.locator(`[data-e2e="url-filters-link-open"]`).click()
+      await page.locator(`[data-e2e="url-filters-status"]`).filter({ hasText: "open" }).waitFor()
+      await queryBecomes(page, "")
+      // `?q=ab` is the address the hook wrote first; the link's has been read since.
+      await field.evaluate((input: HTMLInputElement) => {
+        input.value = "x"
+        input.dispatchEvent(new Event("input", { bubbles: true }))
+        history.pushState(null, "", `?q=ab${location.hash}`)
+      })
+      await page.locator(`[data-e2e="url-filters-status"]`).filter({ hasText: "(any)" }).waitFor()
+      await queryBecomes(page, "x")
+      await page.evaluate(() =>
+        new Promise((done) => requestAnimationFrame(() => requestAnimationFrame(done)))
+      )
+      const after = await page.evaluate(() => location.search)
+      if (after !== "?q=x") throw new Error(`the push and the key press left "${after}"`)
+    },
+  },
+  {
     name: "useUrlFilters: a filter change still writes after other code put back the address " +
       "the hook's last write replaced",
     pageId: "ui",
