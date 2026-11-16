@@ -25,8 +25,8 @@ caret ranges (`npm:preact@^10.29.8`, `npm:@preact/signals@^2.5.1`), and an app o
 compatible version resolves the library's imports to its own copy (#370). The `spy4x/ts-libs`
 packages (`@spy4x/platform`, `@spy4x/time`, `@spy4x/validation`, `@spy4x/search`) are caret
 ranges for the same reason, and so an additive ts-libs type change needs no release here before an
-app can take it (#841). Every other dependency stays an exact pin, published exactly. To see the imports a publish will write, read the debug
-log of a dry run:
+app can take it (#841). Every other dependency stays an exact pin, published exactly. To see the
+imports a publish will write, read the debug log of a dry run:
 
 ```bash
 DENO_LOG=debug deno publish --dry-run 2>&1 | grep -o 'Unfurled specifier: .*' |
