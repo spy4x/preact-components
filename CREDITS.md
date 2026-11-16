@@ -15,6 +15,11 @@ extraction and the code around them are his.
 
 Thank you, Eirene. The library is a thin wrapper around work you had already done well.
 
+## Permission
+
+Eirene has agreed that her design CSS, the component styling and the UI-guide markup are published
+in this repository under the MIT licence. The owner confirmed her agreement on 2026-11-17.
+
 ## Preferred form of credit
 
 The wording above was written without asking you first, which is not ideal. If you would prefer a
@@ -41,6 +46,6 @@ the guide.
 
 ## What this file is not
 
-This is attribution, not a licence statement. It grants and transfers no rights, and says nothing
-about what rights anyone holds. The MIT licence in [`LICENSE`](./LICENSE) covers the code in this
-repository.
+This is attribution plus a record of the design author's consent, not a licence. The terms are in
+[`LICENSE`](./LICENSE): the MIT licence covers the code in this repository and, with Eirene's
+agreement above, her design CSS, styling and markup.
