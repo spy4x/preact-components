@@ -248,6 +248,34 @@ export const specs: readonly Spec[] = [
     },
   },
   {
+    name: "Timeline live: following inside a scrolling box that the page shows only partly, a " +
+      "new event scrolls the box to its end and leaves the page where it was",
+    pageId: "ui",
+    run: async (page) => {
+      const tl = await livePage(page)
+      await page.clock.resume()
+      await tl.stateIs("Following")
+      await tl.scrollBox("end")
+      // The box's bottom edge 5 px below the viewport: the end shows, and the next end does not.
+      const placed = await tl.box.evaluate((element) => {
+        const bottom = element.getBoundingClientRect().bottom + scrollY
+        scrollTo({ top: bottom - 5 - innerHeight, behavior: "instant" })
+        return Math.round(element.getBoundingClientRect().bottom - innerHeight)
+      })
+      same("the box's bottom edge below the viewport, in px", placed, 5)
+      await tl.endIs("in")
+      const before = await page.evaluate(() => scrollY)
+
+      await tl.step()
+      await page.waitForFunction(ENDS_IN_BOX, await tl.box.elementHandle())
+      // A real pause, so a smooth scroll of the page would have moved it by now.
+      await new Promise((resolve) => setTimeout(resolve, 500))
+      same("the scrolls after the step", await tl.scrolls(), ["smooth"])
+      same("the page's scroll position after the step", await page.evaluate(() => scrollY), before)
+      return `the box followed; the page stayed at ${before} px`
+    },
+  },
+  {
     name: "Timeline live: when the whole list fits on screen, a new event while paused shows no " +
       "new events button, and none appears after Follow; a paused event that pushes the end off " +
       "screen is counted",

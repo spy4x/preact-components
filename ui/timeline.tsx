@@ -176,13 +176,24 @@ interface LiveTimelineProps extends Omit<TimelineProps, "label" | "empty" | "liv
   empty: ComponentChildren
 }
 
+/** `ScrollIntoViewOptions` with `container`, which TypeScript's DOM types may not have yet. */
+interface ScrollIntoContainerOptions extends ScrollIntoViewOptions {
+  container?: "all" | "nearest"
+}
+
 /**
- * Brings the end of a live timeline into view: smoothly, or at once under reduced motion. The
- * nearest edge, so a timeline inside a scrolling box scrolls the box and the page only as needed.
+ * Brings the end of a live timeline into view: smoothly, or at once under reduced motion. Only the
+ * nearest scroll container moves, so a timeline inside a scrolling box never scrolls the page
+ * under a person's pointer; a timeline the page itself scrolls moves the page.
  */
 function scrollToEnd(end: RefObject<HTMLElement>): void {
   const reduce = matchMedia("(prefers-reduced-motion: reduce)").matches
-  end.current?.scrollIntoView({ block: "nearest", behavior: reduce ? "auto" : "smooth" })
+  const options: ScrollIntoContainerOptions = {
+    block: "nearest",
+    container: "nearest",
+    behavior: reduce ? "auto" : "smooth",
+  }
+  end.current?.scrollIntoView(options)
 }
 
 /**
