@@ -637,12 +637,15 @@ function ModalFormDialog({ onClose }: { onClose: () => void }) {
  * `onConfirm` writes the sentence a real handler would produce, and the panel does **not** close
  * itself — the port clears the flag that mounts it, which is the shape that keeps a failed request
  * from discarding the panel. The third trigger's `onCancel` returns `false`, so that dialog stays open.
+ * The fourth has three answers: its second action, "Stop now", is the one that turns busy.
  */
 function ConfirmDialogDemo() {
   const target = useSignal<string | null>(null)
   const outcome = useSignal("nothing confirmed yet")
   // The delete "request" takes two seconds, so the busy state stays on screen long enough to see.
   const deleting = useSignal(false)
+  // "Stop now" is busy for two seconds too, on its own button rather than on confirm.
+  const stopping = useSignal(false)
 
   return (
     <Stack gap="sm">
@@ -657,6 +660,9 @@ function ConfirmDialogDemo() {
         <Button size="sm" onClick={() => target.value = "default"}>Archive invoice</Button>
         <Button variant="outline" size="sm" onClick={() => target.value = "refusing-cancel"}>
           Leave page
+        </Button>
+        <Button variant="secondary" size="sm" onClick={() => target.value = "three-way"}>
+          Stop sync
         </Button>
       </Cluster>
       <DemoNote e2e="controlled-value">Outcome: {outcome.value}</DemoNote>
@@ -717,6 +723,37 @@ function ConfirmDialogDemo() {
           onCancel={() => {
             outcome.value = "cancel refused, the panel stays open"
             return false
+          }}
+        />
+      )}
+
+      {target.value === "three-way" && (
+        <ConfirmDialog
+          title="Stop the sync?"
+          message="Finish and stop lets the current file finish first. Stop now cuts it off."
+          confirmLabel="Finish and stop"
+          cancelLabel="Keep syncing"
+          busy={stopping.value}
+          busyAction="secondary"
+          busyLabel="Stopping…"
+          secondaryAction={{
+            label: "Stop now",
+            variant: "danger",
+            onClick: () => {
+              stopping.value = true
+              setTimeout(() => {
+                stopping.value = false
+                outcome.value = "stopped at once"
+                target.value = null
+              }, 2000)
+            },
+          }}
+          onConfirm={() => {
+            outcome.value = "stopping after the current file"
+            target.value = null
+          }}
+          onCancel={() => {
+            target.value = null
           }}
         />
       )}
@@ -1745,7 +1782,8 @@ useFocusAfterRemoval(list, ids, removingId, { fallback: () => addButton.current 
     ),
   },
   ConfirmDialog: {
-    summary: "Asks the user to confirm an action before it happens, with two labelled buttons.",
+    summary:
+      "Asks the user to confirm an action before it happens, with two labelled buttons, or three when the decision has a second answer.",
     wide: true,
     props: [
       { name: "title", type: "ComponentChildren", description: "The question." },
@@ -1792,6 +1830,19 @@ useFocusAfterRemoval(list, ids, removingId, { fallback: () => addButton.current 
         default: "false",
         description:
           "While the confirmed work runs: a spinner and the busy label on confirm, presses ignored, and no way to cancel.",
+      },
+      {
+        name: "secondaryAction",
+        type: `{ label, onClick, variant?: "secondary" | "danger", dataE2E? }`,
+        description:
+          "A third button between cancel and confirm, such as Stop now. Its variant defaults to `secondary` and its `data-e2e` to `confirm-dialog-secondary`; like confirm, it does not close the dialog. A blank label draws no button.",
+      },
+      {
+        name: "busyAction",
+        type: `"confirm" | "secondary"`,
+        default: `"confirm"`,
+        description:
+          "Which button shows the spinner while `busy`; the other is disabled. `secondary` without a second action counts as `confirm`.",
       },
       {
         name: "confirmDataE2E / cancelDataE2E",
