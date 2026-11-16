@@ -141,13 +141,14 @@ are accurate.
 ## Dependencies
 
 **Pin exactly: never `^`, `~` or a floating tag.** A version bump is its own `deps` commit. The
-exception: `preact`, `preact/`, `@preact/signals` and `@preact/signals-core` in the root
+exception: `preact`, `preact/`, `@preact/signals`, `@preact/signals-core` and the `spy4x/ts-libs`
+packages (`@spy4x/platform`, `@spy4x/time`, `@spy4x/validation`, `@spy4x/search`) in the root
 `deno.jsonc` are caret ranges, because `deno publish` copies import-map values into published
 imports and an exact pin made apps load a second copy. This must print nothing:
 
 ```bash
 grep -rnoE '"(npm|jsr):[^"]*[\^~]' --include='deno.json' --include='deno.jsonc' . |
-  grep -vE '^(\./)?deno\.jsonc:[0-9]+:"npm:/?(preact|@preact/signals|@preact/signals-core)@\^$'
+  grep -vE '^(\./)?deno\.jsonc:[0-9]+:"(npm:/?(preact|@preact/signals|@preact/signals-core)|jsr:/?@spy4x/(platform|time|validation|search))@\^$'
 ```
 
 Pins live in the root import map and in the `imports` blocks of `theme`, `system`, `map` and
