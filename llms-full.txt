@@ -5329,7 +5329,7 @@ Preact + Tailwind primitives extracted from earlier source applications.
   `PlanCard`, `PostList`, `PricingTable`, `Prose`, `RadioChips` (its `optionsClass`), `ScreenTour`,
   `Slider`, `StoryTile`, `ThemePreview`, `ThemeToggle`, `TldrBox`, `Toastr`, `UpgradePrompt` and
   `YouTubeVideo` use `join` instead; `ConfirmDialog` and `ShortcutsDialog` hand their `class` to
-  `Modal`, `SiteSearch` hands its to `CommandPalette`, `ZoomableImages` hands its to `Lightbox`, and
+  `Modal`, `SiteSearch` hands its to `CommandPalette`, `ZoomableImages` hands its to `Lightbox`, `CurrencyField` hands its to `Combobox`, and
   `SwatchChips` passes `optionsClass` on to `RadioChips`. Their `class` is appended after their own
   classes, and replaces one of them only when it is marked important, `<Lightbox class="p-8!">`.
   Their own classes bring no `tailwind-merge`, but one that renders a `Button` or an `Input` brings
