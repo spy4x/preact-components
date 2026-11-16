@@ -1792,8 +1792,9 @@ function RailShellDemoAccount(
  * checkbox takes the port away, and the links are ordinary links again. The primary action has no
  * `href`, so it is a button through `navigate`. The frame scrolls the shell, so it takes the tab
  * bar's scroll padding itself and takes it off the root, as the component's doc asks of such a
- * caller. A live `Timeline` of the page's activity, longer than the frame, gains an entry per press
- * of "Add an event"; scrolled up, its "1 new event" button sits above the phone tab bar.
+ * caller. A live `Timeline` of the page's activity, ending below the frame's bottom edge, gains an
+ * entry per press of "Add an event"; scrolled up, its "1 new event" button sits above the phone tab
+ * bar. Only two paragraphs follow it, so little of the page sits out of view for axe.
  */
 function RailShellDemo() {
   const current = useSignal("home")
@@ -1801,7 +1802,7 @@ function RailShellDemo() {
   const routeLinks = useSignal(true)
   const workspace = useSignal("acme")
   const theme = useSignal<AccountMenuTheme>("system")
-  const activity = useSignal(Array.from({ length: 14 }, (_, index) => railShellEvent(index)))
+  const activity = useSignal(Array.from({ length: 11 }, (_, index) => railShellEvent(index)))
   const unread = 3
   return (
     <div
@@ -1885,7 +1886,7 @@ function RailShellDemo() {
             dataE2E="rail-shell-demo-timeline"
           />
           {Array.from(
-            { length: 12 },
+            { length: 2 },
             (_, index) => (
               <p key={index} class="text-muted">
                 Paragraph {index + 1}{" "}
