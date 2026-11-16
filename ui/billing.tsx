@@ -27,10 +27,10 @@ export enum BillingInterval {
 export type BillingIntervalValue = BillingInterval | 1 | 2
 
 /**
- * Where a subscription stands. The first five members follow the five statuses spy4x/ts-libs#362
- * proposes for `@spy4x/billing`, numbered from 1 in the order it lists them; `Paused`, a
- * subscription whose billing is on hold, comes after them. This package does not import that one,
- * so the components stay usable with any billing provider.
+ * Where a subscription stands. The members and their numbers match `SubscriptionStatus` in
+ * `@spy4x/billing` (spy4x/ts-libs), from `Trialing` as 1 to `Paused`, a subscription whose billing
+ * is on hold, as 6. This package does not import that one, so the components stay usable with any
+ * billing provider.
  */
 export enum SubscriptionStatus {
   Trialing = 1,

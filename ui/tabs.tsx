@@ -29,8 +29,10 @@ export interface TabItem {
   disabled?: boolean
   /**
    * A combination such as `"1"` or `"alt+2"`, written the way `useHotkeys` takes it. Pressing it
-   * selects the tab, as a click does, while the tab list is shown and the tab is enabled; a press in
-   * a text field does nothing. It also sets `aria-keyshortcuts` on the tab.
+   * selects the tab, as a click does, while the tab list is shown and the tab is enabled. A plain key
+   * typed in a text field does nothing, but a combination holding Control, Command or `mod` fires
+   * there too, except the field's own editing chords (`mod+a`, `mod+c`, `mod+v`, `mod+x`, `mod+z`,
+   * `mod+y`). It also sets `aria-keyshortcuts` on the tab.
    */
   hotkey?: string
 }
