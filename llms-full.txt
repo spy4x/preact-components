@@ -1855,7 +1855,10 @@ export const zone = buildModelStore({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ isOn }),
       }, zoneSchema)
-      if (outcome.error) return false
+      if (outcome.error) {
+        setUpdateOp(id, { inProgress: false, error: outcome.error, result: null })
+        return false
+      }
       setUpdateOp(id, { inProgress: false, error: null, result: outcome.result })
       return true
     },
@@ -2110,8 +2113,8 @@ toast.info({ body: "Read this one", duration: 20_000 })
   whole delay again. Now `Toastr` keeps the replaced toast's remaining time unless the re-push
   changes `duration`, which refills it in full — to extend a toast, push it again with a new
   `duration`.
-- **`timeout` is the old name for `duration`** and still works for one release. When both are
-  given, `duration` wins.
+- **`timeout` is the old name for `duration`.** It is deprecated and still read, and the next
+  major release removes it. When both are given, `duration` wins.
 - **`remove` is `Toastr`'s `onDismiss` as it stands.** Both take `ToastId` (`string | number`),
   exported from this package and from `@spy4x/preact-ui`. This store's own ids are strings, and a
   number is matched by its string form.
@@ -2406,6 +2409,15 @@ socket.on(`settings`, (record) => settings.apply(record))
   five, and a key pressed in that time was typed onto the older value: "hello" could arrive as
   "helo". Back, forward, a link and a push still win over any filter the reader has not changed
   within the last frame.
+- **A link clicked in the same task as a key press wins.** The key press wakes the write for the
+  next frame, and by then the link has moved the address. Writing anyway put every filter's old
+  value over the link's: a letter typed while `?status=open` was clicked left `?q=x`. A write that
+  finds an address someone else moved and the hook has not read yet now waits for that read, which
+  loads the link's filters and keeps the typed letter, then writes both: `?status=open&q=x`.
+- **Other code that replaces the address straight after the hook's write is not always followed.**
+  When it puts back the address the router last reported before the router re-renders, the router
+  reports no change and nothing is read, so the filters keep what the hook wrote while the address
+  shows the other code's; the next filter change writes as usual.
 - **Filters that have not changed never write.** The write decides by comparing the filters with
   what they held at the last read, not with the address the router last reported, which can be a
   frame ahead of that read. The older comparison pushed the address a second time when the address
@@ -2428,6 +2440,18 @@ socket.on(`settings`, (record) => settings.apply(record))
   the first letter in another field; and the first letter after Back, Forward or a link moved the
   address, so the entry the reader returned to is never overwritten. `pages/e2e/signals.spec.ts`
   holds each of these in a browser.
+- **Chromium ignores `pushState` and `replaceState` past 200 calls in 10 seconds on one page.**
+  Each letter typed into a bound field costs one of them, and a second when the address has a
+  fragment to put back, so a browser test that types into a filter field fast or many times on one
+  page can run past the limit. The filters and the list they drive still follow the field, but
+  the address stops moving, and a test that asserts the address fails for no fault of the app.
+  Use `fill` (one `input` event, one write) where the letters do not matter, open a fresh page
+  every few runs as `pages/e2e/signals.spec.ts` does, or assert on what the filters drive.
+- **A `number | null` filter needs a `parser`.** Without one, only a field whose `initialValue` is
+  a number is parsed with `parseInt`; any other, one that starts as `null` included, gets the
+  parameter as a string, so `?zone=5` gives `"5"` and `zone === row.zoneId` is never true.
+  `parser: (value) => /^\d+$/.test(value) ? Number(value) : null` reads it. A parser is called
+  only with a parameter the address has; an absent one means `initialValue`.
 - **`useUrlFilters` needs a DOM and a wouter router**, so what can be tested here is what it does to
   a query string: `resolveFilterValue`, `shouldPersistFilter`, `filterWrite`, `filterSearch`,
   `readAddress`, `restoredAddress` and `clearFilterFields` — which between them hold the rules for

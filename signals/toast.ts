@@ -164,8 +164,8 @@ export function createToastStore(options: ToastOptions = {}): ToastStore {
       title: message.title ?? titleFor(type),
       body: message.body,
       type,
-      // `duration` is the name both sides use; `timeout` is the old one, kept working for a
-      // release. `??` rather than `||`, so an explicit `0` — keep this toast until it is
+      // `duration` is the name both sides use; `timeout` is the old one, kept working until
+      // the next major release. `??` rather than `||`, so an explicit `0` — keep this toast until it is
       // dismissed — is carried through instead of being read as "nothing was asked for".
       duration: message.duration ?? message.timeout,
     }
