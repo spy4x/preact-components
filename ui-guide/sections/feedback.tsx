@@ -53,7 +53,7 @@ import type { DateRange } from "@spy4x/time/date"
 import { useSignal } from "@preact/signals"
 import { render } from "preact"
 import { useEffect, useMemo, useRef, useState } from "preact/hooks"
-import { IconFolder, IconPlus, IconTrashBin } from "@spy4x/preact-icons"
+import { IconChevronRight, IconFolder, IconPlus, IconTrashBin } from "@spy4x/preact-icons"
 import { entries } from "../record.ts"
 import { decisionCardDemos } from "./decision-card.tsx"
 import { DemoNote } from "./demo-note.tsx"
@@ -1018,15 +1018,16 @@ function DismissibleNoticeDemo() {
 }
 
 /**
- * A list whose rows are removed behind a confirmation, with a pretend request that the first
- * checkbox makes fail. It shows `ErrorState` with `focusOnAppear` (the refusal in the dialog takes
+ * A list whose rows are removed behind a confirmation, with a pretend request that "Refuse the next
+ * removal" makes fail. It shows `ErrorState` with `focusOnAppear` (the refusal in the dialog takes
  * focus), `useFreshError` (the dialog opens again without it) and `useFocusAfterRemoval` (a removed
- * row hands focus to its neighbour, or to "Bring everyone back").
+ * row hands focus to its neighbour, or to "Bring everyone back", the hook's fallback).
  *
- * The other controls are there for `pages/e2e/ui.spec.ts`, which drives every one: a removal that
- * takes the row at once and ends by hand, a person who leaves with no removal running, and rows
- * that start with something other than their button. The last line is written from an effect that
- * runs after the hook's, so a check that reads it knows the hook has finished with that state.
+ * The rest sits in a collapsed "Test controls" disclosure, for `pages/e2e/ui/removal.spec.ts`,
+ * which drives every one: a removal that takes the row at once and ends by hand, a person who
+ * leaves with no removal running, and rows that start with something other than their button. The
+ * status line there is written from an effect that runs after the hook's, so a check that reads it
+ * knows the hook has finished with that state.
  */
 function RemovalDemo() {
   const [people, setPeople] = useState(REMOVAL_PEOPLE)
@@ -1065,33 +1066,12 @@ function RemovalDemo() {
   }
   return (
     <Stack data-e2e="removal-demo">
-      <Cluster>
-        <Checkbox
-          checked={refuse}
-          onChange={(event) => setRefuse(event.currentTarget.checked)}
-        >
-          Refuse the next removal
-        </Checkbox>
-        <Checkbox
-          checked={skipEarlier}
-          onChange={(event) => setSkipEarlier(event.currentTarget.checked)}
-        >
-          Skip earlier rows
-        </Checkbox>
-        <Checkbox
-          checked={atOnce}
-          onChange={(event) => setAtOnce(event.currentTarget.checked)}
-        >
-          Take the row at once, and end the request by hand
-        </Checkbox>
-      </Cluster>
-      <RadioGroup
-        legend="Each row starts with"
-        name="guide-removal-lead"
-        options={entries(removalLeads).map(([value, label]) => ({ value, label }))}
-        value={lead}
-        onChange={(value) => setLead(value as RemovalLead)}
-      />
+      <Checkbox
+        checked={refuse}
+        onChange={(event) => setRefuse(event.currentTarget.checked)}
+      >
+        Refuse the next removal
+      </Checkbox>
       <ul ref={list} class="flex flex-col gap-2">
         {people.map((name) => (
           <RemovalRow
@@ -1113,14 +1093,45 @@ function RemovalDemo() {
         >
           Bring everyone back
         </Button>
-        <Button variant="outline" data-e2e="removal-leave" onClick={() => leave("Grace")}>
-          Grace leaves by herself
-        </Button>
-        <Button variant="outline" data-e2e="removal-end" onClick={() => setRemovingId(null)}>
-          End the request
-        </Button>
       </Cluster>
-      <DemoNote e2e="removal-settled">{settled}</DemoNote>
+      <details class="group/controls" data-e2e="removal-test-controls">
+        <summary class="flex min-h-11 cursor-pointer list-none items-center gap-2 rounded-md text-sm font-medium text-muted select-none hover:text-foreground focus-visible:ring-2 focus-visible:ring-focus focus-visible:outline-hidden sm:min-h-9 [&::-webkit-details-marker]:hidden">
+          <IconChevronRight class="size-4 shrink-0 transition-transform group-open/controls:rotate-90 group-open/controls:[&:dir(rtl)]:-rotate-90" />
+          Test controls
+        </summary>
+        <Stack class="pt-2">
+          <Cluster>
+            <Checkbox
+              checked={skipEarlier}
+              onChange={(event) => setSkipEarlier(event.currentTarget.checked)}
+            >
+              Skip earlier rows
+            </Checkbox>
+            <Checkbox
+              checked={atOnce}
+              onChange={(event) => setAtOnce(event.currentTarget.checked)}
+            >
+              Take the row at once, and end the request by hand
+            </Checkbox>
+          </Cluster>
+          <RadioGroup
+            legend="Each row starts with"
+            name="guide-removal-lead"
+            options={entries(removalLeads).map(([value, label]) => ({ value, label }))}
+            value={lead}
+            onChange={(value) => setLead(value as RemovalLead)}
+          />
+          <Cluster>
+            <Button variant="outline" data-e2e="removal-leave" onClick={() => leave("Grace")}>
+              Grace leaves by herself
+            </Button>
+            <Button variant="outline" data-e2e="removal-end" onClick={() => setRemovingId(null)}>
+              End the request
+            </Button>
+          </Cluster>
+          <DemoNote e2e="removal-settled">{settled}</DemoNote>
+        </Stack>
+      </details>
     </Stack>
   )
 }
