@@ -26,6 +26,12 @@ describe("groupShortcuts", () => {
       },
     ])
   })
+
+  it("keeps a described row without keys", () => {
+    expect(groupShortcuts([{ description: "Export data" }], "General")).toEqual([
+      { title: "General", shortcuts: [{ description: "Export data" }] },
+    ])
+  })
 })
 
 describe("ShortcutsDialog", () => {
@@ -71,8 +77,50 @@ describe("ShortcutsDialog", () => {
     const html = render(
       <ShortcutsDialog open onClose={() => {}} shortcuts={shortcuts} apple={false} />,
     )
-    expect(html).toMatch(/<dt class="[^"]*">Search<\/dt><dd><kbd[^>]*><kbd[^>]*>Ctrl<\/kbd>/)
+    expect(html).toMatch(
+      /<dt class="[^"]*">Search<\/dt><dd class="shrink-0"><kbd[^>]*><kbd[^>]*>Ctrl<\/kbd>/,
+    )
     expect(html).not.toContain(">X</kbd>")
+  })
+
+  it("lists a row without keys as a term with no keys after it", () => {
+    for (const keys of [undefined, ""]) {
+      const html = render(
+        <ShortcutsDialog
+          open
+          onClose={() => {}}
+          shortcuts={[{ keys, description: "Export data" }]}
+        />,
+      )
+      expect(html).toMatch(/<dt class="[^"]*">Export data<\/dt><\/div>/)
+      expect(html).not.toContain("<dd")
+      expect(html).not.toContain("<kbd")
+    }
+  })
+
+  it("draws a row's detail inside its term, after the description, in muted small text", () => {
+    const html = render(
+      <ShortcutsDialog
+        open
+        onClose={() => {}}
+        shortcuts={[{ description: "Export data", detail: "download, backup, csv" }]}
+      />,
+    )
+    expect(html).toMatch(
+      /<dt class="[^"]*">Export data<span class="block text-xs text-muted">download, backup, csv<\/span><\/dt>/,
+    )
+  })
+
+  it("lets a long description wrap beside keys that keep their width", () => {
+    const html = render(
+      <ShortcutsDialog
+        open
+        onClose={() => {}}
+        shortcuts={[{ keys: "mod+k", description: "Search" }]}
+      />,
+    )
+    expect(html).toMatch(/<dt class="[^"]*\bmin-w-0\b[^"]*\bwrap-anywhere\b[^"]*">/)
+    expect(html).toContain('<dd class="shrink-0">')
   })
 
   it("lists a sequence row with its presses joined by then", () => {
@@ -85,7 +133,7 @@ describe("ShortcutsDialog", () => {
       />,
     )
     expect(html).toMatch(
-      />Go to Today<\/dt><dd><kbd[^>]*><kbd[^>]*>G<\/kbd> then <kbd[^>]*>T<\/kbd>/,
+      />Go to Today<\/dt><dd[^>]*><kbd[^>]*><kbd[^>]*>G<\/kbd> then <kbd[^>]*>T<\/kbd>/,
     )
   })
 

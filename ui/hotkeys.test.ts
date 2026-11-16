@@ -309,6 +309,17 @@ describe("activeShortcuts", () => {
   it("drops the single keys while they are off", () => {
     expect(activeShortcuts(rows, false)).toEqual([{ keys: "mod+k" }, { keys: "esc" }])
   })
+
+  it("keeps rows without keys while single keys are off", () => {
+    const listed = [{ keys: "n" }, { description: "Export data" }, {
+      keys: "",
+      description: "Help",
+    }]
+    expect(activeShortcuts(listed, false)).toEqual([
+      { description: "Export data" },
+      { keys: "", description: "Help" },
+    ])
+  })
 })
 
 describe("ariaKeyShortcuts", () => {
