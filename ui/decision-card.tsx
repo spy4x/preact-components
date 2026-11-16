@@ -265,7 +265,7 @@ export function DecisionCard(
       <header class="flex flex-col gap-2">
         {(kind !== undefined || position !== undefined) && (
           <div class="flex flex-wrap items-center gap-2 text-sm text-muted">
-            {kind !== undefined && <Badge text={kind} color="gray" />}
+            {kind !== undefined && <Badge text={kind} tone="neutral" />}
             {position !== undefined && <span>{position}</span>}
           </div>
         )}

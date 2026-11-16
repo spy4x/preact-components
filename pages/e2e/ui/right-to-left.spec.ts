@@ -56,6 +56,36 @@ async function headerLines(card: Locator, title: string, subtitle: string): Prom
 }
 
 /**
+ * Puts `text` into the long-titled header's title and subtitle in `card` and tells, for each,
+ * whether the two-line clamp draws its ellipsis inside the box. The ellipsis is not in the DOM and
+ * hides the letters it covers without moving them, so it is found by its pixels: the box is shot as
+ * clamped and again with the clamp lifted and the height held, which draws the same lines with no
+ * ellipsis. Identical shots mean the ellipsis fell outside the box.
+ */
+async function ellipsisDrawn(card: Locator, text: string): Promise<boolean[]> {
+  await card.scrollIntoViewIfNeeded()
+  const heading = card.locator(`[data-e2e="page-header-long-title"]`)
+  const lines = [heading.locator(`span`), heading.locator(`xpath=..`).locator(`p`)]
+  const drawn: boolean[] = []
+  for (const line of lines) {
+    const height = await line.evaluate((element, words) => {
+      element.textContent = words
+      if (element.scrollHeight <= element.clientHeight) throw new Error(`"${words}" is not cut`)
+      return element.clientHeight
+    }, text)
+    const clamped = await line.screenshot({ animations: "disabled" })
+    await line.evaluate((element, height) => {
+      element.style.cssText = `-webkit-line-clamp: none; line-clamp: none; max-height: ${height}px`
+      if (element.clientHeight !== height) throw new Error(`lifting the clamp resized the box`)
+    }, height)
+    const lifted = await line.screenshot({ animations: "disabled" })
+    await line.evaluate((element) => element.removeAttribute("style"))
+    drawn.push(!Buffer.from(clamped).equals(Buffer.from(lifted)))
+  }
+  return drawn
+}
+
+/**
  * The `ui` components in a right-to-left page (#876): keys that move along a line follow `dir`,
  * menus and hints open toward the line's end, and a Latin title keeps its start in an Arabic page.
  * Each spec sets `dir="rtl"` on its card only, so the rest of the page stays as the other specs
@@ -155,7 +185,8 @@ function rightToLeftSpecs(): Spec[] {
           range.setEnd(text, 1)
           const first = range.getBoundingClientRect()
           return {
-            clipped: span.scrollWidth > span.clientWidth,
+            // Two lines on a phone: the clamp cuts the text below the box, not beside it.
+            clipped: span.scrollHeight > span.clientHeight || span.scrollWidth > span.clientWidth,
             first: { left: first.left, right: first.right },
             box: { left: box.left, right: box.right },
           }
@@ -202,6 +233,32 @@ function rightToLeftSpecs(): Spec[] {
           `"${line.text}" starts at ${line.words.left} of ${line.box.left}`
         )
           .join(", ")
+      },
+    },
+    {
+      name:
+        "PageHeader at 390 px: a long title and subtitle cut at two lines show their ellipsis " +
+        "in both page directions, Latin and Arabic alike",
+      pageId: "ui",
+      run: async (page) => {
+        await page.setViewportSize({ width: 390, height: 844 })
+        const card = page.locator(`#demo-PageHeader`)
+        const texts = {
+          Latin: "Groceries for the long weekend at the lake house with everyone and the dogs",
+          Arabic: "مشتريات عطلة نهاية الأسبوع الطويلة في بيت البحيرة مع الجميع والأصدقاء والكلاب",
+        }
+        const seen: string[] = []
+        for (const direction of ["ltr", "rtl"]) {
+          await card.evaluate((element, dir) => element.setAttribute("dir", dir), direction)
+          for (const [script, text] of Object.entries(texts)) {
+            const [title, subtitle] = await ellipsisDrawn(card, text)
+            const where = `${script} in a ${direction} page`
+            if (!title) throw new Error(`the cut ${where} title shows no ellipsis`)
+            if (!subtitle) throw new Error(`the cut ${where} subtitle shows no ellipsis`)
+            seen.push(where)
+          }
+        }
+        return `ellipsis drawn: ${seen.join(", ")}`
       },
     },
     {

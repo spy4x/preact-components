@@ -1,10 +1,10 @@
 # `@spy4x/preact-charts`
 
 Charts for Preact that render complete on the server and become interactive in the browser, plus
-the axis and loading helpers behind them.
+the axis and data helpers behind them.
 
 - **Server-rendered, finished without JavaScript** — `LineChart`, `Bars`, `RankedBars`, `DotPlot`,
-  `DonutChart`, `Kpi`, `KpiGrid`. The markup a server sends is the whole chart: axes, lines, bars, legend, a
+  `DonutChart`, `Kpi`, `KpiGrid`, `DependencyGraph`. The markup a server sends is the whole chart: axes, lines, bars, legend, a
   native tooltip on every point.
 - **Interactive once hydrated** — `LineChart` adds a crosshair and a tooltip that follow the pointer,
   and steps through its points with the arrow keys, Home and End; `DonutChart` gives every slice a
@@ -29,8 +29,8 @@ the axis and loading helpers behind them.
 ## Rules this package follows
 
 - **Props and ports, never a global store.** No component imports an app's state singleton and no
-  module-level signal holds app data. Data arrives as props; loading arrives as a `loadStats`
-  callback; colours arrive as props.
+  module-level signal holds app data. Data and colours arrive as props; loading
+  is the app's.
 - **Colours are props, with theme tokens as the default.** The defaults are CSS custom properties
   with an inline fallback, so a chart picks up `theme/` when it is loaded and still renders
   standalone. They are applied through `style`, because `var()` does not resolve inside SVG
@@ -51,22 +51,30 @@ the axis and loading helpers behind them.
 
 ## Components
 
-| Component    | Subpath       | Interactive in a browser               | Key props / ports                                                                                                                              |
-| ------------ | ------------- | -------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------- |
-| `LineChart`  | `line-chart`  | crosshair, tooltip, arrow-key stepping | `series`, `xAxis`, `height`, `yFormat`, `xFormat`, `yDomain`, `referenceValue`, `ignoreZeroes`, `dataTable`, `xLabel`                          |
-| `Bars`       | `bars`        | no                                     | `data` (a value or stacked `segments` per row), `max`, `format`, `labelWidth`, `colors`, `reference`                                           |
-| `RankedBars` | `ranked-bars` | no                                     | `data` (`values`, `href` or `onSelect`, `lowSample`, `image`, `note` per row), `columns` (`label`, `value`, 1–3 `extra`), `format`, `navigate` |
-| `DotPlot`    | `dot-plot`    | no                                     | `rows`, `summary`, `domain`, `zero`, `bands`, `format`, `ariaLabel`, `missingLabel`                                                            |
-| `DonutChart` | `donut-chart` | slice tooltip, arrow-key stepping      | `data`, `centerValue`, `centerLabel`, `valueFormat`, `showLegend`, `colors`, `axisColor`                                                       |
-| `Kpi`        | `kpi`         | no                                     | `label`, `value`, `sub`, `tone`, `change` (`{ text, direction, tone? }`: icon and words, the only toned line)                                  |
-| `KpiGrid`    | `kpi`         | no                                     | `children`, `minWidth`                                                                                                                         |
+| Component         | Subpath            | Interactive in a browser               | Key props / ports                                                                                                                                   |
+| ----------------- | ------------------ | -------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `LineChart`       | `line-chart`       | crosshair, tooltip, arrow-key stepping | `series`, `xAxis`, `height`, `valueFormat`, `xFormat`, `yDomain`, `referenceValue`, `ignoreZeroes`, `dataTable`, `xLabel`                           |
+| `Bars`            | `bars`             | no                                     | `data` (a value or stacked `segments` per row), `max`, `valueFormat`, `labelWidth`, `colors`, `reference`                                           |
+| `RankedBars`      | `ranked-bars`      | no                                     | `data` (`values`, `href` or `onSelect`, `lowSample`, `image`, `note` per row), `columns` (`label`, `value`, 1–3 `extra`), `valueFormat`, `navigate` |
+| `DotPlot`         | `dot-plot`         | no                                     | `rows`, `summary`, `domain`, `zero`, `bands`, `valueFormat`, `ariaLabel`, `missingLabel`                                                            |
+| `DonutChart`      | `donut-chart`      | slice tooltip, arrow-key stepping      | `data`, `centerValue`, `centerLabel`, `valueFormat`, `showLegend`, `colors`, `axisColor`                                                            |
+| `Kpi`             | `kpi`              | no                                     | `label`, `value`, `sub`, `tone`, `change` (`{ text, direction, tone? }`: icon and words, the only toned line)                                       |
+| `KpiGrid`         | `kpi`              | no                                     | `children`, `minWidth`                                                                                                                              |
+| `DependencyGraph` | `dependency-graph` | chain highlight, CSS only              | `nodes` (`href`, `tone`, `emphasis`, `badge`, `description`), `edges` (`style`, `tone`), `label`, `emptyLabel`, `dependsOnLabel`, `neededByLabel`   |
 
-Hooks and helpers: `changeText(change, period, locale?)` (`change`) writes a change against the
-period before as one neutral line, `+3 vs previous 7 days` or `No change vs yesterday`, never a
-percentage; `useInView` (`use-in-view`), `previousPeriod` / `loadChartPayload` /
-`chartPayloadSchema` (`payload`), the `TIME_FRAMES` / `TimeFrame` / `TimeSeriesPoint` vocabulary
-(`time-series`), and the axis maths in `scales` — `niceStep`, `ticks`, `niceScale`, `paddedDomain`,
-`linearScale`, `extent`, `xLabelStride`.
+Every chart prints its values through `valueFormat`. The older names, `format` on `Bars`,
+`RankedBars` and `DotPlot` and `yFormat` on `LineChart`, still work the same way and are deprecated;
+when both are passed, `valueFormat` wins. They are removed in the next major.
+
+Helpers: `changeText(change, period, locale?)` (`change`) writes a change against the period before
+as one neutral line, `+3 vs previous 7 days` or `No change vs yesterday`, never a percentage;
+`createInViewObserver` (`use-in-view`), `timeSeriesPointSchema` (`payload`), the `TIME_FRAMES` /
+`TimeFrame` / `TimeSeriesPoint` vocabulary (`time-series`), and the axis maths in `scales` —
+`niceStep`, `ticks`, `niceScale`, `paddedDomain`, `extent`.
+
+`linearScale`, `xLabelStride`, `previousPeriod`, `loadChartPayload`, `chartPayloadSchema`,
+`LoadPayloadResult`, `DateRange`, `useInView`, `InViewRef` and `InViewOptions`' `once` were removed
+(#861): nothing outside this package used them, and nothing inside it does.
 
 ## Usage
 
@@ -80,7 +88,7 @@ Series over categories:
 <LineChart
   title="Runs per month"
   series={[{ name: "Runs", points: months.map((m) => ({ x: m.label, y: m.runs })) }]}
-  yFormat={(value) => `${value} km`}
+  valueFormat={(value) => `${value} km`}
 />
 ```
 
@@ -112,8 +120,8 @@ points: weeks.map((w) => ({ x: w.label, y: w.average, hollow: w.samples < 5 }))
 
 A dashed series gets a 24 px legend swatch, wide enough to show the dash; a solid one gets 12 px.
 
-A comparison is the caller's data: load the earlier window with `loadChartPayload` and
-`previousPeriod`, move its instants forward by the window's length, and pass it as a dashed series.
+A comparison is the caller's data: load the earlier window, move its instants forward by the
+window's length, and pass it as a dashed series.
 
 ### Moving from `D3LineChart` and `CompareChart`
 
@@ -122,19 +130,19 @@ Both were removed in favour of the one `LineChart` (#356), and `MetricPanel` wit
 | Before                                             | Now                                                                                                                 |
 | -------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------- |
 | `<D3LineChart data timeFrame />`                   | `<LineChart xAxis="time" series={[{ name, points }]} />`, `points` mapped from `{ timeGroup, value }` to `{ x, y }` |
-| `ticks`, `tickFormat`                              | `yTicks`, `yFormat`                                                                                                 |
-| `tickValues` (labels for a numeric index)          | `yFormat={(value) => labels[value]}`                                                                                |
-| `timeTickFormat`, `tooltipFormat`                  | `xFormat` (axis and tooltip heading), `yFormat` (tooltip value)                                                     |
+| `ticks`, `tickFormat`                              | `yTicks`, `valueFormat`                                                                                             |
+| `tickValues` (labels for a numeric index)          | `valueFormat={(value) => labels[value]}`                                                                            |
+| `timeTickFormat`, `tooltipFormat`                  | `xFormat` (axis and tooltip heading), `valueFormat` (tooltip value)                                                 |
 | `referenceValue`, `ignoreZeroes`, `isLoading`      | the same names                                                                                                      |
 | `missingValuesLabel`, `loadingLabel`, `emptyLabel` | the same names                                                                                                      |
 | `colors.line`, `.axis`, `.text`, `.surface`        | a series' `color`, `axisColor`, `textColor`, `surfaceColor`                                                         |
 | `colors.reference`                                 | `referenceColor`                                                                                                    |
 | `aspectRatio`                                      | `height`, in pixels; the chart takes its parent's width                                                             |
 | `LineChart`'s `width` (the `viewBox` width)        | gone: the chart is as wide as its parent                                                                            |
-| `<CompareChart range data loadStats />`            | a second, `dashed` series; load it with `loadChartPayload(loadStats, previousPeriod(range))`                        |
+| `<CompareChart range data loadStats />`            | a second, `dashed` series, loaded by the app for the window before `range`                                          |
 | `CompareChart`'s `compareLabel` toggle             | the app's own toggle: add or drop the dashed series when it changes                                                 |
 | `CompareChart`'s `rangePicker` slot                | the app's own picker, rendered beside the chart                                                                     |
-| `CompareChart`'s `onError`                         | `loadChartPayload` returns `{ error }`; show it with `ui/`'s `ErrorState` or a toast                                |
+| `CompareChart`'s `onError`                         | the app's own loader error; show it with `ui/`'s `ErrorState` or a toast                                            |
 | `<MetricPanel title unit error actions>`           | the app's own heading, `ui/`'s `ErrorState`, and a `LineChart`                                                      |
 | `@spy4x/preact-charts/svg`                         | `@spy4x/preact-charts`: no module imports d3 any more                                                               |
 
@@ -230,23 +238,38 @@ that must work without it, give the row an `href` instead.
   Negative and non-finite values count as `0`, and data with nothing positive gives one empty ring.
   Use it to draw a donut or a share legend of your own.
 
-### Loading (`./payload`, `./use-in-view`)
+### Dependency graph (`./dependency-graph`)
+
+`DependencyGraph` draws boxes joined by curved arrows as one SVG, finished on the server: `from`
+is the node that comes first, on the left, and `to` the one that waits on it. Hovering a node, or
+focusing one that has `href`, keeps the nodes and edges before and after it and dims the rest with
+a scoped stylesheet (`:has()`), so the highlight needs no script; past 50,000 chain memberships it
+is left out instead of bloating the markup. Nodes with `href` are links, in Tab order column by
+column; a visually hidden list after the graph says what each node depends on and what needs it.
+The frame scrolls sideways inside its parent and is a Tab stop. An empty `nodes` prints
+`emptyLabel`.
+
+- `layoutGraph(nodes, edges)` is its layout, pure and exported: each node's column is the longest
+  chain of edges before it, and barycentre passes order each column to cut crossings, ties kept in
+  input order. It returns `{ nodes, edges, columns, rows, cycles, unknown }`: an edge that closes a
+  cycle is drawn but left out of the columns and listed in `cycles` (a self-loop is listed and not
+  drawn), an edge naming an unknown node is dropped and listed in `unknown`, and a repeated edge
+  counts once. Linear in nodes and edges apart from a sort per column; 2,000 nodes and 10,000
+  edges lay out in tens of milliseconds.
+
+### Data and loading (`./payload`, `./use-in-view`)
 
 - `timeSeriesPointSchema` is the arktype schema of one `TimeSeriesPoint`, `{ timeGroup, value }`,
-  as it arrives from an API; `chartPayloadSchema` uses it for its `data`.
+  as it arrives from an API; `ChartPayload` is the type of a whole response, `{ data, timeFrame }`.
 - `createInViewObserver(element, onChange, { rootMargin, threshold })` observes one element and
   calls `onChange(isIntersecting)` on every change, preloading `200px` early by default. It
   returns a handle with `disconnect()`, or `null` where `IntersectionObserver` does not exist, such
-  as on the server. `useInView` is built on it; call it directly outside a component.
-- `useInView({ rootMargin, threshold, once })` returns `{ ref, inView }`: attach `ref` to an
-  element and `inView` turns `true` once it comes within `rootMargin` of the viewport. `ref` is a
-  callback ref that also keeps the element in `ref.current`, so an element rendered later, after a
-  loading state, is observed too.
+  as on the server. Call it in an effect and disconnect the handle in that effect's cleanup.
 
 ## Tests
 
-`deno task test` from the repo root. `scales.test.ts` covers `extent`, `paddedDomain`, `niceScale`,
-`linearScale` and `xLabelStride` — the axis helpers this package still owns — including degenerate,
+`deno task test` from the repo root. `scales.test.ts` covers `extent`, `paddedDomain` and
+`niceScale` — the axis helpers this package still owns — including degenerate,
 negative, tiny, huge and boundary-tick cases, and runs `niceScale`'s own non-termination case
 (`niceScale(1e6, 2e6, { target: 1e25 })`) and a termination check on the re-exported `ticks`
 (`ticks(1e18, 1e18 + 100)`) each in a worker with a deadline — `deno test` has no per-test timeout, so

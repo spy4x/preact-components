@@ -39,6 +39,7 @@ export interface LinePoint {
   hollow?: boolean
 }
 
+/** One line of a `LineChart`: its name, its points and how it is drawn. */
 export interface LineSeries {
   name: string
   points: LinePoint[]
@@ -61,6 +62,11 @@ export interface LineChartProps {
   /** Height of the plot, in pixels. Defaults to `240`. The chart always takes its parent's width. */
   height?: number
   /** Y tick and tooltip value format. Defaults to at most two decimals. */
+  valueFormat?: (value: number) => string
+  /**
+   * @deprecated Use `valueFormat`. Removed in the next major. Behaves the same; when both are
+   * passed, `valueFormat` wins.
+   */
   yFormat?: (value: number) => string
   /** X label and tooltip heading format; a time axis passes a `Date`. */
   xFormat?: (x: string | Date) => string
@@ -176,7 +182,8 @@ export function LineChart({
   series,
   xAxis = "category",
   height = 240,
-  yFormat = formatNumber,
+  valueFormat,
+  yFormat: legacyYFormat,
   xFormat,
   yDomain,
   yTicks = 5,
@@ -205,6 +212,7 @@ export function LineChart({
   xLabel: xLabelProp,
   class: className,
 }: LineChartProps): JSX.Element {
+  const yFormat = valueFormat ?? legacyYFormat ?? formatNumber
   const { missingValuesLabel, loadingLabel, emptyLabel, keyboardHint, xLabel, chartLabel } =
     useLabels("LineChart", LINE_CHART_LABELS, {
       missingValuesLabel: missingValuesLabelProp,

@@ -1,6 +1,9 @@
 /** The `charts` catalog in zh-CN: `createTranslator({ catalogs: [{ source: en, translation: this }] })`. */
 export default {
   "Bars.emptyLabel": "暂无数据",
+  "DependencyGraph.dependsOn": "依赖 {names}",
+  "DependencyGraph.emptyLabel": "暂无数据",
+  "DependencyGraph.neededBy": "是 {names} 的前提",
   "DonutChart.chartLabel": {
     "other": "环形图，共 {count} 个扇区",
   },

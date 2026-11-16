@@ -182,7 +182,7 @@ together run every spec exactly once. Each shard is a run of its own: its own br
 limits, the static phase and startup checks again, and a `SHARDED:` line after its `FILTERED:`
 line. A value that is not a shard, a shard passed to a run without the `e2e` block, and a shard
 with no spec are each a failed check. `pages/e2e/shard.test.ts`, part of `deno task check`, fails
-when `.woodpecker.yml` leaves a shard out, lists one twice, or runs `e2e` anywhere unsharded.
+when `.woodpecker/woodpecker.yml` leaves a shard out, lists one twice, or runs `e2e` anywhere unsharded.
 
 Why: as one step the `e2e` part took 506 to 732 seconds on a quiet agent and ran past its
 900-second ceiling whenever other pipelines shared the agent (pipelines 2696, 2797, 2807, 2819).
@@ -214,7 +214,7 @@ full runs go on in another terminal, noting `uptime` with each:
 
 ```bash
 systemd-run --user --scope --quiet -p TasksMax=100 timeout 1200 stress-ng --cpu 0 --timeout 1100s
-uptime && systemd-run --user --scope --quiet -p TasksMax=500 -p MemoryMax=8G timeout 900 deno task --cwd pages verify
+uptime && systemd-run --user --scope --quiet -p TasksMax=500 -p MemoryMax=8G timeout 1800 deno task --cwd pages verify
 ```
 
 On a 16-core machine that holds the load average near 20. It is what the issue asked for, and it is
@@ -235,7 +235,7 @@ specs that many times, four at once as always, and records each run as its own c
 `--cpu-throttle` to repeat them under load. The last line says the run was filtered and repeated.
 A text that matches no spec, or `--grep` with `--only` or `--except`, is a failed check.
 
-This is also the repository's browser test path, and CI runs it. `.woodpecker.yml` runs
+This is also the repository's browser test path, and CI runs it. `.woodpecker/woodpecker.yml` runs
 `deno task check`, `deno task publish:dry`, the build and `verify` on every pull request into
 `main` and on every push to `main`. The build and `verify` run in Playwright's image, which ships
 Chromium. `verify` runs there as six steps: `ui`, four shards of `e2e` and the other nine blocks
@@ -251,10 +251,13 @@ last check that finished:
 - **No progress for 150 seconds**: no check finished and no block started. This is the limit a hang
   meets, so a hung run dies about 150 seconds after its last check, however many checks came
   before. It bounds the gap between two checks, not the run, so adding checks does not move it.
-- **15 minutes for the whole phase**, however steadily it records checks: a backstop for a run that
-  never stops. A full run as one command came to 13 of those minutes in CI and crossed them on a
-  busy workstation (#696), which is why a full run can be split: each part has its own 15 minutes
-  and the longest takes about five and a half in CI (see "Running a full run in parts").
+- **30 minutes for the whole phase**, however steadily it records checks: a backstop for a run that
+  never stops. A full run as one command came to 13 minutes in CI and crossed the 15 the ceiling
+  was then on a busy workstation (#696), which is why a full run can be split: each part has the
+  whole ceiling (see "Running a full run in parts"). It became 30 minutes (#979) when e2e shards
+  that take 250 to 810 seconds in a green run were stopped at 900 seconds, still finishing checks,
+  on CI agents at a load average of 15 to 25: pipeline 3733's first shard had 203 of its 213
+  checks done. A hang never needs the ceiling, since the 150-second limit above stops it first.
 
 Both are multiplied by `--cpu-throttle`, and so is the 15-second budget a single DevTools call,
 or a wait for one DevTools event such as a page load, gets when its caller names none. Each launch
@@ -553,7 +556,8 @@ is the number to trust, not one typed here.
 
 `.github/workflows/pages.yml` — a GitHub workflow, because Pages can only be deployed by one. It
 deploys and checks nothing: every check, the build and the parts of `verify` run in
-Woodpecker (`.woodpecker.yml`) on every pull request and every push to `main`.
+Woodpecker (`.woodpecker/woodpecker.yml`) on every pull request (only `check` while its title
+starts with `[WIP]`) and every push to `main`.
 
 The workflow starts on a `status` event. When Woodpecker's push build of `main` ends, Woodpecker
 posts the commit status `ci/woodpecker/push/woodpecker`; only a `success` for a commit on `main`

@@ -216,7 +216,7 @@ Each kind of drift fails `deno task test`, naming the export and its package:
 | an allow-list entry that is a helper, or the reverse | `signals's ThemeValue is not a component, so …`                           |
 
 Prop vocabulary is guarded one level down: demos iterate a `Record<Union, …>` keyed by a prop's own
-union type (`ButtonVariant`, `BadgeColor`, `SpinnerSize`, `BadgeType`, `ToastVariant`), so adding a
+union type (`ButtonVariant`, `BadgeTone`, `SpinnerSize`, `BadgeVariant`, `ToastVariant`), so adding a
 variant to a component fails `deno check` until the catalogue shows it.
 
 ### The list carries a reason, and it only shrinks

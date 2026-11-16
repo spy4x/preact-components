@@ -1,9 +1,10 @@
 /**
  * `@spy4x/preact-charts` — charts that render complete on the server and become interactive in a
- * browser, plus the axis and loading helpers behind them.
+ * browser, plus the axis and data helpers behind them.
  *
  * `LineChart`, `Bars`, `RankedBars`, `DotPlot`, `DonutChart` and `Kpi` render plain markup with no
- * JavaScript.
+ * JavaScript. `DependencyGraph` draws boxes joined by arrows as SVG, laid out by `layoutGraph`, and
+ * highlights a node's chain on hover and focus with CSS alone.
  * `LineChart` and `DonutChart` add a tooltip, by pointer and by keyboard, once they run in a
  * browser. Nothing in the package imports a charting library, and nothing reads an application
  * store or a global signal: colours and data arrive through props.
@@ -69,31 +70,25 @@ export {
   type LineSeries,
   type LineX,
 } from "./line-chart.tsx"
-export {
-  type ChartPayload,
-  chartPayloadSchema,
-  type DateRange,
-  loadChartPayload,
-  type LoadPayloadResult,
-  previousPeriod,
-  timeSeriesPointSchema,
-} from "./payload.ts"
+export { type ChartPayload, timeSeriesPointSchema } from "./payload.ts"
 export {
   extent,
-  linearScale,
   type NiceScale,
   niceScale,
   type NiceScaleOptions,
   niceStep,
   paddedDomain,
   ticks,
-  xLabelStride,
 } from "./scales.ts"
-export {
-  createInViewObserver,
-  type InViewHandle,
-  type InViewOptions,
-  type InViewRef,
-  useInView,
-} from "./use-in-view.ts"
+export { createInViewObserver, type InViewHandle, type InViewOptions } from "./use-in-view.ts"
 export { TIME_FRAMES, type TimeFrame, type TimeSeriesPoint } from "./time-series.ts"
+export {
+  DependencyGraph,
+  type DependencyGraphProps,
+  type GraphEdge,
+  type GraphLayout,
+  type GraphNode,
+  layoutGraph,
+  type PlacedEdge,
+  type PlacedNode,
+} from "./dependency-graph.tsx"

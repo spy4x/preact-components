@@ -269,11 +269,12 @@ export function declarationIndex(
  * Lists one package's exports, values and types, each with its kind, summary and specifier.
  *
  * A name exported by several entry points is listed once, under the first: the barrel comes first,
- * so a name the barrel exports imports from the package root. The kind and the JSDoc come from
- * where the name is declared: a `reference` symbol (a re-export) is followed through `index` to
- * its declaration, in this package or another. A reference that reaches nothing has neither. With
- * no JSDoc the summary falls back to the README's description column, then, for a `FooProps` type,
- * to "Props of `Foo`."; otherwise it is empty.
+ * so a name the barrel exports imports from the package root. A `default` export is the exception:
+ * each entry point's is its own value (one catalog per `i18n/<language>`), so each is listed. The
+ * kind and the JSDoc come from where the name is declared: a `reference` symbol (a re-export) is
+ * followed through `index` to its declaration, in this package or another. A reference that reaches
+ * nothing has neither. With no JSDoc the summary falls back to the README's description column,
+ * then, for a `FooProps` type, to "Props of `Foo`."; otherwise it is empty.
  *
  * @param entryPoints The package's entry points, barrel first, with their `deno doc` symbols.
  * @param surface The package's value exports and which of them are components, from
@@ -304,13 +305,14 @@ export function buildEntries(
   for (const { specifier, symbols } of entryPoints) {
     for (const { name, declarations } of symbols) {
       const declaration = resolve(name, declarations)
-      if (!declaration || entries.has(name)) continue
+      const key = name === `default` ? `${specifier}|default` : name
+      if (!declaration || entries.has(key)) continue
       let summary = firstSentence(declaration.jsDoc?.doc ?? ``) || readmeSummary(readme, name)
       // A props type with no JSDoc of its own is described by the component it belongs to.
       if (!summary && /^[A-Z]\w*Props$/.test(name) && declaration.kind !== `function`) {
         summary = `Props of \`${name.slice(0, -5)}\`.`
       }
-      entries.set(name, {
+      entries.set(key, {
         name,
         kind: kindOf(name, declaration.kind, surface.components.includes(name)),
         summary: deprecatedSummary(summary, declaration.jsDoc?.tags),
@@ -320,8 +322,9 @@ export function buildEntries(
     }
   }
 
+  const listed = new Set([...entries.values()].map((entry) => entry.name))
   for (const name of surface.names) {
-    if (!entries.has(name)) {
+    if (!listed.has(name)) {
       throw new Error(`${pkg} exports \`${name}\` but no declaration was found for it`)
     }
   }

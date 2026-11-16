@@ -14,6 +14,7 @@ import { positionTooltip, TOOLTIP_TEXT_COLOR } from "./tooltip.ts"
 import { formatDecimal } from "@spy4x/platform/universal/format-number"
 import { useLabels } from "@spy4x/preact-ui/i18n"
 
+/** One slice of a `DonutChart`: its label, its value and an optional colour and link. */
 export interface DonutDatum {
   label: string
   value: number
@@ -22,6 +23,7 @@ export interface DonutDatum {
   href?: string
 }
 
+/** One slice as `donutGeometry` lays it out: its colour, its share and its arc on the ring. */
 export interface DonutSegment {
   label: string
   value: number
@@ -36,6 +38,7 @@ export interface DonutSegment {
   endPercent: number
 }
 
+/** What `donutGeometry` returns: the ring's `conic-gradient`, its slices and their total. */
 export interface DonutGeometry {
   /** A ready-to-use `conic-gradient(…)` value. */
   gradient: string

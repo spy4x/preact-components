@@ -1496,7 +1496,7 @@ export class Devtools {
   /**
    * How long a single `send` waits for its reply before rejecting, unless the caller asks for a
    * different budget. `verify.ts`'s browser phase has a watchdog (#466) that stops it after 90
-   * seconds with no finished check and after 15 minutes in all, but the watchdog can only stop the
+   * seconds with no finished check and after 30 minutes in all, but the watchdog can only stop the
    * run, not end a call: a single request the browser never answers (the process died mid-call, or
    * wedged) would otherwise leave its `await` pending until the watchdog fired, and the report
    * would blame the stall rather than the call that caused it.

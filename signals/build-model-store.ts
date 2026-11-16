@@ -271,6 +271,12 @@ export interface BuildModelStoreConfig<
    * of {@link ModelStoreMessages}' fields. `{issue}` fills `malformedUpdate` and `{detail}` fills
    * `malformedResponse`. A key the catalogs lack keeps its English default, and `messages` still
    * wins over the catalog.
+   *
+   * The store looks every key up when it is built, so the translator's `onMissing` fires then for
+   * each key the catalogs lack. `malformedUpdate` and `malformedResponse` are filled in again each
+   * time their toast shows, so `onMissing` can fire again for those two. The messages stay in the
+   * language of the moment the store was built: to switch language, build the stores again with the
+   * new translator.
    */
   translator?: Translator<string>
   /** Injected `fetch`, so a test never touches the network. Defaults to the global one. */

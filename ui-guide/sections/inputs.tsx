@@ -32,6 +32,7 @@ import {
   LanguageButton,
   LanguageDialog,
   LanguagePicker,
+  NumberStepper,
   OnOffButtons,
   PeriodStepper,
   rangeForPreset,
@@ -181,7 +182,7 @@ function Note(
   return <p class="text-xs text-muted" data-e2e={e2e}>{children}</p>
 }
 
-/** Controlled: the switch renders `value` and reports the intended value through `onToggle`. */
+/** Controlled: the switch renders `value` and reports the intended value through `onChange`. */
 function ToggleSwitchDemo() {
   const archived = useSignal(false)
   const notifications = useSignal(true)
@@ -191,8 +192,8 @@ function ToggleSwitchDemo() {
       <Cluster gap="sm">
         <ToggleSwitch
           value={archived.value}
-          onToggle={(next) => archived.value = next}
-          label="Show archived"
+          onChange={(next) => archived.value = next}
+          ariaLabel="Show archived"
         />
         <span class="text-sm text-muted">
           archived: {archived.value ? "on" : "off"}
@@ -201,15 +202,15 @@ function ToggleSwitchDemo() {
       <Cluster gap="sm">
         <ToggleSwitch
           value={notifications.value}
-          onToggle={(next) => notifications.value = next}
-          label="Notifications"
+          onChange={(next) => notifications.value = next}
+          ariaLabel="Notifications"
         />
         <span class="text-sm text-muted">
           notifications: {notifications.value ? "on" : "off"}
         </span>
       </Cluster>
       <Cluster gap="sm">
-        <ToggleSwitch value={false} onToggle={() => {}} disabled label="Disabled" />
+        <ToggleSwitch value={false} onChange={() => {}} disabled ariaLabel="Disabled" />
         <span class="text-sm text-muted">disabled</span>
       </Cluster>
     </Stack>
@@ -264,7 +265,7 @@ function OnOffButtonsDemo() {
   return (
     <Stack gap="md">
       <Cluster gap="sm">
-        <OnOffButtons value={value.value} onSwitch={(on) => value.value = on} />
+        <OnOffButtons value={value.value} onChange={(on) => value.value = on} />
         <span class="text-sm text-muted">
           value: {value.value === undefined ? "undefined" : String(value.value)}
         </span>
@@ -272,11 +273,11 @@ function OnOffButtonsDemo() {
       <Cluster gap="sm">
         <OnOffButtons
           value={value.value}
-          onSwitch={(on) => value.value = on}
+          onChange={(on) => value.value = on}
           amount={{ on: 128, off: 14 }}
           onLabel="Active"
           offLabel="Archived"
-          label="Rows to show"
+          ariaLabel="Rows to show"
         />
         <span class="text-sm text-muted">with counts and custom labels</span>
       </Cluster>
@@ -1172,7 +1173,7 @@ function TagInputDemo() {
 
 /**
  * Six labelled switch rows: plain, described and required, and the read-only, disabled and failing
- * shapes. The card's report is the caller's own state after `onToggle`, which is the whole
+ * shapes. The card's report is the caller's own state after `onChange`, which is the whole
  * contract.
  */
 function ToggleFieldDemo() {
@@ -1187,13 +1188,13 @@ function ToggleFieldDemo() {
           id="guide-toggle-archived"
           label="Show archived"
           value={archived.value}
-          onToggle={(next) => archived.value = next}
+          onChange={(next) => archived.value = next}
         />
         <ToggleField
           id="guide-toggle-admin"
           label="Administrators only"
           value={adminOnly.value}
-          onToggle={(next) => adminOnly.value = next}
+          onChange={(next) => adminOnly.value = next}
           description="Hides the row from everyone without the administrator role."
           required
         />
@@ -1201,21 +1202,21 @@ function ToggleFieldDemo() {
           id="guide-toggle-notifications"
           label="Notifications"
           value={notifications.value}
-          onToggle={(next) => notifications.value = next}
+          onChange={(next) => notifications.value = next}
           description="Send an email when a run fails."
         />
         <ToggleField
           id="guide-toggle-readonly"
           label="Read-only setting"
           value={false}
-          onToggle={() => {}}
+          onChange={() => {}}
           description="The caller ignores the change, so the switch stays off."
         />
         <ToggleField
           id="guide-toggle-locked"
           label="Locked setting"
           value={false}
-          onToggle={() => {}}
+          onChange={() => {}}
           description="Disabled: the label dims with the switch."
           disabled
         />
@@ -1223,7 +1224,7 @@ function ToggleFieldDemo() {
           id="guide-toggle-error"
           label="Two-factor authentication"
           value={false}
-          onToggle={() => {}}
+          onChange={() => {}}
           error="Your role cannot change this setting."
         />
       </Grid>
@@ -1497,6 +1498,87 @@ function PeriodStepperDemo() {
 }
 
 /**
+ * One `NumberStepper` beside its visible label, with the value and how many times `onChange` fired,
+ * so the browser checks see that an edge reports nothing.
+ */
+function NumberStepperExample(
+  { start, title, e2e, ...props }: {
+    start: number
+    title: string
+    e2e: string
+    max: number
+    largeStep?: number
+    min?: number
+    zeroLabel?: string
+    locale?: string
+    disabled?: boolean
+  },
+) {
+  const value = useSignal(start)
+  const changes = useSignal(0)
+  return (
+    <div class="space-y-2" data-e2e={e2e}>
+      <Cluster gap="sm">
+        <span id={`${e2e}-label`} class="text-sm font-medium text-foreground">{title}</span>
+        <NumberStepper
+          {...props}
+          value={value.value}
+          aria-labelledby={`${e2e}-label`}
+          onChange={(next) => {
+            value.value = next
+            changes.value += 1
+          }}
+        />
+      </Cluster>
+      <Note e2e={`${e2e}-value`}>value: {value.value}, changes: {changes.value}</Note>
+    </div>
+  )
+}
+
+/**
+ * 0 to 10 with 0 shown as "Off"; 0 to 20 in a right-to-left page with Arabic digits, where
+ * ArrowLeft adds and PageUp takes the default large step of 2; and the control disabled, as while
+ * offline.
+ */
+function NumberStepperDemo() {
+  return (
+    <Stack>
+      <Variant title="0 to 10, 0 reads Off, PageUp adds 5">
+        <NumberStepperExample
+          start={3}
+          max={10}
+          largeStep={5}
+          zeroLabel="Off"
+          title="Reminders a day"
+          e2e="guide-number"
+        />
+      </Variant>
+      <Variant title="Right to left, Arabic digits, 0 to 20">
+        <div dir="rtl" lang="ar">
+          <NumberStepperExample
+            start={2}
+            max={20}
+            zeroLabel="إيقاف"
+            locale="ar-EG"
+            title="التذكيرات في اليوم"
+            e2e="guide-number-rtl"
+          />
+        </div>
+      </Variant>
+      <Variant title="Disabled">
+        <NumberStepperExample
+          start={4}
+          max={10}
+          disabled
+          title="Reminders a day"
+          e2e="guide-number-off"
+        />
+      </Variant>
+    </Stack>
+  )
+}
+
+/**
  * The two week presets with weeks that start on Sunday (`firstWeekday={7}`). `fixedNow` is a Sunday,
  * so "This week" is 15 to 21 February here, where a Monday-start week would be 9 to 15 February.
  */
@@ -1621,11 +1703,12 @@ export const inputDemos = {
     props: [
       { name: "value", type: "boolean", description: "Whether the switch is on." },
       {
-        name: "onToggle",
+        name: "onChange",
         type: "(value: boolean) => void",
-        description: "Called with the value a press asks for; the caller stores it.",
+        description: "Called with the value a press asks for; the caller stores it. " +
+          "`onToggle` is its deprecated name.",
       },
-      { name: "label", type: "string", description: "The switch's accessible name." },
+      { name: "ariaLabel", type: "string", description: "The switch's accessible name." },
       { name: "disabled", type: "boolean", default: "false", description: "Greys it out." },
       {
         name: "aria-invalid",
@@ -1635,8 +1718,8 @@ export const inputDemos = {
     ],
     snippet: `<ToggleSwitch
   value={archived.value}
-  onToggle={(next) => archived.value = next}
-  label="Show archived"
+  onChange={(next) => archived.value = next}
+  ariaLabel="Show archived"
 />`,
     render: () => <ToggleSwitchDemo />,
   },
@@ -1842,9 +1925,9 @@ export const inputDemos = {
         description: "The chosen half; `undefined` chooses neither.",
       },
       {
-        name: "onSwitch",
+        name: "onChange",
         type: "(on: boolean) => void",
-        description: "Called with the half that was pressed.",
+        description: "Called with the half that was pressed. `onSwitch` is its deprecated name.",
       },
       {
         name: "amount",
@@ -1858,19 +1941,20 @@ export const inputDemos = {
         description: "The halves' text.",
       },
       {
-        name: "label",
+        name: "ariaLabel",
         type: "string",
         default: "the two labels, `ON / OFF`",
-        description: "The pair's name for a screen reader, which also hears which half is pressed.",
+        description: "The pair's name for a screen reader, which also hears which half is " +
+          "pressed. `label` is its deprecated name.",
       },
     ],
     snippet: `<OnOffButtons
-  label="Rows to show"
+  ariaLabel="Rows to show"
   onLabel="Active"
   offLabel="Archived"
   value={showActive.value}
   amount={{ on: 128, off: 14 }}
-  onSwitch={(on) => showActive.value = on}
+  onChange={(on) => showActive.value = on}
 />`,
     render: () => <OnOffButtonsDemo />,
   },
@@ -1921,9 +2005,9 @@ export const inputDemos = {
       { name: "label", type: "ComponentChildren", description: "The row's visible name." },
       { name: "value", type: "boolean", description: "Whether the switch is on." },
       {
-        name: "onToggle",
+        name: "onChange",
         type: "(value: boolean) => void",
-        description: "Called with the value a press asks for.",
+        description: "Called with the value a press asks for. `onToggle` is its deprecated name.",
       },
       { name: "description", type: "ComponentChildren", description: "A hint under the row." },
       { name: "error", type: "string | null", description: "An error under the row, announced." },
@@ -1932,7 +2016,7 @@ export const inputDemos = {
   id="show-archived"
   label="Show archived"
   value={archived.value}
-  onToggle={(next) => archived.value = next}
+  onChange={(next) => archived.value = next}
   description="Hides the row from the list"
   required
 />`,
@@ -2373,6 +2457,66 @@ const period = useSignal(currentPeriod(PeriodUnit.Month, { now, timeZone }))
   timeZone={timeZone}
 />`,
     render: () => <PeriodStepperDemo />,
+  },
+  NumberStepper: {
+    summary:
+      "− 3 + for a small whole number applied as it changes, with a word such as Off for 0, keys on one spinbutton, and no Save button.",
+    wide: false,
+    props: [
+      { name: "value", type: "number", description: "The number on screen." },
+      {
+        name: "onChange",
+        type: "(next: number) => void",
+        description: "Called on every change, never with the number already shown.",
+      },
+      { name: "max", type: "number", description: "The largest value." },
+      { name: "min", type: "number", default: "0", description: "The smallest value." },
+      { name: "step", type: "number", default: "1", description: "One arrow or button press." },
+      {
+        name: "largeStep",
+        type: "number",
+        default: "a tenth of the range",
+        description: "What PageUp and PageDown move by; at least step.",
+      },
+      {
+        name: "zeroLabel",
+        type: "string",
+        description: "A word shown and announced for 0; unset, 0 reads as a number.",
+      },
+      {
+        name: "disabled",
+        type: "boolean",
+        default: "false",
+        description: "Makes the whole control inert, such as while offline.",
+      },
+      {
+        name: "locale",
+        type: "string",
+        description: "Locale of the number; defaults to the translator's language.",
+      },
+      {
+        name: "label / aria-labelledby",
+        type: "string",
+        description: "The accessible name, or the id of a visible label; one is needed.",
+      },
+      { name: "aria-describedby", type: "string", description: "The id of help text." },
+      {
+        name: "labels",
+        type: "Partial<NumberStepperLabels>",
+        description: "Names of the − and + buttons.",
+      },
+    ],
+    snippet: `const reminders = useSignal(3)
+
+<span id="reminders-label">Reminders a day</span>
+<NumberStepper
+  value={reminders.value}
+  onChange={(next) => reminders.value = next}
+  max={10}
+  zeroLabel="Off"
+  aria-labelledby="reminders-label"
+/>`,
+    render: () => <NumberStepperDemo />,
   },
   FileInput: {
     summary:

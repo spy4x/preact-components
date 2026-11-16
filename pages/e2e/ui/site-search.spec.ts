@@ -123,6 +123,27 @@ export const specs: readonly Spec[] = [
     },
   },
   {
+    name: "SiteSearch: the > for commands hint shows on the empty query, and a query starting " +
+      "with > lists only the commands",
+    pageId: "ui",
+    run: async (page) => {
+      const search = siteSearch(page)
+      await search.trigger.click()
+      await search.options.filter({ hasText: "Say hello" }).waitFor()
+      const hint = await search.field.getAttribute("aria-describedby")
+      const words = hint === null ? "" : await page.locator(`[id="${hint}"]`).textContent()
+      if (words !== "> for commands") throw new Error(`the field is described by "${words}"`)
+      await search.field.fill("> s")
+      await page.waitForFunction(() =>
+        [...document.querySelectorAll(`dialog[data-e2e="site-search"] [role="option"]`)]
+          .map((option) => option.querySelector("span span")?.textContent?.trim()).join("|") ===
+          "Say hello"
+      )
+      await search.field.fill("s")
+      await search.options.nth(1).waitFor()
+    },
+  },
+  {
     name: "SiteSearch: Ctrl+Enter opens the highlighted result in a new tab",
     pageId: "ui",
     run: async (page) => {

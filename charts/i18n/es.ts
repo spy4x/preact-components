@@ -1,6 +1,9 @@
 /** The `charts` catalog in es: `createTranslator({ catalogs: [{ source: en, translation: this }] })`. */
 export default {
   "Bars.emptyLabel": "Sin datos",
+  "DependencyGraph.dependsOn": "depende de {names}",
+  "DependencyGraph.emptyLabel": "Sin datos",
+  "DependencyGraph.neededBy": "requisito para {names}",
   "DonutChart.chartLabel": {
     "one": "Gráfico circular con {count} sector",
     "many": "Gráfico circular con {count} de sectores",

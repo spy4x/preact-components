@@ -416,10 +416,10 @@ function CardHeaderDemo() {
   return (
     <Stack>
       <Card>
-        <CardHeader title="Invoices" action={<Badge text="3 open" color="gray" />} />
+        <CardHeader title="Invoices" action={<Badge text="3 open" tone="neutral" />} />
       </Card>
       <Card>
-        <CardHeader title="Payments" headingLevel={3} action={<Badge text="h3" color="gray" />} />
+        <CardHeader title="Payments" headingLevel={3} action={<Badge text="h3" tone="neutral" />} />
       </Card>
       <Card>
         <CardHeader>
@@ -932,7 +932,7 @@ function TableDemo() {
           <td class="whitespace-nowrap text-center">
             <Badge
               text={row.status ? "cleared" : "pending"}
-              color={row.status ? "green" : "gray"}
+              tone={row.status ? "success" : "neutral"}
             />
           </td>
           <td class="text-end tabular-nums">{row.amount}</td>
@@ -1437,7 +1437,7 @@ function TooltipDemo() {
           >
             <Tooltip
               content="Hint"
-              label={label}
+              ariaLabel={label}
               placement={placement}
               class="bg-hover px-2 py-1"
               contentClass="visible opacity-100"
@@ -1452,7 +1452,7 @@ function TooltipDemo() {
         <Stack gap="sm" class="items-center pt-12 text-center">
           <Tooltip
             content="Keeps its own tab stop"
-            label="Archive the invoice"
+            ariaLabel="Archive the invoice"
             focusable={false}
             contentClass="visible max-w-48 opacity-100"
           >
@@ -1466,7 +1466,7 @@ function TooltipDemo() {
         <Stack gap="sm" class="items-center text-center" data-e2e="tooltip-live">
           <Tooltip
             content="Escape hides this hint, and the pointer may rest on it while it is read"
-            label="Delivery estimate"
+            ariaLabel="Delivery estimate"
             placement="bottom"
             class="bg-hover px-2 py-1"
             contentClass="max-w-48"
@@ -1687,6 +1687,11 @@ function ShortcutsDialogDemo() {
   const listed: Shortcut[] = [
     ...bindings,
     { keys: "g t", description: "A two-key sequence, listed only", group: "This demo" },
+    {
+      description: "Export the counts",
+      detail: "A command without keys. Also found by: download, save",
+      group: "This demo",
+    },
   ]
   return (
     <Stack>
@@ -1756,7 +1761,8 @@ const TIMELINE_ITEMS: TimelineItem[] = [
 
 export const displayDemos = {
   PageTitle: {
-    summary: "The page's main heading, in the library's `h1` style and with no margin of its own.",
+    summary:
+      "Deprecated, and removed in the next major: a page heading in the library's `h1` style, which `PageHeader` replaces.",
     wide: false,
     props: [
       { name: "children", type: "ComponentChildren", description: "The heading's content." },
@@ -1973,7 +1979,7 @@ const cursor = useRowCursor({ count: jobs.length, onOpen: (index) => open(jobs[i
       {
         name: "ariaLabel",
         type: "string",
-        description: "The bar's name when it has no caption.",
+        description: "The bar's name when it has no caption; a bar needs one or the other.",
       },
     ],
     snippet: `<Progress id="upload" label="Upload" value={42} tone="success" />
@@ -2450,7 +2456,11 @@ const cursor = useRowCursor({ count: jobs.length, onOpen: (index) => open(jobs[i
     wide: true,
     props: [
       { name: "content", type: "ComponentChildren", description: "The hint." },
-      { name: "label", type: "string", description: "The trigger's accessible name." },
+      {
+        name: "ariaLabel",
+        type: "string",
+        description: "The trigger's accessible name, required. `label` is its deprecated name.",
+      },
       {
         name: "placement",
         type: `"top" | "end" | "bottom" | "start" | "right" | "left"`,
@@ -2465,11 +2475,11 @@ const cursor = useRowCursor({ count: jobs.length, onOpen: (index) => open(jobs[i
         description: "Pass `false` when the trigger is already a button or a link.",
       },
     ],
-    snippet: `<Tooltip content="Supplements the trigger" label="Total revenue" placement="end">
+    snippet: `<Tooltip content="Supplements the trigger" ariaLabel="Total revenue" placement="end">
   <span>Revenue</span>
 </Tooltip>
 
-<Tooltip content="Archive the invoice" label="Archive" focusable={false}>
+<Tooltip content="Archive the invoice" ariaLabel="Archive" focusable={false}>
   <button type="button">Archive</button>
 </Tooltip>`,
     render: () => <TooltipDemo />,
@@ -2765,7 +2775,7 @@ const cursor = useRowCursor({ count: jobs.length, onOpen: (index) => open(jobs[i
         name: "shortcuts",
         type: "Shortcut[]",
         description:
-          "`{ keys, description, group? }` rows; the same array `useHotkeys` takes. `keys` may be a sequence such as `g t`.",
+          "`{ keys?, description, detail?, group? }` rows; the same array `useHotkeys` takes. `keys` may be a sequence such as `g t`; a row without keys lists only what it does, such as a command-palette command. `detail` is a second, muted line under the description, such as the other words that find that command.",
       },
       {
         name: "title",
@@ -2787,7 +2797,12 @@ const bindings = [
 ]
 useHotkeys(bindings)
 // A sequence row, bound by a sequence matcher of your own
-const rows = [...bindings, { keys: "g t", description: "Go to Today", group: "Navigation" }]
+const rows = [
+  ...bindings,
+  { keys: "g t", description: "Go to Today", group: "Navigation" },
+  // A command without keys, with the other words that find it
+  { description: "Export data", detail: "Also: download, backup", group: "Commands" },
+]
 
 <ShortcutsDialog
   open={open.value}
@@ -2897,9 +2912,9 @@ const rows = [...bindings, { keys: "g t", description: "Go to Today", group: "Na
       },
       {
         name: "search",
-        type: "(query, signal) => Promise<options>",
+        type: "(query, signal, show) => Promise<options>",
         description:
-          "Asks a server after a pause in typing; a stale call is aborted and its answer ignored. The last results stay while the next loads, with “Searching…” beside the field after 300 ms; Enter waits for the answer.",
+          "Asks a server after a pause in typing; a stale call is aborted and its answer ignored. The last results stay while the next loads, with “Searching…” beside the field after 300 ms; Enter waits for the answer. `show(options)` lists an early answer for the same query, such as the commands, which Enter picks from at once; the final answer keeps the highlighted option.",
       },
       {
         name: "onSelect",
@@ -3375,8 +3390,8 @@ const paletteLongFruit = {
 
 /**
  * The pretend server behind the remote demo: a one-letter query answers slowly and a longer one
- * quickly, so a stale answer arrives after the fresh one; `slow` takes twenty seconds, long enough to
- * look at the loading state; and `boom` fails. It answers even after
+ * quickly, so a stale answer arrives after the fresh one; `slow` never answers, so the loading state
+ * stays as long as anyone looks at it; and `boom` fails. Every other query answers even after
  * `signal` aborts, so the palette alone has to drop the stale answer, and it reports each aborted
  * query through `onAbort`.
  */
@@ -3386,10 +3401,11 @@ function paletteFruitSearch(
   onAbort: (query: string) => void,
 ): Promise<CommandPaletteOption[]> {
   const needle = query.trim().toLowerCase()
-  const delay = needle === "slow" ? 20_000 : needle.length === 1 ? 900 : 100
-  // Answers even after an abort, so the palette has to ignore the stale answer on its own; it only
-  // records which queries were aborted.
+  const delay = needle.length === 1 ? 900 : 100
+  // Every query but `slow` answers even after an abort, so the palette has to ignore the stale
+  // answer on its own; this only records which queries were aborted.
   signal.addEventListener("abort", () => onAbort(query), { once: true })
+  if (needle === "slow") return new Promise(() => {})
   return new Promise((resolve, reject) =>
     setTimeout(() => {
       if (needle === "boom") return reject(new Error("The pretend server failed"))
@@ -3407,15 +3423,56 @@ function paletteFruitSearch(
   )
 }
 
+/** The notes the early-answer `CommandPalette` demo's pretend server finds. */
+const paletteNotes = ["Grocery list", "Meeting notes", "Novel ideas", "Packing list"]
+
 /**
- * `CommandPalette` six ways. The first filters its own options and opens on Ctrl+P (⌘P on a Mac),
+ * The pretend server behind the early-answer demo: it lists the `commands` that match at once
+ * through `show`, then answers with the matching notes first and the commands after them 1.5 s
+ * later, so the rows under the highlight move. A query ending in "!" gets an answer without the
+ * commands, and one ending in "?" fails after the commands are listed. Like `paletteFruitSearch` it ignores `signal`, and it calls `show` again after an abort
+ * and after it answered, so the palette alone has to drop those late calls; `onAnswered` runs after
+ * the second one.
+ */
+function paletteNoteSearch(
+  query: string,
+  signal: AbortSignal,
+  show: (options: readonly CommandPaletteOption[]) => void,
+  commands: readonly CommandPaletteOption[],
+  onAnswered: () => void,
+): Promise<CommandPaletteOption[]> {
+  const needle = query.trim().toLowerCase().replace(/[!?]$/, "")
+  const matching = commands.filter((command) => command.label.toLowerCase().includes(needle))
+  const stale = () => show([{ id: "stale", label: "Stale answer" }])
+  signal.addEventListener("abort", stale, { once: true })
+  show(matching)
+  return new Promise((resolve, reject) =>
+    setTimeout(() => {
+      if (query.trim().endsWith("?")) reject(new Error("The pretend server failed"))
+      else {resolve([
+          ...paletteNotes
+            .filter((note) => note.toLowerCase().includes(needle))
+            .map((note) => ({ id: note, label: note, group: "Notes" })),
+          ...(query.trim().endsWith("!") ? [] : matching),
+        ])}
+      setTimeout(() => {
+        stale()
+        onAnswered()
+      }, 0)
+    }, 1500)
+  )
+}
+
+/**
+ * `CommandPalette` seven ways. The first filters its own options and opens on Ctrl+P (⌘P on a Mac),
  * since this page's header search already owns `/` and Ctrl+K. The second asks a pretend server and
  * has no hotkey. The third puts the first one's options behind the icon trigger, whose tooltip
  * shows Ctrl+Shift+K (⌘⇧K on a Mac). The fourth is the field trigger, opening on a query with a
  * typo, and says how each result matched. The fifth lists commands: a theme toggle that stays open,
  * a shortcut, a command that cannot run, one that moves focus to the card's note, a quick-create
  * row and a submenu. It draws a trigger of its own, which a switch can remove, and opens on
- * Ctrl+Shift+P either way. The sixth lists the same commands and remembers recent picks.
+ * Ctrl+Shift+P either way. The sixth lists the same commands and remembers recent picks. The
+ * seventh asks a pretend server for notes and lists its commands as an early answer meanwhile.
  * `pages/checks/ui.ts` and `pages/e2e/ui.spec.ts` read what each picked and how many searches
  * started and answered.
  */
@@ -3430,6 +3487,11 @@ function CommandPaletteDemo() {
   const ran = useSignal("nothing yet")
   const log = useRef<HTMLSpanElement>(null)
   const commandsTrigger = useSignal(true)
+  const pickedEarly = useSignal("nothing yet")
+  const answeredEarly = useSignal(0)
+  const earlyCommands: CommandPaletteOption[] = ["New note", "Open settings", "Sign out"].map(
+    (label) => ({ id: label, label, group: "Commands", run: () => pickedEarly.value = label }),
+  )
   return (
     <Stack>
       <Cluster>
@@ -3496,7 +3558,7 @@ function CommandPaletteDemo() {
         label="Show the commands trigger"
         description="Without it, Ctrl+Shift+P still opens the palette."
         value={commandsTrigger.value}
-        onToggle={(value) => commandsTrigger.value = value}
+        onChange={(value) => commandsTrigger.value = value}
       />
       <Cluster>
         <CommandPalette
@@ -3511,6 +3573,15 @@ function CommandPaletteDemo() {
           dataE2E="palette-recent"
           labels={{ placeholder: "Run, remembering…" }}
           onSelect={(option, details) => ran.value = ranText(option.label, details)}
+        />
+        <CommandPalette
+          search={(query, signal, show) =>
+            paletteNoteSearch(query, signal, show, earlyCommands, () => answeredEarly.value++)}
+          debounce={400}
+          hotkeys={[]}
+          dataE2E="palette-early"
+          labels={{ placeholder: "Search notes…" }}
+          onSelect={(option) => pickedEarly.value = option.label}
         />
         <Button
           variant="outline"
@@ -3533,12 +3604,20 @@ function CommandPaletteDemo() {
         <span data-e2e="palette-forgiving-picked">{pickedForgiving.value}</span>; theme{" "}
         <span data-e2e="palette-commands-theme">{theme.value}</span>; ran{" "}
         <span ref={log} tabIndex={-1} data-e2e="palette-commands-ran">{ran.value}</span>. One letter
-        answers slowly, longer queries quickly, “slow” takes twenty seconds, “dragon” finds a long
-        name, and “boom” fails. The field above opens on “combobx”; try “ещфые” or “календарь”. In
-        the commands, Ctrl+Shift+P opens them, “Commands only” opens them with “{">"}” typed, which
+        answers slowly, longer queries quickly, “slow” never answers, “dragon” finds a long name,
+        and “boom” fails. The field above opens on “combobx”; try “ещфые” or “календарь”. In the
+        commands, Ctrl+Shift+P opens them, “Commands only” opens them with “{">"}” typed, which
         lists only commands, Tab enters Account or Add a task, Backspace goes back, PageDown jumps a
         group, and Ctrl+Enter picks the alternative way. “dark” pins Theme as the best match. The
         last palette remembers its picks across reloads and lists them on the empty query.
+      </DemoNote>
+      <DemoNote e2e="palette-early-picked">
+        The notes palette picked <span data-e2e="palette-early-picked">{pickedEarly.value}</span>
+        {" "}
+        after <span data-e2e="palette-early-answered">{answeredEarly.value}</span>{" "}
+        answers. It lists its commands at once and the notes 1.5 s later, above them; the
+        highlighted row stays on its option as the notes land. A query ending in “!” gets notes
+        only, and one ending in “?” fails.
       </DemoNote>
     </Stack>
   )

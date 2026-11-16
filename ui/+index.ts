@@ -31,11 +31,14 @@ export {
 } from "./avatar.tsx"
 export {
   Badge,
+  BADGE_TONE_OF_COLOR,
   badgeClasses,
   type BadgeColor,
   type BadgeElementProps,
   type BadgeProps,
+  type BadgeTone,
   type BadgeType,
+  type BadgeVariant,
 } from "./badge.tsx"
 export { isolate, Isolated } from "./bdi.tsx"
 export {
@@ -365,6 +368,14 @@ export {
 } from "./money-input.tsx"
 export { Notice, type NoticeProps, type NoticeTone } from "./notice.tsx"
 export {
+  NumberStepper,
+  numberStepperKey,
+  type NumberStepperLabels,
+  numberStepperLabels,
+  type NumberStepperProps,
+  type NumberStepperRange,
+} from "./number-stepper.tsx"
+export {
   OnboardingChecklist,
   type OnboardingChecklistProps,
   type OnboardingStep,
@@ -392,6 +403,12 @@ export {
 } from "./page-hero.tsx"
 export { PageTitle, type PageTitleProps } from "./page-title.tsx"
 export { pageRange, type PageRangeItem, Pagination, type PaginationProps } from "./pagination.tsx"
+export {
+  defaultPasswordInputLabels,
+  PasswordInput,
+  type PasswordInputLabels,
+  type PasswordInputProps,
+} from "./password-input.tsx"
 export {
   PeriodStepper,
   type PeriodStepperLabels,
@@ -488,7 +505,7 @@ export {
   type ToastVariant,
 } from "./toastr.tsx"
 export { ToggleField, type ToggleFieldProps } from "./toggle-field.tsx"
-export { ToggleSwitch, type ToggleSwitchProps } from "./toggle-switch.tsx"
+export { type ToggleChangeProps, ToggleSwitch, type ToggleSwitchProps } from "./toggle-switch.tsx"
 export { Tooltip, type TooltipPlacement, type TooltipProps } from "./tooltip.tsx"
 export { Tour, type TourCloseReason, type TourProps, type TourStep } from "./tour.tsx"
 export {

@@ -1,7 +1,7 @@
 /**
  * The Map section.
  *
- * One card, one component. The card reaches `Map` only through `LazyMap` (`map-leaflet.tsx`), so the
+ * One card, one component. The card reaches `LeafletMap` only through `LazyMap` (`map-leaflet.tsx`), so the
  * package, and Leaflet with it, loads only when the map page is shown (#315); the card's
  * server-rendered form is a sized placeholder box. Confirming the map loads, the tiles draw and the markers become live pins needs a browser,
  * which `pages/checks/map.ts` and `pages/e2e/map.spec.ts` are; `map/map.test.tsx` proves the box, the list and the escaping of
@@ -34,7 +34,7 @@ const PLACES_PARIS_ON: MapMarker[] = PLACES.map((place) =>
 )
 
 /**
- * `Map` wired to signals, so `onMarkerClick` — from a pin's click, or Enter or Space while a pin
+ * `LeafletMap` wired to signals, so `onMarkerClick` — from a pin's click, or Enter or Space while a pin
  * has focus — has something visible to echo, and a button can swap in new markers to show that a
  * pin that stays keeps its place, and its focus.
  */
@@ -72,7 +72,7 @@ function MapInteractiveDemo() {
 }
 
 export const mapDemos = {
-  Map: {
+  LeafletMap: {
     summary:
       "Markers on a map, from plain data, with a list of the same places under it; you pick the tile provider and give its credit line.",
     wide: true,
@@ -116,7 +116,7 @@ export const mapDemos = {
       `// A constant, or state replaced only when the places change: not a new array per render.
 const PLACES = [{ id: "depot", lat: 51.5, lng: -0.13, label: "London depot", status: "on" }]
 
-<Map
+<LeafletMap
   center={{ lat: 50, lng: 5 }}
   zoom={4}
   markers={PLACES}

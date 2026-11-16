@@ -2390,6 +2390,31 @@ export const specs: readonly Spec[] = [
     },
   },
   {
+    name: "SiteHeader without links, at 390 and 1280 px: the brand and the action show, with no " +
+      "navigation and no menu button, and axe passes",
+    pageId: "system",
+    run: async (page) => {
+      const bare = `#demo-SiteHeader [data-e2e="site-header-bare-demo"]`
+      const header = page.locator(bare)
+      for (const width of [390, 1280]) {
+        await page.setViewportSize({ width, height: 844 })
+        await header.scrollIntoViewIfNeeded()
+        const shown = await Promise.all([
+          header.locator(`[data-e2e="site-header-bare-brand"]`).isVisible(),
+          header.locator(`[data-e2e="site-header-bare-cta"]`).isVisible(),
+        ])
+        const navs = await header.locator("nav").count()
+        const menus = await header.locator(`[data-e2e="site-header-menu-button"], details`).count()
+        if (shown.includes(false) || navs > 0 || menus > 0) {
+          throw new Error(
+            `at ${width} px: brand and action shown ${shown}, ${navs} nav, ${menus} menu`,
+          )
+        }
+      }
+      return await expectAxeClean(page, bare)
+    },
+  },
+  {
     name: "SiteHeader with a LanguagePicker menu, at 320 and 390 px: the open language panel " +
       "stays 16 px inside both edges of the bar and of the screen, left to right and right to " +
       "left, with JavaScript and without",

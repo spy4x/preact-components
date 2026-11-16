@@ -25,6 +25,7 @@ import {
   ListField,
   Modal,
   MoneyInput,
+  PasswordInput,
   QuickAdd,
   Radio,
   RadioChips,
@@ -262,6 +263,34 @@ function InputButtonDemo() {
         </Button>
       </Cluster>
     </Stack>
+  )
+}
+
+/** A password field inside a form, with a count of submits that proves the eye never sends it. */
+function PasswordInputDemo() {
+  const submits = useSignal(0)
+  return (
+    <form
+      class="max-w-xs"
+      data-e2e="password-form"
+      onSubmit={(event) => {
+        event.preventDefault()
+        submits.value++
+      }}
+    >
+      <Stack gap="sm">
+        <Field id="guide-password" label="Password" hint="At least 8 characters.">
+          <PasswordInput
+            name="guide-password"
+            autocomplete="new-password"
+            minLength={8}
+            data-e2e="password-input"
+            toggleDataE2E="password-toggle"
+          />
+        </Field>
+        <p class="text-xs text-muted" data-e2e="password-submits">submits: {submits.value}</p>
+      </Stack>
+    </form>
   )
 }
 
@@ -965,7 +994,7 @@ function ToggleChipsDemo() {
   return (
     <Stack gap="md">
       <ToggleChips
-        label="Tags"
+        ariaLabel="Tags"
         options={[
           { value: "work", label: "work" },
           { value: "home", label: "home" },
@@ -976,7 +1005,7 @@ function ToggleChipsDemo() {
         onChange={(next) => tags.value = next}
       />
       <ToggleChips
-        label="Coloured tags"
+        ariaLabel="Coloured tags"
         options={[
           { value: "urgent", label: "Urgent", color: "#dc2626" },
           { value: "ideas", label: "Ideas", color: "#fde047" },
@@ -987,8 +1016,8 @@ function ToggleChipsDemo() {
       />
       <ToggleChips
         mode="single"
-        label="Status"
-        color="blue"
+        ariaLabel="Status"
+        tone="info"
         options={[
           { value: "open", label: "Open" },
           { value: "done", label: "Done" },
@@ -1244,6 +1273,32 @@ export const fieldDemos = {
   onClick={() => query.value = ""}
 />`,
     render: () => <InputButtonDemo />,
+  },
+  PasswordInput: {
+    summary:
+      "A password field with an eye button that shows and hides what was typed, without ever submitting the form.",
+    wide: false,
+    props: [
+      {
+        name: "name / autocomplete / required / …",
+        type: "input attributes",
+        description: "Reach the input, as on `Input`; `type` is the toggle's.",
+      },
+      {
+        name: "labels",
+        type: "{ show?: string; hide?: string }",
+        description: "The toggle's name in each state. Defaults: Show password, Hide password.",
+      },
+      {
+        name: "toggleDataE2E",
+        type: "string",
+        description: "`data-e2e` on the toggle; `data-e2e` itself goes on the input.",
+      },
+    ],
+    snippet: `<Field id="password" label="Password" hint="At least 8 characters.">
+  <PasswordInput name="password" autocomplete="new-password" minLength={8} />
+</Field>`,
+    render: () => <PasswordInputDemo />,
   },
   MoneyInput: {
     summary:
@@ -1684,21 +1739,21 @@ export const fieldDemos = {
         description: "How many chips can be pressed at once.",
       },
       {
-        name: "label",
+        name: "ariaLabel",
         type: "string",
         default: `"Filters"`,
-        description: "The group's accessible name.",
+        description: "The group's accessible name. `label` is its deprecated name.",
       },
       {
-        name: "color",
-        type: "BadgeColor",
-        default: `"purple"`,
+        name: "tone",
+        type: "BadgeTone",
+        default: `"primary"`,
         description:
-          "A pressed chip's colour, with a check before its text; an unpressed chip is plain, on the surface.",
+          "A pressed chip's tone, with a check before its text; an unpressed chip is plain, on the surface. `color`, with `Badge`'s old palette names, is its deprecated name.",
       },
     ],
     snippet: `<ToggleChips
-  label="Tags"
+  ariaLabel="Tags"
   options={[{ value: "work", label: "work" }, { value: "home", label: "home" }]}
   value={tags.value}
   onChange={(next) => tags.value = next}
@@ -1706,7 +1761,7 @@ export const fieldDemos = {
 
 <ToggleChips
   mode="single"
-  label="Status"
+  ariaLabel="Status"
   options={[{ value: "open", label: "Open" }, { value: "done", label: "Done" }]}
   value={status.value}
   onChange={(next) => status.value = next}

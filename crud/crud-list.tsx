@@ -286,7 +286,7 @@ export function CrudList<M extends CrudModel>(props: CrudListProps<M>): JSX.Elem
       <PageTitle headingLevel={props.headingLevel}>
         {props.titleSlot ?? <span>{props.title}</span>}
         {props.badge !== false &&
-          (props.badge ?? <Badge color="gray" class="translate-y-0.5" text={String(count)} />)}
+          (props.badge ?? <Badge tone="neutral" class="translate-y-0.5" text={String(count)} />)}
       </PageTitle>
 
       <ErrorState message={error?.message ?? null} class="mx-0 max-w-none text-start" />

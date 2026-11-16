@@ -79,7 +79,8 @@ one `needs-decision` issue, so they do not hold back the rest of their area.
   `verify`; `--static` and `--only` are not full runs. On a busy machine run the full run in parts
   (same file, "Running a full run in parts").
 - CI: Woodpecker runs `check`, `publish:dry`, the build and the browser checks (`e2e` in four
-  shards) on every PR and every push to `main`. GitHub Actions only deploys `main` to Pages.
+  shards) on every PR and every push to `main`; a PR whose title starts with `[WIP]` runs only
+  `check` (`.woodpecker/wip.yml`). GitHub Actions only deploys `main` to Pages.
 
 ## Releases
 
@@ -140,13 +141,14 @@ are accurate.
 ## Dependencies
 
 **Pin exactly: never `^`, `~` or a floating tag.** A version bump is its own `deps` commit. The
-exception: `preact`, `preact/`, `@preact/signals` and `@preact/signals-core` in the root
+exception: `preact`, `preact/`, `@preact/signals`, `@preact/signals-core` and the `spy4x/ts-libs`
+packages (`@spy4x/platform`, `@spy4x/time`, `@spy4x/validation`, `@spy4x/search`) in the root
 `deno.jsonc` are caret ranges, because `deno publish` copies import-map values into published
 imports and an exact pin made apps load a second copy. This must print nothing:
 
 ```bash
 grep -rnoE '"(npm|jsr):[^"]*[\^~]' --include='deno.json' --include='deno.jsonc' . |
-  grep -vE '^(\./)?deno\.jsonc:[0-9]+:"npm:/?(preact|@preact/signals|@preact/signals-core)@\^$'
+  grep -vE '^(\./)?deno\.jsonc:[0-9]+:"(npm:/?(preact|@preact/signals|@preact/signals-core)|jsr:/?@spy4x/(platform|time|validation|search))@\^$'
 ```
 
 Pins live in the root import map and in the `imports` blocks of `theme`, `system`, `map` and

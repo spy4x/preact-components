@@ -1,6 +1,6 @@
 import { expect } from "@std/expect"
 import { describe, it } from "@std/testing/bdd"
-import type { MapProps } from "@spy4x/preact-map"
+import type { LeafletMapProps } from "@spy4x/preact-map"
 import { options } from "preact"
 import { render } from "preact-render-to-string"
 import { UIGuide } from "./+index.tsx"
@@ -13,12 +13,14 @@ import { LazyMap } from "./sections/map-leaflet.tsx"
  *
  * @param mapTiles The provider to hand the guide, or none.
  */
-function mapCardTiles(mapTiles?: MapTiles): Array<Pick<MapProps, "tileUrl" | "attribution">> {
-  const seen: Array<Pick<MapProps, "tileUrl" | "attribution">> = []
+function mapCardTiles(
+  mapTiles?: MapTiles,
+): Array<Pick<LeafletMapProps, "tileUrl" | "attribution">> {
+  const seen: Array<Pick<LeafletMapProps, "tileUrl" | "attribution">> = []
   const previous = options.vnode
   options.vnode = (vnode) => {
     if (vnode.type === LazyMap) {
-      const { tileUrl, attribution } = vnode.props as unknown as MapProps
+      const { tileUrl, attribution } = vnode.props as unknown as LeafletMapProps
       seen.push({ tileUrl, attribution })
     }
     previous?.(vnode)

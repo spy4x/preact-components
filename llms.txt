@@ -8,24 +8,26 @@ BarDatum	type	@spy4x/preact-charts	One row of `Bars`: a label and the value its 
 BarReference	type	@spy4x/preact-charts	A dashed line across every bar at one value, such as a target or an average.
 BarSegment	type	@spy4x/preact-charts	One part of a stacked bar: how much of the row one series holds.
 Bars	component	@spy4x/preact-charts	Server-rendered horizontal bar list — the "Top N" chart.
-ChartPayload	type	@spy4x/preact-charts	
+ChartPayload	type	@spy4x/preact-charts	Payload of a stats loader: the points plus the granularity they were bucketed at.
 DEFAULT_AXIS_COLOR	constant	@spy4x/preact-charts	Axis and frame line colour.
 DEFAULT_CHART_PALETTE	constant	@spy4x/preact-charts	Series colours, in draw order.
 DEFAULT_GRID_COLOR	constant	@spy4x/preact-charts	Dashed grid line colour.
 DEFAULT_SURFACE_COLOR	constant	@spy4x/preact-charts	Panel, tooltip and donut-centre background.
 DEFAULT_TEXT_COLOR	constant	@spy4x/preact-charts	Axis label and legend text colour.
 DEFAULT_TRACK_COLOR	constant	@spy4x/preact-charts	Track colour behind a bar or an empty donut ring.
-DateRange	type	@spy4x/preact-charts	Data layer for the chart components: the shape a stats endpoint is expected to return, the loader that validates it, and the date-range maths a comparison panel needs.
+DependencyGraph	component	@spy4x/preact-charts	A server-rendered SVG graph of boxes joined by arrows, laid out left to right by `layoutGraph`: what comes first on the left, what waits on it to the right.
 DonutChart	component	@spy4x/preact-charts	Server-rendered donut built from a single CSS `conic-gradient`.
-DonutDatum	type	@spy4x/preact-charts	
-DonutGeometry	type	@spy4x/preact-charts	
-DonutSegment	type	@spy4x/preact-charts	
+DonutDatum	type	@spy4x/preact-charts	One slice of a `DonutChart`: its label, its value and an optional colour and link.
+DonutGeometry	type	@spy4x/preact-charts	What `donutGeometry` returns: the ring's `conic-gradient`, its slices and their total.
+DonutSegment	type	@spy4x/preact-charts	One slice as `donutGeometry` lays it out: its colour, its share and its arc on the ring.
 DotPlot	component	@spy4x/preact-charts	A server-rendered dot plot: one row per item, a dot on a shared scale, and shaded bands.
 DotPlotBand	type	@spy4x/preact-charts	A shaded stretch of the scale behind every row, such as "Typical range".
 DotPlotRow	type	@spy4x/preact-charts	One row of a `DotPlot`: a label, a value and the words around it.
+GraphEdge	type	@spy4x/preact-charts	One arrow of a `DependencyGraph`: `from` comes first and is drawn to the left of `to`.
+GraphLayout	type	@spy4x/preact-charts	The result of `layoutGraph`.
+GraphNode	type	@spy4x/preact-charts	One box of a `DependencyGraph`.
 InViewHandle	type	@spy4x/preact-charts	Handle returned by `createInViewObserver`.
-InViewOptions	type	@spy4x/preact-charts	
-InViewRef	type	@spy4x/preact-charts	`useInView`'s `ref`: a callback ref that also keeps the element in `current`.
+InViewOptions	type	@spy4x/preact-charts	Options of `createInViewObserver`.
 Kpi	component	@spy4x/preact-charts	Key-performance-indicator card: label, value, optional change line and caption.
 KpiChange	type	@spy4x/preact-charts	How a `Kpi` value moved against an earlier period, as one line of words and an icon.
 KpiDirection	type	@spy4x/preact-charts	Which way a `KpiChange` went, drawn as its icon.
@@ -33,11 +35,12 @@ KpiGrid	component	@spy4x/preact-charts	Responsive grid for `Kpi` cards: two colu
 KpiTone	type	@spy4x/preact-charts	Colour role of a `Kpi` value.
 LineChart	component	@spy4x/preact-charts	The line chart: drawn complete on the server, interactive once it runs in a browser.
 LinePoint	type	@spy4x/preact-charts	One reading of a `LineSeries`: where it sits on the X axis and its value.
-LineSeries	type	@spy4x/preact-charts	
+LineSeries	type	@spy4x/preact-charts	One line of a `LineChart`: its name, its points and how it is drawn.
 LineX	type	@spy4x/preact-charts	A point's place on the X axis: a label, or — on a time axis — an instant.
-LoadPayloadResult	type	@spy4x/preact-charts	
-NiceScale	type	@spy4x/preact-charts	
+NiceScale	type	@spy4x/preact-charts	What `niceScale` returns: a rounded domain, its tick step and the ticks across it.
 PeriodChange	type	@spy4x/preact-charts	A number in the current period and the same number in the period before it.
+PlacedEdge	type	@spy4x/preact-charts	An edge `layoutGraph` keeps, between two known, different nodes.
+PlacedNode	type	@spy4x/preact-charts	Where `layoutGraph` put one node.
 RankedBarColumn	type	@spy4x/preact-charts	One more number column of a `RankedBars` table.
 RankedBarColumns	type	@spy4x/preact-charts	The columns of a `RankedBars` table: the label's and the bar's own number, each with a header, and one to three more numbers per row.
 RankedBarImage	type	@spy4x/preact-charts	The thumbnail of a `RankedBarRow`.
@@ -46,28 +49,31 @@ RankedBars	component	@spy4x/preact-charts	A ranked list with several numbers per
 StackedBarDatum	type	@spy4x/preact-charts	A row drawn as stacked segments instead of one value: its total is the sum of the segments, and each series keeps one colour across every row.
 TIME_FRAMES	constant	@spy4x/preact-charts	The bucket granularities a series can be aggregated at.
 TimeFrame	type	@spy4x/preact-charts	Bucket granularity of a series.
-TimeSeriesPoint	type	@spy4x/preact-charts	
+TimeSeriesPoint	type	@spy4x/preact-charts	One bucket of a time series: when it starts and the value aggregated into it.
 barPercent	helper	@spy4x/preact-charts	Percentage of the longest bar, clamped to `[0, 100]`.
 barTotal	helper	@spy4x/preact-charts	A row's total: its value, or the sum of its segments' finite, positive values.
 changeText	helper	@spy4x/preact-charts	A change as one neutral line of text: `+3 vs previous 7 days`, `−1 vs yesterday`, or `No change vs previous 7 days`.
-chartPayloadSchema	helper	@spy4x/preact-charts	Payload of a stats loader: the points plus the granularity they were bucketed at.
 createInViewObserver	helper	@spy4x/preact-charts	Observe one element and report intersection changes.
 donutGeometry	helper	@spy4x/preact-charts	Slice maths for `DonutChart`: cumulative shares plus the `conic-gradient` string.
 dotPercent	helper	@spy4x/preact-charts	Where a value sits on a plot's scale, as a percentage from `0` to `100`.
 extent	helper	@spy4x/preact-charts	Finite-only `[min, max]`, or `null` when nothing is plottable.
-linearScale	helper	@spy4x/preact-charts	Map a domain onto a pixel range.
-loadChartPayload	helper	@spy4x/preact-charts	Call a stats loader and validate what it returns.
+layoutGraph	helper	@spy4x/preact-charts	Lays a directed graph out in columns, left to right, without a layout library.
 niceScale	helper	@spy4x/preact-charts	Padded, rounded-outward domain plus the tick values that go with it.
 niceStep	helper	@spy4x/preact-charts	Round a span up to a sensible tick step at roughly `target` ticks.
 paddedDomain	helper	@spy4x/preact-charts	Pad a domain by a fraction of its span, so points never sit on the axis frame.
-previousPeriod	helper	@spy4x/preact-charts	The window before `range`, ending exactly where `range` starts.
 seriesColor	helper	@spy4x/preact-charts	Pick a palette entry for a series index, wrapping around and tolerating a negative index.
 ticks	helper	@spy4x/preact-charts	Tick values at multiples of a nice step, kept within half a step of `[min, max]`.
 timeSeriesPointSchema	helper	@spy4x/preact-charts	One bucket of a time series, as it arrives from an API.
-useInView	hook	@spy4x/preact-charts	Report whether the element behind `ref` has scrolled into view.
-xLabelStride	helper	@spy4x/preact-charts	Draw every `stride`-th X label and always the last one, so a dense axis keeps a readable label count without dropping the right-hand end.
 CHART_PALETTE_CLASS	constant	@spy4x/preact-charts/colors	Classes a chart puts on its root so `DEFAULT_CHART_PALETTE` resolves to the light steps, or to the dark ones under a `.dark` ancestor — the theme package's class-based dark mode.
 default	helper	@spy4x/preact-charts/i18n/ar	The `charts` catalog in ar: `createTranslator({ catalogs: [{ source: en, translation: this }] })`.
+default	helper	@spy4x/preact-charts/i18n/de	The `charts` catalog in de: `createTranslator({ catalogs: [{ source: en, translation: this }] })`.
+default	helper	@spy4x/preact-charts/i18n/en	The `charts` catalog in English, the source every translation is checked against.
+default	helper	@spy4x/preact-charts/i18n/es	The `charts` catalog in es: `createTranslator({ catalogs: [{ source: en, translation: this }] })`.
+default	helper	@spy4x/preact-charts/i18n/fr	The `charts` catalog in fr: `createTranslator({ catalogs: [{ source: en, translation: this }] })`.
+default	helper	@spy4x/preact-charts/i18n/ja	The `charts` catalog in ja: `createTranslator({ catalogs: [{ source: en, translation: this }] })`.
+default	helper	@spy4x/preact-charts/i18n/pt-BR	The `charts` catalog in pt-BR: `createTranslator({ catalogs: [{ source: en, translation: this }] })`.
+default	helper	@spy4x/preact-charts/i18n/ru	The `charts` catalog in ru: `createTranslator({ catalogs: [{ source: en, translation: this }] })`.
+default	helper	@spy4x/preact-charts/i18n/zh-CN	The `charts` catalog in zh-CN: `createTranslator({ catalogs: [{ source: en, translation: this }] })`.
 cn	helper	@spy4x/preact-cn	Join conditional class names and resolve conflicting Tailwind utilities.
 join	helper	@spy4x/preact-cn	Join conditional class names, with no Tailwind conflict resolution.
 ArchiveConfig	type	@spy4x/preact-crud	The archive toggle: a checkbox in the footer that stamps `deletedAt` through the update the form already submits, plus whatever has to be archived first for it to be allowed.
@@ -125,6 +131,14 @@ submitEditor	helper	@spy4x/preact-crud	Route a submit to the store operation the
 toggleArchiveState	helper	@spy4x/preact-crud	The archive toggle's next state.
 typedNumber	helper	@spy4x/preact-crud	The number a keystroke may commit, or `undefined` while the box holds a half-typed value.
 default	helper	@spy4x/preact-crud/i18n/ar	The `crud` catalog in ar: `createTranslator({ catalogs: [{ source: en, translation: this }] })`.
+default	helper	@spy4x/preact-crud/i18n/de	The `crud` catalog in de: `createTranslator({ catalogs: [{ source: en, translation: this }] })`.
+default	helper	@spy4x/preact-crud/i18n/en	The `crud` catalog in English, the source every translation is checked against.
+default	helper	@spy4x/preact-crud/i18n/es	The `crud` catalog in es: `createTranslator({ catalogs: [{ source: en, translation: this }] })`.
+default	helper	@spy4x/preact-crud/i18n/fr	The `crud` catalog in fr: `createTranslator({ catalogs: [{ source: en, translation: this }] })`.
+default	helper	@spy4x/preact-crud/i18n/ja	The `crud` catalog in ja: `createTranslator({ catalogs: [{ source: en, translation: this }] })`.
+default	helper	@spy4x/preact-crud/i18n/pt-BR	The `crud` catalog in pt-BR: `createTranslator({ catalogs: [{ source: en, translation: this }] })`.
+default	helper	@spy4x/preact-crud/i18n/ru	The `crud` catalog in ru: `createTranslator({ catalogs: [{ source: en, translation: this }] })`.
+default	helper	@spy4x/preact-crud/i18n/zh-CN	The `crud` catalog in zh-CN: `createTranslator({ catalogs: [{ source: en, translation: this }] })`.
 IconAdjustmentsHorizontal	component	@spy4x/preact-icons	Heroicons v2 outline (stroke-2); Heroicons v2's "adjustments-horizontal" (2.2.0), added for the "Interactive" line of `Explorable` in `@spy4x/preact-ui` (#958).
 IconAlertTriangle	component	@spy4x/preact-icons	Heroicons v2 outline (stroke-1.5) · from template.
 IconArchive	component	@spy4x/preact-icons	Lucide outline (stroke-2); matches Lucide's "archive" exactly, not Heroicons.
@@ -256,11 +270,20 @@ CATEGORY_ICONS	constant	@spy4x/preact-icons/registry	The ids of the category set
 ICONS	constant	@spy4x/preact-icons/registry	Every glyph a picker can offer, by id.
 IconEntry	type	@spy4x/preact-icons/registry	One glyph of `ICONS`: its component, its English name and the words that find it.
 IconName	type	@spy4x/preact-icons/registry	The id of a glyph in `ICONS`: what an app stores.
-Map	component	@spy4x/preact-map	See this file's own doc.
+LeafletMap	component	@spy4x/preact-map	Markers on a Leaflet tile layer, with a plain-text list of the same places beside it.
+Map	component	@spy4x/preact-map	Deprecated: Use `LeafletMap`; `Map` shadows the built-in `Map` in every file that imports it. The former name of `LeafletMap`, the same component.
 MapCenter	type	@spy4x/preact-map	A point `Map` centres on.
 MapMarker	type	@spy4x/preact-map	One place `Map` shows, on the tile layer and in the plain-text list beside it.
 MapMarkerStatus	type	@spy4x/preact-map	One of the three states `MapMarker` carries a colour for — see `theme/preset.css`'s `.status-on`/`.status-off`/`.status-unknown` rules.
 default	helper	@spy4x/preact-map/i18n/ar	The `map` catalog in ar: `createTranslator({ catalogs: [{ source: en, translation: this }] })`.
+default	helper	@spy4x/preact-map/i18n/de	The `map` catalog in de: `createTranslator({ catalogs: [{ source: en, translation: this }] })`.
+default	helper	@spy4x/preact-map/i18n/en	The `map` catalog in English, the source every translation is checked against.
+default	helper	@spy4x/preact-map/i18n/es	The `map` catalog in es: `createTranslator({ catalogs: [{ source: en, translation: this }] })`.
+default	helper	@spy4x/preact-map/i18n/fr	The `map` catalog in fr: `createTranslator({ catalogs: [{ source: en, translation: this }] })`.
+default	helper	@spy4x/preact-map/i18n/ja	The `map` catalog in ja: `createTranslator({ catalogs: [{ source: en, translation: this }] })`.
+default	helper	@spy4x/preact-map/i18n/pt-BR	The `map` catalog in pt-BR: `createTranslator({ catalogs: [{ source: en, translation: this }] })`.
+default	helper	@spy4x/preact-map/i18n/ru	The `map` catalog in ru: `createTranslator({ catalogs: [{ source: en, translation: this }] })`.
+default	helper	@spy4x/preact-map/i18n/zh-CN	The `map` catalog in zh-CN: `createTranslator({ catalogs: [{ source: en, translation: this }] })`.
 App	helper	@spy4x/preact-server	The app: middleware, routes and an app wrapper, as Fresh's `App`.
 Assets	type	@spy4x/preact-server	What the build tells the renderer: the stylesheets, the client script and the build id.
 Context	helper	@spy4x/preact-server	The request's context, as Fresh's `Context`.
@@ -399,6 +422,14 @@ filterWrite	helper	@spy4x/preact-signals/use-url-filters	What one field's value 
 readAddress	helper	@spy4x/preact-signals/use-url-filters	Read the address into the filters, and answer with the query string they now agree on.
 restoredAddress	helper	@spy4x/preact-signals/use-url-filters	The address the write should have left behind, or `undefined` when that is already the address.
 default	helper	@spy4x/preact-signals/i18n/ar	The `signals` catalog in ar: `createTranslator({ catalogs: [{ source: en, translation: this }] })`.
+default	helper	@spy4x/preact-signals/i18n/de	The `signals` catalog in de: `createTranslator({ catalogs: [{ source: en, translation: this }] })`.
+default	helper	@spy4x/preact-signals/i18n/en	The `signals` catalog in English, the source every translation is checked against.
+default	helper	@spy4x/preact-signals/i18n/es	The `signals` catalog in es: `createTranslator({ catalogs: [{ source: en, translation: this }] })`.
+default	helper	@spy4x/preact-signals/i18n/fr	The `signals` catalog in fr: `createTranslator({ catalogs: [{ source: en, translation: this }] })`.
+default	helper	@spy4x/preact-signals/i18n/ja	The `signals` catalog in ja: `createTranslator({ catalogs: [{ source: en, translation: this }] })`.
+default	helper	@spy4x/preact-signals/i18n/pt-BR	The `signals` catalog in pt-BR: `createTranslator({ catalogs: [{ source: en, translation: this }] })`.
+default	helper	@spy4x/preact-signals/i18n/ru	The `signals` catalog in ru: `createTranslator({ catalogs: [{ source: en, translation: this }] })`.
+default	helper	@spy4x/preact-signals/i18n/zh-CN	The `signals` catalog in zh-CN: `createTranslator({ catalogs: [{ source: en, translation: this }] })`.
 AccountMenu	component	@spy4x/preact-system	The account menu: a `Dropdown` whose trigger shows the signed-in person, holding the caller's items, then the theme choice, then "Sign out" after a divider.
 AccountMenuItem	type	@spy4x/preact-system	One entry of `AccountMenuProps.items`: a link (`href`), a form post (`action`), or a button (neither).
 AccountMenuLanguage	type	@spy4x/preact-system	The language choice `AccountMenu` offers: `LanguageDialog`'s props without its open state, which the menu owns.
@@ -528,7 +559,15 @@ playwrightBaseConfig	helper	@spy4x/preact-system/playwright	Build the Playwright
 SystemKey	type	@spy4x/preact-system/i18n	A key of the `system` package's own catalog, `"AuthForm.signIn"`.
 translate	helper	@spy4x/preact-system/i18n	The `system` message `key` from `translator`, or `english` when the translator lacks it: what a component calls for a word that is not a field of its labels.
 default	helper	@spy4x/preact-system/i18n/ar	The `system` catalog in ar: `createTranslator({ catalogs: [{ source: en, translation: this }] })`.
-COMPONENT_CLASSES	constant	@spy4x/preact-theme	Every Tailwind class the published `@spy4x/preact-*` components can render, separated by spaces, for an app's `@source inline("…")` (1441 classes).
+default	helper	@spy4x/preact-system/i18n/de	The `system` catalog in de: `createTranslator({ catalogs: [{ source: en, translation: this }] })`.
+default	helper	@spy4x/preact-system/i18n/en	The `system` catalog in English, the source every translation is checked against.
+default	helper	@spy4x/preact-system/i18n/es	The `system` catalog in es: `createTranslator({ catalogs: [{ source: en, translation: this }] })`.
+default	helper	@spy4x/preact-system/i18n/fr	The `system` catalog in fr: `createTranslator({ catalogs: [{ source: en, translation: this }] })`.
+default	helper	@spy4x/preact-system/i18n/ja	The `system` catalog in ja: `createTranslator({ catalogs: [{ source: en, translation: this }] })`.
+default	helper	@spy4x/preact-system/i18n/pt-BR	The `system` catalog in pt-BR: `createTranslator({ catalogs: [{ source: en, translation: this }] })`.
+default	helper	@spy4x/preact-system/i18n/ru	The `system` catalog in ru: `createTranslator({ catalogs: [{ source: en, translation: this }] })`.
+default	helper	@spy4x/preact-system/i18n/zh-CN	The `system` catalog in zh-CN: `createTranslator({ catalogs: [{ source: en, translation: this }] })`.
+COMPONENT_CLASSES	constant	@spy4x/preact-theme	Every Tailwind class the published `@spy4x/preact-*` components can render, separated by spaces, for an app's `@source inline("…")` (1460 classes).
 INK_CSS	constant	@spy4x/preact-theme	./ink.css's exact contents.
 PRESET_CSS	constant	@spy4x/preact-theme	./preset.css's exact contents.
 THEME_PREVIEW_CSS	constant	@spy4x/preact-theme	./theme-preview.css's exact contents.
@@ -590,11 +629,14 @@ AvatarFace	type	@spy4x/preact-ui	Which of the three faces an `Avatar` renders.
 AvatarGroup	component	@spy4x/preact-ui	Overlapping avatar stack for a handful of members, with a `+N` chip for the rest.
 AvatarMember	type	@spy4x/preact-ui	One member of an `AvatarGroup`.
 AvatarSize	type	@spy4x/preact-ui	Square box of an `Avatar` or an `AvatarGroup`.
+BADGE_TONE_OF_COLOR	constant	@spy4x/preact-ui	The tone each deprecated colour name draws: `red` is `danger`, `orange` `warning`, `green` `success`, `gray` `neutral`, `blue` `info`, `purple` `primary` and `purpleNav` `primaryStrong`.
 BackdropHitTarget	type	@spy4x/preact-ui	The two identities a backdrop hit-test compares.
 Badge	component	@spy4x/preact-ui	Small status pill: a text label, or element content such as a `StatusMark`, in a `span` — or in an `<a>` when `href` is given, so the whole pill is the link, which hands plain clicks to `navigate` when one is given.
-BadgeColor	type	@spy4x/preact-ui	Palette entries a `Badge` can use.
+BadgeColor	type	@spy4x/preact-ui	Deprecated: Use `BadgeTone`; `BADGE_TONE_OF_COLOR` maps each name. The palette names a `Badge` took before `tone`.
 BadgeElementProps	type	@spy4x/preact-ui	A `Badge` with element content in place of `text` — a `StatusMark` beside a word, say, or a link inside the pill.
-BadgeType	type	@spy4x/preact-ui	Whether a `Badge` is tinted (`filled`, the default) or only outlined.
+BadgeTone	type	@spy4x/preact-ui	What a `Badge` says, by meaning, in the tone names `Notice`, `Progress` and `Timeline` use.
+BadgeType	type	@spy4x/preact-ui	Deprecated: Use `BadgeVariant`, which has the same values. The name `variant` had before.
+BadgeVariant	type	@spy4x/preact-ui	Whether a `Badge` is tinted (`filled`, the default) or only outlined.
 BillingHeadingLevel	type	@spy4x/preact-ui	Heading level of a billing component's own heading.
 BillingInterval	type	@spy4x/preact-ui	How often a plan bills.
 BrandMark	component	@spy4x/preact-ui	A product's brand mark: a rounded square at `--radius-card`, filled with the brand hue and holding one glyph, followed by the product's name in weight 500 — the construction the design language gives every app's mark (`docs/design-language.md`, "The brand mark").
@@ -800,7 +842,7 @@ MatchableOption	type	@spy4x/preact-ui	What `matchOptions` and `matchOption` read
 Modal	component	@spy4x/preact-ui	Built on the platform's dialog element, in the top layer.
 MoneyDisplay	component	@spy4x/preact-ui	Renders an amount in `currency`'s smallest unit as display text, through `Intl.NumberFormat`, in the person's region format: `<MoneyDisplay amount={123456} currency="EUR" />` is `1.234,56 €` under a `FormatContext` for `de-DE` and `€1,234.56` for `en-US`, whatever language the words around it are in.
 MoneyInput	component	@spy4x/preact-ui	A text field for an amount in `currency`'s smallest unit: `value`/`onChange` carry the integer, exactly the way `MoneyDisplay` renders it.
-MoneyInputBounds	type	@spy4x/preact-ui	
+MoneyInputBounds	type	@spy4x/preact-ui	The bounds a `MoneyInputRangeMessage` reports, in the currency's smallest unit.
 MoneyInputDecimalsMessage	type	@spy4x/preact-ui	A `MoneyInputProps.decimalsMessage` function: `decimals` is how many the currency takes, `0` for one with whole amounts only.
 MoneyInputEdit	type	@spy4x/preact-ui	What one edit of `MoneyInput`'s text resolves to — see `resolveMoneyInputEdit`.
 MoneyInputEditOptions	type	@spy4x/preact-ui	The optional inputs of `resolveMoneyInputEdit`.
@@ -809,6 +851,8 @@ MoneyTone	type	@spy4x/preact-ui	How `MoneyDisplay` marks an amount's direction:
 MoreMenu	component	@spy4x/preact-ui	A three-dots button that opens a menu of `DropdownItem`s: the overflow menu of a page header or of one row in a list.
 Notice	component	@spy4x/preact-ui	A banner for a page-wide message: a trial that ends soon, a change that was saved, or, with `tone="danger"`, a failure the reader must act on, such as a payment that failed.
 NoticeTone	type	@spy4x/preact-ui	What a `Notice` is about: news (`info`), something to act on soon (`warning`), a success, or a failure the reader must act on now (`danger`).
+NumberStepper	component	@spy4x/preact-ui	A small whole number applied as it changes: "− 3 +".
+NumberStepperRange	type	@spy4x/preact-ui	The whole-number range a `NumberStepper` moves in, as `numberStepperKey` reads it.
 ORDER_BAR_LABELS	constant	@spy4x/preact-ui	The English words `OrderBar` shows when the caller passes none.
 OnDay	component	@spy4x/preact-ui	A calendar day in the person's format (`FormatContext`), `17 Oct 2026`, in a `<time datetime>` whose hover text is the exact instant.
 OnOffButtons	component	@spy4x/preact-ui	Segmented ON/OFF pair, optionally annotated with counts.
@@ -833,6 +877,7 @@ PageHeroAuthor	type	@spy4x/preact-ui	The person who wrote a page, named in `Page
 PageRangeItem	type	@spy4x/preact-ui	One item of the range a pagination control renders: a real page, or a collapsed run of pages.
 PageTitle	component	@spy4x/preact-ui	Page heading with the library's `pc-h1` typography inlined.
 Pagination	component	@spy4x/preact-ui	Page numbers with the long runs collapsed, plus previous/next.
+PasswordInput	component	@spy4x/preact-ui	A password field with an eye button that shows and hides what was typed.
 PeriodStepper	component	@spy4x/preact-ui	Steps a screen through weeks or months: "‹ › November 2026 This month".
 PlanCard	component	@spy4x/preact-ui	A plan: the current one, with its status, price and the date it renews or ends, and a "Manage billing" form that posts to the app's billing-portal route; or, with no `status`, a plan on offer, with its price, a second price line, what it includes, a link action and footnotes.
 PlanPrice	type	@spy4x/preact-ui	A price: an amount in the currency's smallest unit, and how often it is charged.
@@ -927,9 +972,10 @@ TldrBox	component	@spy4x/preact-ui	The few points a reader takes away from an ar
 ToastAction	type	@spy4x/preact-ui	A button on a toast, such as "Undo" after a delete.
 ToastCorner	type	@spy4x/preact-ui	The window corner a `Toastr` stack sits in.
 ToastId	type	@spy4x/preact-ui	What identifies one toast in a stack: the type of `ToastItem.id` and of the id `ToastrProps.onDismiss` is called with.
-ToastItem	type	@spy4x/preact-ui	
+ToastItem	type	@spy4x/preact-ui	One toast in a `Toastr` stack: its id, heading, body, kind and optional action.
 ToastVariant	type	@spy4x/preact-ui	Kind of a toast, selecting its colour and glyph.
 Toastr	component	@spy4x/preact-ui	Stack of transient notifications in a corner of the window — top right unless `corner` says otherwise.
+ToggleChangeProps	type	@spy4x/preact-ui	The value port of a toggle: `onChange`, or its deprecated alias `onToggle`.
 ToggleChipOption	type	@spy4x/preact-ui	One chip of a `ToggleChips` group.
 ToggleChips	component	@spy4x/preact-ui	A group of pressable chips for filtering a list — the clickable counterpart of `Badge`, which only shows text.
 ToggleChipsMultipleProps	type	@spy4x/preact-ui	Any number of chips pressed at once: `value` lists them, in the order of `options`.
@@ -994,6 +1040,7 @@ defaultGetLabel	helper	@spy4x/preact-ui	The identity rule for item text: `String
 defaultImportMapperLabels	helper	@spy4x/preact-ui	The English defaults of `ImportMapperLabels`.
 defaultKanbanLabels	helper	@spy4x/preact-ui	The English defaults of `KanbanBoardLabels`.
 defaultLayoutCustomiserLabels	helper	@spy4x/preact-ui	The English defaults of `LayoutCustomiserLabels`.
+defaultPasswordInputLabels	helper	@spy4x/preact-ui	The English defaults of `PasswordInputLabels`.
 defaultPlanCardLabels	helper	@spy4x/preact-ui	The English words `PlanCard` uses when a caller passes none.
 defaultPricingTableLabels	helper	@spy4x/preact-ui	The English words `PricingTable` uses when a caller passes none.
 defaultQuickAddLabels	helper	@spy4x/preact-ui	The English defaults of `QuickAddLabels`.
@@ -1052,6 +1099,8 @@ nextComboboxState	helper	@spy4x/preact-ui	Decide what one key press does to the 
 nextKanbanSlot	helper	@spy4x/preact-ui	Where an arrow key sends a picked-up card.
 nextMenuIndex	helper	@spy4x/preact-ui	Index the open menu moves focus to for `key`, or `undefined` for a key the menu does not own.
 nextTabIndex	helper	@spy4x/preact-ui	Index the tablist should move focus to for `key`, given the tab currently focused.
+numberStepperKey	helper	@spy4x/preact-ui	The value a key press on a `NumberStepper` moves `value` to, or `undefined` for a key the stepper leaves alone.
+numberStepperLabels	helper	@spy4x/preact-ui	The English words of `NumberStepper`, the same as the `NumberStepper.*` keys of `i18n/en.ts`.
 occurrenceOf	helper	@spy4x/preact-ui	Which pass of its wall clock an instant is: `"later"` when `value` is a repeated time in `timeZone` and `instant` is its second occurrence, `"earlier"` otherwise — including when either argument cannot be resolved.
 openingState	helper	@spy4x/preact-ui	The state a fresh list opens into: open, highlighting the selected item when the filter kept it, else the first enabled one.
 pageRange	helper	@spy4x/preact-ui	Collapse a page range into the items a pagination control renders.
@@ -1119,6 +1168,14 @@ labelTarget	helper	@spy4x/preact-ui/field	The `for` value of `Field`'s label, gi
 classifyFiles	helper	@spy4x/preact-ui/file-input	Splits `selected` into the files `FileInput` would keep and the files it would refuse, applying `accept`, `maxSize` and `multiple` exactly as `handleFiles` does — extracted so the classification itself (including the `maxSize` boundary) can be unit-tested without a browser.
 resolveLabels	helper	@spy4x/preact-ui/file-input	Fills in every message-building label `FileInputLabels` leaves unset with its default, exported so a caller's override — or the fallback it replaces — can be checked directly, without driving a real file chooser to reach the code that would otherwise call it.
 default	helper	@spy4x/preact-ui/i18n/ar	The `ui` catalog in ar: `createTranslator({ catalogs: [{ source: en, translation: this }] })`.
+default	helper	@spy4x/preact-ui/i18n/de	The `ui` catalog in de: `createTranslator({ catalogs: [{ source: en, translation: this }] })`.
+default	helper	@spy4x/preact-ui/i18n/en	The `ui` catalog in en: `createTranslator({ catalogs: [{ source: en, translation: this }] })`.
+default	helper	@spy4x/preact-ui/i18n/es	The `ui` catalog in es: `createTranslator({ catalogs: [{ source: en, translation: this }] })`.
+default	helper	@spy4x/preact-ui/i18n/fr	The `ui` catalog in fr: `createTranslator({ catalogs: [{ source: en, translation: this }] })`.
+default	helper	@spy4x/preact-ui/i18n/ja	The `ui` catalog in ja: `createTranslator({ catalogs: [{ source: en, translation: this }] })`.
+default	helper	@spy4x/preact-ui/i18n/pt-BR	The `ui` catalog in pt-BR: `createTranslator({ catalogs: [{ source: en, translation: this }] })`.
+default	helper	@spy4x/preact-ui/i18n/ru	The `ui` catalog in ru: `createTranslator({ catalogs: [{ source: en, translation: this }] })`.
+default	helper	@spy4x/preact-ui/i18n/zh-CN	The `ui` catalog in zh-CN: `createTranslator({ catalogs: [{ source: en, translation: this }] })`.
 StripNavigationVariant	type	@spy4x/preact-ui/image-gallery	How the strip's Previous/Next buttons look; see `ImageGalleryProps.navigationVariant`.
 StripScroll	type	@spy4x/preact-ui/image-gallery	Where a strip's row has scrolled to, as `stripPosition` reads it.
 stripNavigationClasses	helper	@spy4x/preact-ui/image-gallery	The full class list of the strip's Previous/Next buttons for a `navigationVariant`.

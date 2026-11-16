@@ -12,6 +12,7 @@ import { specs as video } from "./ui/video.spec.ts"
 import { specs as button } from "./ui/button.spec.ts"
 import { specs as modal } from "./ui/modal.spec.ts"
 import { specs as lostInput } from "./ui/lost-input.spec.ts"
+import { specs as passwordInput } from "./ui/password-input.spec.ts"
 import { specs as currencyField } from "./ui/currency-field.spec.ts"
 import { specs as moneyInput } from "./ui/money-input.spec.ts"
 import { specs as zoomableImages } from "./ui/zoomable-images.spec.ts"
@@ -68,6 +69,7 @@ import { specs as smallFixes } from "./ui/small-fixes.spec.ts"
 import { specs as segmentedControl } from "./ui/segmented-control.spec.ts"
 import { specs as rightToLeft } from "./ui/right-to-left.spec.ts"
 import { specs as periodStepper } from "./ui/period-stepper.spec.ts"
+import { specs as numberStepper } from "./ui/number-stepper.spec.ts"
 import { specs as usageMeter } from "./ui/usage-meter.spec.ts"
 import { specs as dateRangePicker } from "./ui/date-range-picker.spec.ts"
 import { specs as inlineEdit } from "./ui/inline-edit.spec.ts"
@@ -86,6 +88,7 @@ export const specsByFile: Readonly<Record<string, readonly Spec[]>> = {
   button,
   modal,
   "lost-input": lostInput,
+  "password-input": passwordInput,
   "currency-field": currencyField,
   "money-input": moneyInput,
   "zoomable-images": zoomableImages,
@@ -138,6 +141,7 @@ export const specsByFile: Readonly<Record<string, readonly Spec[]>> = {
   "segmented-control": segmentedControl,
   "right-to-left": rightToLeft,
   "period-stepper": periodStepper,
+  "number-stepper": numberStepper,
   "usage-meter": usageMeter,
   "date-range-picker": dateRangePicker,
   "inline-edit": inlineEdit,

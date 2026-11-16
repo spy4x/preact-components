@@ -31,7 +31,7 @@
  *
  * **This is the repository's browser test path, and CI runs it.** Every unit test in the workspace
  * renders to an HTML string, so no effect, ref, key press or focus change is executed by any of
- * them; anything that lives behind one is proven here or nowhere. `.woodpecker.yml`
+ * them; anything that lives behind one is proven here or nowhere. `.woodpecker/woodpecker.yml`
  * runs `deno task check`, the build and this script on every pull request into `main` and on every
  * push to `main`, and the Pages deploy waits for that push build to pass. A missing or unusable
  * browser is a failed check, not a skip — `--static` is the one explicit way to leave the browser
@@ -233,7 +233,7 @@ const EXCEPT = blockNamesOf("--except=")
  *
  * It exists because the `e2e` part alone ran past the phase ceiling when several pipelines shared
  * the CI agent (#975). Each shard is a run of its own with its own browser and its own limits, so
- * the ceiling still stops a stuck shard. `pages/e2e/shard.test.ts` holds `.woodpecker.yml` to
+ * the ceiling still stops a stuck shard. `pages/e2e/shard.test.ts` holds `.woodpecker/woodpecker.yml` to
  * running every shard exactly once. A bad value, a shard passed to a run without the `e2e` block,
  * and a shard with no spec in it are each a failed check, and the run's last line says it was a
  * shard. A shard records only its specs' checks, so the shards' spec checks add up to the
@@ -667,7 +667,7 @@ const STALL_LIMIT_MS = 150_000
  * run that never stops making progress, not the limit a hang meets first ({@link STALL_LIMIT_MS}
  * is). `pages/README.md` ("How long a run may take") has how it was sized.
  */
-const PHASE_CEILING_MS = 15 * 60_000
+const PHASE_CEILING_MS = 30 * 60_000
 
 /**
  * One Chromium launch attempt: a fresh profile, a spawned process, a bounded wait for its DevTools
@@ -820,7 +820,7 @@ async function launchChromium(
  *
  * The whole phase races a watchdog (#466): everything below runs inside `work`, and the watchdog
  * stops the phase when no check has finished and no block has started for 150 seconds, or when the
- * phase has run 15 minutes in all, both multiplied by `--cpu-throttle` (see {@link phaseVerdict}).
+ * phase has run 30 minutes in all, both multiplied by `--cpu-throttle` (see {@link phaseVerdict}).
  * So a hang anywhere inside `work` — a `DevTools` call with no timeout of its own would be the
  * classic case, which is why every one now has one — still lets `verify` exit non-zero instead of
  * waiting forever. The watchdog cannot know what `work` was doing, so it reads

@@ -2,12 +2,15 @@
  * What a browser bundle of a library component carries (#471).
  *
  * `tailwind-merge` is about 28 KB minified, and `cn` brings it into every bundle that imports it.
- * `Button`, `ImageGallery`, `Lightbox` (#471), `Field`, `Input`, `Textarea`, `EnhancedForm`
- * (#511), `PricingTable` (#523), `DemoVideo`, `LoopVideo`, `YouTubeVideo`, `RadioChips`,
- * `ScreenTour`, `CommandPalette`, `Combobox`, `Modal` and `Toastr` (#943) compose their classes
- * with `join` instead, so an island that renders one of them must not carry it. Each fixture under
- * `testdata/` is such an island, and is bundled here the way an app's build bundles one:
- * `deno bundle --platform browser --minify`.
+ * `ImageGallery`, `Lightbox` (#471), `PricingTable` (#523), `DemoVideo`, `LoopVideo`,
+ * `YouTubeVideo`, `RadioChips`, `ScreenTour`, `CommandPalette`, `Combobox`, `Modal` and `Toastr`
+ * (#943) compose their own classes with `join` instead, so an island that renders only them must
+ * not carry it. `Button`, `Input`, `Textarea`, `Select` and `EnhancedForm` merge a caller's `class`
+ * through `cn` since #861 (the owner's pick: a caller's class always wins, and islands carry
+ * `tailwind-merge`), so every island that renders one of them — `ImageGallery`, `Lightbox`, `Field`,
+ * `PricingTable`, `ScreenTour` and the modal over a combobox, through `Button` or `Input` — carries
+ * it, under a ceiling of its own. Each fixture under `testdata/` is such an island, and is bundled
+ * here the way an app's build bundles one: `deno bundle --platform browser --minify`.
  *
  * `tailwind-merge`'s minified code keeps its class-group names as strings, so its presence is read
  * from one of them. The control fixture calls `cn` and must contain that string: if a
@@ -28,24 +31,15 @@ const TAILWIND_MERGE_MARKER = "oldstyle-nums"
 const BUTTON_HOTKEY_MARKER = "aria-keyshortcuts"
 
 /**
- * A ceiling on each component island, well under the ~28 KB `tailwind-merge` alone would add on
- * top of it. `Button`'s `hotkey` prop (#610) put Preact's hooks, the hotkey parser and the key
- * faces of `Kbd` into every island that renders a `Button`, about 9.8 KB minified (3.8 KB gzipped):
- * the `Button` island went from 13.7 KB to 23.5 KB, and the others that render one to about 29.5 KB.
+ * A ceiling on each island that does not merge, well under the ~28 KB `tailwind-merge` alone would
+ * add on top of it. `Button`'s `hotkey` prop (#610) put Preact's hooks, the hotkey parser and the
+ * key faces of `Kbd` into every island that renders a `Button`, about 9.8 KB minified (3.8 KB
+ * gzipped): the `Button` island went from 13.7 KB to 23.5 KB, and the others that render one to
+ * about 29.5 KB.
  */
 const ISLAND_CEILING_BYTES = 31_000
 
-/**
- * Islands allowed more than {@link ISLAND_CEILING_BYTES}, each with its reason. `ImageGallery`'s
- * strip measures its row for the counter and Previous/Next (#567), about 2.6 KB on top of the
- * 23.2 KB it bundled before, and #610 added 7.2 KB more; with `tailwind-merge` it would still be
- * over 60 KB. `PricingTable`'s forms became `EnhancedForm`s for `pending` (#568), which put the
- * form's busy guard, live region and focus recovery into its island: 29.6 KB became 31.6 KB.
- * `ScreenTour` renders `Lightbox` (29.5 KB on its own) and keeps its state in signals, as the
- * library's rule for local state asks: `@preact/signals` is about 7.3 KB minified, which a Fresh
- * app already ships for its islands. It measured 43.4 KB. The sizes in this paragraph are from
- * those changes; each entry's comment below has its size today.
- */
+/** Islands without `tailwind-merge` allowed more than {@link ISLAND_CEILING_BYTES}, with reasons. */
 const ISLAND_CEILINGS: Readonly<Record<string, number>> = {
   // A palette and a toaster, the forgiving matcher and the hotkeys included: 50.8 KB (#943, #524).
   // Command rows (icon, state badge, keys, disabled and kept-open commands): 52.6 KB (#878).
@@ -53,26 +47,32 @@ const ISLAND_CEILINGS: Readonly<Record<string, number>> = {
   // Recent picks, the best match, the result count and the key hints: 58.1 KB (#1235).
   // The icon trigger's tooltip, `Tooltip`'s behaviour without tailwind-merge, and the link the
   // trigger is until hydration: 61.6 KB (#940).
-  "island-command-palette.tsx": 62_000,
-  // A modal over a combobox, with the modal's `Button` and its hotkey code: 46.6 KB (#943, #524).
-  // The forgiving matcher the palette already carries, groups and Create: 53.0 KB (#1164).
-  "island-modal-combobox.tsx": 54_000,
+  // Early answers through `show`, the highlight they keep, and a failure beside the field: 62.1 KB
+  // (#1298).
+  "island-command-palette.tsx": 63_000,
   // An article figure: `Explorable`, a `Slider`, stacked `Bars` and a `DotPlot`: 36.0 KB (#958, #524).
   // Eight series colours instead of five, in the chart's palette class: 36.2 KB (#957).
   "island-explorable-bars.tsx": 37_000,
-  // #524 put `useLabels` and the translated defaults into every island, about 1.4 KB each; the
-  // catalogs themselves stay out of every bundle. These four then passed their old ceilings.
-  // 35.5 KB.
-  "island-image-gallery.tsx": 37_000,
-  // 31.1 KB.
-  "island-lightbox.tsx": 33_000,
-  // 34.9 KB. Prices in the person's region format, from `money-core`, which leaves arktype out
-  // (#1161, ts-libs#863): 36.4 KB.
-  "island-pricing-table.tsx": 38_000,
-  // 45.8 KB.
-  "island-screen-tour.tsx": 47_000,
   // Below the default: a docs page's only island, Preact and the clipboard helper alone. 14.1 KB.
   "island-prose-code-copy.tsx": 16_000,
+}
+
+/**
+ * Islands that carry `tailwind-merge` since #861, each with a ceiling about 3 KB over what it
+ * bundled then: its size before #861 plus the ~27.5 KB `tailwind-merge` added. Measured when #861
+ * merged: `Button` 53.5 KB, `ImageGallery` 63.5 KB, `Lightbox` 59.0 KB, `Field` 41.6 KB,
+ * `EnhancedForm` 44.8 KB, `PricingTable` 64.8 KB, `ScreenTour` 73.9 KB (`Lightbox` and signals, 45.8
+ * KB before) and the modal over a combobox 80.8 KB (the modal's `Button`, 53.0 KB before).
+ */
+const MERGING_ISLAND_CEILINGS: Readonly<Record<string, number>> = {
+  "island-button.tsx": 56_000,
+  "island-image-gallery.tsx": 66_000,
+  "island-lightbox.tsx": 62_000,
+  "island-field.tsx": 45_000,
+  "island-enhanced-form.tsx": 47_000,
+  "island-pricing-table.tsx": 67_000,
+  "island-screen-tour.tsx": 76_000,
+  "island-modal-combobox.tsx": 83_000,
 }
 
 const REPOSITORY_ROOT = fromFileUrl(new URL("../", import.meta.url))
@@ -102,21 +102,21 @@ describe("a browser bundle of a library component", () => {
     expect(await bundle("island-cn.tsx")).toContain(TAILWIND_MERGE_MARKER)
   })
 
+  for (const [fixture, ceiling] of Object.entries(MERGING_ISLAND_CEILINGS)) {
+    it(`carries tailwind-merge, and stays under its ceiling, for ${fixture}`, async () => {
+      const code = await bundle(fixture)
+      expect(code).toContain(TAILWIND_MERGE_MARKER)
+      expect(new TextEncoder().encode(code).length).toBeLessThan(ceiling)
+    })
+  }
+
   for (
     const fixture of [
-      "island-button.tsx",
-      "island-image-gallery.tsx",
-      "island-lightbox.tsx",
-      "island-field.tsx",
-      "island-enhanced-form.tsx",
-      "island-pricing-table.tsx",
       "island-demo-video.tsx",
       "island-loop-video.tsx",
       "island-youtube-video.tsx",
       "island-radio-chips.tsx",
-      "island-screen-tour.tsx",
       "island-command-palette.tsx",
-      "island-modal-combobox.tsx",
       "island-toastr.tsx",
       "island-explorable-bars.tsx",
       "island-prose-code-copy.tsx",

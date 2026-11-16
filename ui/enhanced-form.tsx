@@ -1,4 +1,4 @@
-import { join } from "@spy4x/preact-cn/join"
+import { cn } from "@spy4x/preact-cn"
 import type { ComponentChildren, JSX } from "preact"
 import { useEffect, useRef, useState } from "preact/hooks"
 import { useLabels } from "./i18n.tsx"
@@ -139,9 +139,8 @@ export interface EnhancedFormProps {
    */
   status?: EnhancedFormStatus
   /**
-   * Utilities for the `<form>` itself, appended after its own `space-y-4` and not merged, so
-   * `tailwind-merge` stays out of the bundle (#511). To replace the spacing, mark the replacement
-   * important with a trailing `!`.
+   * Utilities for the `<form>` itself, merged into its own `space-y-4` through `cn` (#861): a
+   * caller's `space-y-6` replaces it.
    */
   class?: string
 }
@@ -422,7 +421,7 @@ export function EnhancedForm(
       onInvalidCapture={handleInvalid}
       onInputCapture={clearRequired}
       onClickCapture={clearRequired}
-      class={join("space-y-4", className)}
+      class={cn("space-y-4", className)}
     >
       <div>
         {fields}
@@ -440,7 +439,7 @@ export function EnhancedForm(
         aria-live="polite"
         aria-atomic="true"
         tabIndex={-1}
-        class={join(
+        class={cn(
           "text-sm outline-none",
           status === "failed" ? "enhanced-form-error text-danger" : "text-muted",
           regionHidden && "sr-only",

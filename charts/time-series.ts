@@ -12,6 +12,7 @@ export const TIME_FRAMES = ["minutes", "hours", "days"] as const
 /** Bucket granularity of a series. A `LineChart` picks its X ticks from the data, not from this. */
 export type TimeFrame = typeof TIME_FRAMES[number]
 
+/** One bucket of a time series: when it starts and the value aggregated into it. */
 export interface TimeSeriesPoint {
   /** Bucket timestamp. An ISO string, an epoch number or a `Date` are all accepted. */
   timeGroup: string | number | Date

@@ -8,7 +8,7 @@ export default {
   "AssociationEditor.conflictRemovedMessage": "{entity} с такими данными уже есть среди удалённых.",
   "AssociationEditor.deleteErrorLabel": "Не получилось удалить",
   "AssociationEditor.deleteLabel": "Удалить",
-  "AssociationEditor.removedLabel": "Удалено {ago}",
+  "AssociationEditor.removedLabel": "Удалили {ago}",
   "AssociationEditor.restoreErrorLabel": "Не получилось восстановить",
   "AssociationEditor.restoreHint": "Восстановите прежнюю запись, чтобы не заводить копию.",
   "AssociationEditor.restoreLabel": "Восстановить",

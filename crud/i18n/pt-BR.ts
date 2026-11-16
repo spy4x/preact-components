@@ -9,7 +9,7 @@ export default {
   "AssociationEditor.conflictRemovedMessage": "Já existe {entity} igual entre os itens excluídos.",
   "AssociationEditor.deleteErrorLabel": "Não foi possível excluir",
   "AssociationEditor.deleteLabel": "Excluir",
-  "AssociationEditor.removedLabel": "Excluído {ago}",
+  "AssociationEditor.removedLabel": "Exclusão: {ago}",
   "AssociationEditor.restoreErrorLabel": "Não foi possível restaurar",
   "AssociationEditor.restoreHint": "Restaure o original em vez de criar uma cópia.",
   "AssociationEditor.restoreLabel": "Restaurar",

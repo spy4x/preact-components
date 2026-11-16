@@ -203,6 +203,260 @@ function forgivingPaletteSpecs(): Spec[] {
   ]
 }
 
+/**
+ * The early-answer `CommandPalette` on its card, opened. Its pretend server lists the commands
+ * that match at once through `show`, then answers 1.5 s later with the notes first and the
+ * commands after them; a query ending in "!" gets notes only. The card shows what was picked and
+ * how many answers came.
+ *
+ * @param page The guide's UI page.
+ */
+async function openEarlyPalette(page: Page) {
+  await page.setViewportSize({ width: 1280, height: 800 })
+  const card = page.locator("#demo-CommandPalette")
+  const dialog = page.locator(`dialog[data-e2e="palette-early"]`)
+  const field = dialog.getByRole("combobox")
+  const answered = card.locator(`[data-e2e="palette-early-answered"]`)
+  /** Waits until the listed rows are exactly these labels, in this order. */
+  const rowsAre = (labels: readonly string[]) =>
+    page.waitForFunction(
+      (wanted) =>
+        [...document.querySelectorAll(`dialog[data-e2e="palette-early"] [role="option"]`)]
+          .map((option) => option.querySelector("span span")?.textContent ?? "")
+          .join("|") === wanted,
+      labels.join("|"),
+      { timeout: 5000 },
+    )
+  /** The label of the highlighted row. */
+  const highlighted = () =>
+    page.evaluate(() => {
+      const box = document.querySelector(`dialog[data-e2e="palette-early"] [role="combobox"]`)
+      const id = box?.getAttribute("aria-activedescendant") ?? ""
+      return document.getElementById(id)?.querySelector("span span")?.textContent ?? ""
+    })
+  await card.locator(`[data-e2e="palette-early-open"]`).click()
+  await field.and(page.locator(":focus")).waitFor()
+  return {
+    dialog,
+    field,
+    rowsAre,
+    highlighted,
+    /** Throws unless the highlighted row is `label`. */
+    highlightIs: async (label: string, when: string) => {
+      const now = await highlighted()
+      if (now !== label) throw new Error(`${when} the highlight is on "${now}", not "${label}"`)
+    },
+    /** How many answers the pretend server has given. */
+    answered: async () => Number(await answered.textContent()),
+    /** Waits until the pretend server has given at least `count` answers. */
+    answeredAtLeast: (count: number) =>
+      page.waitForFunction(
+        (least) =>
+          Number(document.querySelector(`[data-e2e="palette-early-answered"]`)?.textContent) >=
+            least,
+        count,
+      ),
+    picked: card.locator(`[data-e2e="palette-early-picked"]`),
+    /**
+     * Stops the page's clock until `page.clock.runFor` moves it, so the palette's 400 ms pause
+     * and the notes' 1.5 s wait pass only then: on a loaded host the key presses sent from here
+     * can outlast the pause. `page.clock.resume()` lets it run again.
+     */
+    pauseClock: async () => page.clock.pauseAt(await page.evaluate(() => Date.now() + 1_000)),
+  }
+}
+
+/** Specs for early answers that the remote `CommandPalette`'s `search` lists through `show`. */
+function earlyAnswerSpecs(): Spec[] {
+  const commands = ["New note", "Open settings", "Sign out"]
+  const notes = ["Grocery list", "Meeting notes", "Novel ideas", "Packing list"]
+  return [
+    {
+      name: "CommandPalette early answer: the commands list at once on the empty query, with " +
+        "the > for commands hint, before the notes join them; the fruit palette, which lists no " +
+        "command, shows no hint",
+      pageId: "ui",
+      run: async (page) => {
+        const before = Number(
+          await page.locator(`[data-e2e="palette-early-answered"]`).textContent(),
+        )
+        const palette = await openEarlyPalette(page)
+        await palette.rowsAre(commands)
+        const early = await palette.answered()
+        if (early !== before) throw new Error(`the commands waited for ${early - before} answers`)
+        // "Searching…" takes the hint's place while the notes load, then the hint comes back.
+        await palette.dialog.locator(`[data-e2e="palette-early-searching"]`).waitFor()
+        const whileSearching = await palette.field.getAttribute("aria-describedby")
+        if (whileSearching !== null) {
+          throw new Error(`while searching, the field is described by ${whileSearching}`)
+        }
+        await palette.rowsAre([...notes, ...commands])
+        const hint = await palette.field.getAttribute("aria-describedby")
+        const words = hint === null ? "" : await page.locator(`[id="${hint}"]`).textContent()
+        if (words !== "> for commands") throw new Error(`the field is described by "${words}"`)
+        await page.keyboard.press("Escape")
+        await palette.dialog.waitFor({ state: "hidden" })
+        const fruit = await openRemotePalette(page)
+        const described = await fruit.field.getAttribute("aria-describedby")
+        if (described !== null) throw new Error(`the fruit field is described by ${described}`)
+      },
+    },
+    {
+      name: "CommandPalette early answer: the notes landing later keep the highlighted command " +
+        "highlighted as its row moves",
+      pageId: "ui",
+      run: async (page) => {
+        const palette = await openEarlyPalette(page)
+        await palette.rowsAre([...notes, ...commands])
+        await page.keyboard.type("o")
+        // "Open settings" is the best match; the notes have not answered for "o" yet.
+        await palette.rowsAre(["Open settings", "New note", "Sign out"])
+        await page.keyboard.press("ArrowDown")
+        await page.keyboard.press("ArrowDown")
+        await palette.highlightIs("Sign out", "before the notes land")
+        await palette.rowsAre([
+          "Open settings",
+          "Grocery list",
+          "Meeting notes",
+          "Novel ideas",
+          "New note",
+          "Sign out",
+        ])
+        await palette.highlightIs("Sign out", "after the notes land")
+      },
+    },
+    {
+      name: "CommandPalette early answer: a new query answered while the reader arrowed through " +
+        "the previous query's rows starts on its first row",
+      pageId: "ui",
+      run: async (page) => {
+        const palette = await openEarlyPalette(page)
+        await palette.rowsAre([...notes, ...commands])
+        await palette.pauseClock()
+        // The palette waits 400 ms before it asks; the arrows land on the old rows meanwhile.
+        await page.keyboard.type("o")
+        for (let step = 0; step < 5; step++) await page.keyboard.press("ArrowDown")
+        await palette.highlightIs("New note", "on the old rows")
+        await page.clock.runFor(400)
+        await palette.rowsAre(["Open settings", "New note", "Sign out"])
+        await palette.highlightIs("Open settings", 'once the commands for "o" are listed')
+      },
+    },
+    {
+      name: "CommandPalette early answer: when the late answer drops the highlighted command, " +
+        "the highlight falls back to the first row",
+      pageId: "ui",
+      run: async (page) => {
+        const palette = await openEarlyPalette(page)
+        await palette.rowsAre([...notes, ...commands])
+        await page.keyboard.type("o!")
+        await palette.rowsAre(commands)
+        await page.keyboard.press("ArrowDown")
+        await page.keyboard.press("ArrowDown")
+        await palette.highlightIs("Sign out", "before the notes land")
+        await palette.rowsAre(["Grocery list", "Meeting notes", "Novel ideas"])
+        await palette.highlightIs("Grocery list", "after the notes land without the commands")
+      },
+    },
+    {
+      name: "CommandPalette early answer: Enter picks the highlighted command at once, without " +
+        "waiting for the notes",
+      pageId: "ui",
+      run: async (page) => {
+        const palette = await openEarlyPalette(page)
+        await palette.rowsAre([...notes, ...commands])
+        // Stopped past the palette's pause: the notes for "s" cannot answer, only the commands.
+        await palette.pauseClock()
+        await page.keyboard.type("s")
+        await page.clock.runFor(400)
+        // "Sign out" is the best match.
+        await palette.rowsAre(["Sign out", "Open settings"])
+        await page.keyboard.press("ArrowDown")
+        await page.keyboard.press("Enter")
+        await palette.picked.filter({ hasText: /^Open settings$/ }).waitFor({ timeout: 5000 })
+        await palette.dialog.waitFor({ state: "hidden" })
+      },
+    },
+    {
+      name: "CommandPalette early answer: Enter pressed before it picks the first row it lists, " +
+        "the Best match, at once; with no row listed early, Enter waits for the notes",
+      pageId: "ui",
+      run: async (page) => {
+        let palette = await openEarlyPalette(page)
+        await palette.rowsAre([...notes, ...commands])
+        // Typed and picked within the palette's 400 ms pause, before "s" is asked. The clock then
+        // passes the pause only: the notes for "s" cannot answer, only the commands.
+        await palette.pauseClock()
+        await page.keyboard.type("s")
+        await page.keyboard.press("Enter")
+        await page.clock.runFor(400)
+        await palette.picked.filter({ hasText: /^Sign out$/ }).waitFor({ timeout: 5000 })
+        await palette.dialog.waitFor({ state: "hidden" })
+        await page.clock.resume()
+        palette = await openEarlyPalette(page)
+        await palette.rowsAre([...notes, ...commands])
+        // No command holds an "l": the early answer is empty, and Enter waits for the notes.
+        await palette.pauseClock()
+        await page.keyboard.type("l")
+        await page.keyboard.press("Enter")
+        // The pause, then the notes' 1.5 s.
+        await page.clock.runFor(1_900)
+        await palette.picked.filter({ hasText: /^Grocery list$/ }).waitFor({ timeout: 5000 })
+      },
+    },
+    {
+      name: "CommandPalette early answer: a search that fails after its early answer keeps the " +
+        "listed commands and says the error",
+      pageId: "ui",
+      run: async (page) => {
+        const palette = await openEarlyPalette(page)
+        await palette.rowsAre([...notes, ...commands])
+        await page.keyboard.type("o?")
+        await palette.rowsAre(commands)
+        // Beside the field for the eye, in the status region for a screen reader.
+        await palette.dialog.locator(`[data-e2e="palette-early-failed"]`)
+          .filter({ hasText: "Couldn't search. Try again." }).waitFor({ timeout: 4000 })
+        await palette.dialog.locator(`[data-e2e="palette-early-status"]`)
+          .filter({ hasText: "Couldn't search. Try again." }).waitFor({ state: "attached" })
+        await palette.rowsAre(commands)
+        await noViolationsIn(page, "palette-early")
+      },
+    },
+    {
+      name: "CommandPalette early answer: show called by a superseded search, or after its " +
+        "answer, lists nothing",
+      pageId: "ui",
+      run: async (page) => {
+        const palette = await openEarlyPalette(page)
+        await palette.rowsAre([...notes, ...commands])
+        // The empty query's call has answered and called show once more.
+        await palette.answeredAtLeast(1)
+        const before = await palette.answered()
+        // Every row ever listed from here on, so a stale row that a later answer replaced counts too.
+        const seen = await palette.dialog.evaluateHandle((dialog) => {
+          const labels = new Set<string>()
+          new MutationObserver(() => {
+            for (const option of dialog.querySelectorAll(`[role="option"]`)) {
+              labels.add(option.querySelector("span span")?.textContent ?? "")
+            }
+          }).observe(dialog, { subtree: true, childList: true, characterData: true })
+          return labels
+        })
+        // "n" is superseded by "ne" once it has started, and calls show when its signal aborts.
+        await page.keyboard.type("n")
+        await palette.rowsAre(["New note", "Open settings", "Sign out"])
+        await page.keyboard.type("e")
+        await palette.rowsAre(["New note"])
+        // Both calls have answered and called show once more.
+        await palette.answeredAtLeast(before + 2)
+        const stale = await seen.evaluate((labels) => labels.has("Stale answer"))
+        if (stale) throw new Error("a late show listed the stale answer")
+        await palette.rowsAre(["New note"])
+      },
+    },
+  ]
+}
+
 /** Specs for the remote data mode of `CommandPalette`, and its rows on a phone. */
 function remotePaletteSpecs(): Spec[] {
   return [
@@ -319,7 +573,7 @@ function remotePaletteSpecs(): Spec[] {
             throw new Error(`the page is drawn ${dark ? "dark" : "light"}, not ${colorScheme}`)
           }
           const palette = await openRemotePalette(page, width)
-          // "slow" answers in twenty seconds: the kept rows and Searching… stay for the whole scan.
+          // "slow" never answers: the kept rows and Searching… stay for the whole scan, however long.
           await palette.field.fill("slow")
           await palette.dialog.locator(`[data-e2e="palette-remote-searching"]`).waitFor()
           // From `sm` up the seven rows overflow the list's 384 px, so the scan meets a list that
@@ -1473,6 +1727,7 @@ function customTriggerSpecs(): Spec[] {
 
 export const specs: readonly Spec[] = [
   ...remotePaletteSpecs(),
+  ...earlyAnswerSpecs(),
   ...forgivingPaletteSpecs(),
   ...commandPaletteSpecs(),
   ...paletteKeySpecs(),

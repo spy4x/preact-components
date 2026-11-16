@@ -289,16 +289,17 @@ export function isSingleKey(keys: string): boolean {
 /**
  * The shortcuts that work now: all of them, or, while single keys are off, the ones that are not
  * {@link isSingleKey}. Pass the result to both `useHotkeys` and `ShortcutsDialog`, so the dialog
- * never lists a key that does nothing.
+ * never lists a key that does nothing. A dialog row without keys is never a single key, so it stays.
  *
- * @param shortcuts Bindings or dialog rows; anything with `keys`.
+ * @param shortcuts Bindings or dialog rows; anything with `keys`, or a row without them.
  * @param singleKeys Whether single-key shortcuts are on.
  */
-export function activeShortcuts<Shortcut extends { keys: string }>(
+export function activeShortcuts<Shortcut extends { keys?: string }>(
   shortcuts: readonly Shortcut[],
   singleKeys: boolean,
 ): Shortcut[] {
-  return singleKeys ? [...shortcuts] : shortcuts.filter((shortcut) => !isSingleKey(shortcut.keys))
+  if (singleKeys) return [...shortcuts]
+  return shortcuts.filter((shortcut) => !shortcut.keys || !isSingleKey(shortcut.keys))
 }
 
 /**

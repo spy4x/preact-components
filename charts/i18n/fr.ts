@@ -1,6 +1,9 @@
 /** The `charts` catalog in fr: `createTranslator({ catalogs: [{ source: en, translation: this }] })`. */
 export default {
   "Bars.emptyLabel": "Aucune donnée",
+  "DependencyGraph.dependsOn": "dépend de {names}",
+  "DependencyGraph.emptyLabel": "Aucune donnée",
+  "DependencyGraph.neededBy": "prérequis pour {names}",
   "DonutChart.chartLabel": {
     "one": "Graphique en anneau à {count} segment",
     "many": "Graphique en anneau à {count} segments",
