@@ -2284,7 +2284,8 @@ const sampleConflicts: ConflictItem[] = [
 /**
  * `ConflictChooser` inline and in a dialog. A choice removes the item and logs which callback ran,
  * the way an app removes an entry once its outbox settled it. "Fail the next choice" makes the next
- * callback return a rejected promise, as a failed outbox write would. The last chooser starts with
+ * callback return a rejected promise, as a failed outbox write would; "Save the next choice slowly"
+ * hands over a new list while the next choice saves, then removes the item. The last chooser starts with
  * nothing to resolve, as an app shows it before any conflict arrives.
  */
 function ConflictChooserDemo() {
@@ -2292,6 +2293,7 @@ function ConflictChooserDemo() {
   const log = useSignal<string[]>([])
   const dialog = useSignal(false)
   const failNext = useSignal(false)
+  const slowNext = useSignal(false)
   const settle = (choice: string) => (id: string) => {
     const item = conflicts.value.find((entry) => entry.id === id)
     if (failNext.value) {
@@ -2299,8 +2301,21 @@ function ConflictChooserDemo() {
       log.value = [...log.value, `failed: ${item?.label}`]
       return Promise.reject(new Error("The demo refused this choice"))
     }
-    log.value = [...log.value, `${choice}: ${item?.label}`]
-    conflicts.value = conflicts.value.filter((entry) => entry.id !== id)
+    const remove = () => {
+      log.value = [...log.value, `${choice}: ${item?.label}`]
+      conflicts.value = conflicts.value.filter((entry) => entry.id !== id)
+    }
+    if (!slowNext.value) return remove()
+    slowNext.value = false
+    // The same items in a new array at once, as an app that renders again mid-save hands over,
+    // and the item leaves a moment later.
+    conflicts.value = [...conflicts.value]
+    return new Promise<void>((resolve) =>
+      setTimeout(() => {
+        remove()
+        resolve()
+      }, 300)
+    )
   }
   const chooser = (headingLevel: 2 | 3) => (
     <ConflictChooser
@@ -2341,6 +2356,15 @@ function ConflictChooserDemo() {
           onClick={() => (failNext.value = !failNext.value)}
         >
           Fail the next choice
+        </Button>
+        <Button
+          variant="outline"
+          size="sm"
+          data-e2e="conflict-slow-next"
+          aria-pressed={slowNext.value}
+          onClick={() => (slowNext.value = !slowNext.value)}
+        >
+          Save the next choice slowly
         </Button>
       </Cluster>
       <Modal
@@ -2497,7 +2521,8 @@ function fakeInstallWindow() {
 
 /**
  * One `createInstallPrompt` store on fake ports, and the card it draws. Focus returns to the state
- * line when the card leaves. "Fail the next Not now" makes the stored flag's next write reject.
+ * line when the card leaves. "Fail the next Not now" makes the stored flag's next write reject, and
+ * "Block storage on the next Not now" makes it throw at once, as blocked `localStorage` does.
  * With `unmountKey`, pressing U inside the card makes the caller unmount it rather than hide it.
  */
 function InstallCase(
@@ -2512,6 +2537,7 @@ function InstallCase(
 ) {
   const fake = useRef(fakeInstallWindow()).current
   const failNext = useSignal(false)
+  const throwNext = useSignal(false)
   const mounted = useSignal(true)
   const stateLine = useRef<HTMLParagraphElement>(null)
   const store = useRef(
@@ -2522,6 +2548,10 @@ function InstallCase(
       dismissed: {
         read: () => false,
         write: () => {
+          if (throwNext.value) {
+            throwNext.value = false
+            throw new Error("The demo's storage is blocked")
+          }
           if (!failNext.value) return
           failNext.value = false
           return Promise.reject(new Error("The demo could not store the flag"))
@@ -2605,6 +2635,19 @@ function InstallCase(
                   onClick={() => (failNext.value = !failNext.value)}
                 >
                   Fail the next Not now
+                </Button>
+              )
+              : null}
+            {failToggle
+              ? (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  data-e2e="install-throw-next"
+                  aria-pressed={throwNext.value}
+                  onClick={() => (throwNext.value = !throwNext.value)}
+                >
+                  Block storage on the next Not now
                 </Button>
               )
               : null}
@@ -3597,6 +3640,12 @@ const tags = seoHeadTags(head)`,
         type: "ConflictChooserLabelOverrides",
         description: "Replaces any of the words, per reason for the buttons.",
       },
+      {
+        name: "headingLevel",
+        type: "2 | 3 | 4 | 5 | 6",
+        default: "2",
+        description: "The heading's level, to fit the page or the dialog around it.",
+      },
     ],
     snippet: `<ConflictChooser
   conflicts={entries.filter((e) => e.conflict).map((e) => ({
@@ -3750,12 +3799,17 @@ const tags = seoHeadTags(head)`,
       {
         name: "onInstall",
         type: "() => void | Promise",
-        description: "Opens the browser's install dialog.",
+        description: "Opens the browser's install dialog; a failure shows in the card.",
       },
       {
         name: "onDismiss",
-        type: "() => void",
+        type: "() => void | Promise",
         description: "Hides the offer; the store remembers it through its port.",
+      },
+      {
+        name: "returnFocus",
+        type: "() => HTMLElement | null",
+        description: "Where focus goes when the card leaves with focus inside it.",
       },
     ],
     snippet: `const install = createInstallPrompt({ dismissed: localFlag("install-dismissed") })

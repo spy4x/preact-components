@@ -52,7 +52,10 @@ export interface ConflictChooserLabels {
   useTheirs: Record<ConflictKind, string>
   /** Said once nothing is left. Defaults to `"All conflicts resolved"`. */
   resolved: string
-  /** Shown under an item, and announced, when its callback's promise rejects. */
+  /**
+   * Shown under an item when its callback's promise rejects, and announced after the item's label
+   * ("Buy milk: Couldn't save…"), so a failure on a second item is announced too.
+   */
   failed: string
 }
 
@@ -153,8 +156,11 @@ export function ConflictChooser(
   const [busy, setBusy] = useState<ReadonlySet<string>>(new Set())
   /** The item whose last callback rejected, to say so under it. */
   const [failedId, setFailedId] = useState<string | null>(null)
-  /** The position of the item whose button was pressed, while its removal is awaited. */
-  const chosenAt = useRef<number | null>(null)
+  /**
+   * The item whose button was pressed and its position, while its removal is awaited. Kept by id,
+   * so a new `conflicts` array that still holds the item keeps the wait.
+   */
+  const chosen = useRef<{ id: string; index: number } | null>(null)
   /** What the last focus move after a choice went to, so the live region does not repeat it. */
   const movedTo = useRef<HTMLElement | null>(null)
   /** How many conflicts the last effect saw, to tell the moment the list becomes empty. */
@@ -165,8 +171,8 @@ export function ConflictChooser(
   // After a choice removed its item and focus fell to the body, focus the item now in its place,
   // else the one before it, else the heading. A removal nobody chose here moves nothing.
   useFocusFallback(root, () => {
-    const index = chosenAt.current
-    if (index === null || !root.current) return null
+    const index = chosen.current?.index
+    if (index === undefined || !root.current) return null
     const items = root.current.querySelectorAll<HTMLElement>("[data-conflict-id]")
     const next = items[Math.min(index, items.length - 1)]
     movedTo.current = next?.querySelector<HTMLElement>("button") ?? heading.current
@@ -176,8 +182,10 @@ export function ConflictChooser(
   useEffect(() => {
     const emptied = conflicts.length === 0 && seenCount.current > 0
     seenCount.current = conflicts.length
-    // A changed list ends the wait for the chosen item, whether it left or stayed.
-    chosenAt.current = null
+    // The chosen item leaving ends the wait: the focus move above already ran in that commit. While
+    // it stays, the wait follows it to its new position.
+    const index = conflicts.findIndex((item) => item.id === chosen.current?.id)
+    chosen.current = index === -1 ? null : { id: conflicts[index].id, index }
     const moved = movedTo.current
     movedTo.current = null
     const onHeading = moved !== null && moved === heading.current &&
@@ -190,7 +198,7 @@ export function ConflictChooser(
 
   const choose = (id: string, index: number, run: (id: string) => void | Promise<unknown>) => {
     if (busy.has(id)) return
-    chosenAt.current = index
+    chosen.current = { id, index }
     setFailedId((current) => (current === id ? null : current))
     const result = run(id)
     if (!result) return
@@ -199,7 +207,7 @@ export function ConflictChooser(
       () => {},
       () => {
         // The item stays, so no focus move is due for this choice.
-        chosenAt.current = null
+        if (chosen.current?.id === id) chosen.current = null
         setFailedId(id)
       },
     ).finally(() =>
@@ -212,9 +220,7 @@ export function ConflictChooser(
   }
 
   const Heading = `h${headingLevel}` as "h2"
-  const failedLabel = failedId !== null && conflicts.some((item) => item.id === failedId)
-    ? words.failed
-    : ""
+  const failedItem = conflicts.find((item) => item.id === failedId)
 
   return (
     <section
@@ -231,7 +237,14 @@ export function ConflictChooser(
         {conflicts.length > 0 ? words.heading(conflicts.length) : words.resolved}
       </Heading>
       <p role="status" aria-live="polite" class="sr-only">
-        {failedLabel || (conflicts.length === 0 && announceResolved ? words.resolved : "")}
+        {
+          /* The item's label leads, so a failure on another item is new text the reader says. */
+          failedItem
+            ? <>{failedItem.label}: {words.failed}</>
+            : conflicts.length === 0 && announceResolved
+            ? words.resolved
+            : ""
+        }
       </p>
       {conflicts.length > 0
         ? (
@@ -250,9 +263,7 @@ export function ConflictChooser(
                     <p class="text-sm text-muted">
                       {item.message ?? words.explanation[item.reason]}
                     </p>
-                    {failedLabel && failedId === item.id
-                      ? <p class="text-sm text-danger">{words.failed}</p>
-                      : null}
+                    {failedItem === item ? <p class="text-sm text-danger">{words.failed}</p> : null}
                   </div>
                   <div class="flex flex-wrap gap-2">
                     {offersKeepMine(item)

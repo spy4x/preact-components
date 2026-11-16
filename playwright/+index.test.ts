@@ -14,7 +14,7 @@ describe("playwrightBaseConfig", () => {
     })
     expect(config).toEqual({
       testDir: "./e2e",
-      testMatch: /.*\.e2e\.ts/,
+      testMatch: /\.e2e\.ts$/,
       outputDir: "./e2e/results",
       forbidOnly: false,
       retries: 0,
@@ -42,6 +42,10 @@ describe("playwrightBaseConfig", () => {
     expect(testMatch.test("e2e/auth.e2e.ts")).toBe(true)
     expect(testMatch.test("e2e/env.ts")).toBe(false)
     expect(testMatch.test("libs/ui/notes.test.tsx")).toBe(false)
+    for (const nearMiss of ["e2e/x.e2e.tsx", "e2e/x.e2e.ts.bak", "e2e/x.e2e.tsbuildinfo"]) {
+      expect(testMatch.test(nearMiss), nearMiss).toBe(false)
+    }
+    expect(testMatch.test("e2e/xe2e.ts"), "e2e/xe2e.ts").toBe(false)
   })
 
   it("forbids a leftover test.only and retries twice in CI", () => {

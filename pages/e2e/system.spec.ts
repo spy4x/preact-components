@@ -1,8 +1,33 @@
 /** Playwright specs for `system/` components, on the guide's system page. */
 import { AxeBuilder } from "@axe-core/playwright"
 import type { Locator, Page } from "playwright-core"
+import { axeCleanIn } from "./axe-clean.ts"
 import type { Spec } from "./runner.ts"
 import { scrollRegionSpec } from "./scroll-region.ts"
+
+/** The `InstallPrompt` card, and the words its cases show when an action failed. */
+const INSTALL_DEMO = "#demo-InstallPrompt"
+const INSTALL_FAILED = "That didn't work. Try again."
+
+/** The `ConflictChooser` card, its inline chooser, and the words a failed choice shows. */
+const CONFLICT_DEMO = "#demo-ConflictChooser"
+const CONFLICT_INLINE = `${CONFLICT_DEMO} [data-e2e="conflict-inline"] > section`
+const CONFLICT_FAILED = "Couldn't save your choice. Try again."
+
+/** The button labelled `label` in conflict `id` of `chooser`. */
+const conflictButton = (chooser: Locator, id: string, label: string) =>
+  chooser.locator(`[data-conflict-id="${id}"]`).getByRole("button", { name: label, exact: true })
+
+/** The focused conflict button as `<item id>:<label>`, or the focused element's tag name. */
+function focusedConflictButton(page: Page): Promise<string> {
+  return page.evaluate(() => {
+    const active = document.activeElement
+    const item = active?.closest("[data-conflict-id]")
+    return item
+      ? `${item.getAttribute("data-conflict-id")}:${active?.textContent?.trim()}`
+      : active?.tagName ?? ""
+  })
+}
 
 /** The `SavedCopyNotice` card and the live region of the notice mounted in it. */
 const SAVED_COPY = "#demo-SavedCopyNotice"
@@ -2215,6 +2240,101 @@ export const specs: readonly Spec[] = [
         throw new Error(`card at mount: ${hiddenAtMount}; focus after unmount: ${focused}`)
       }
       return "card absent at mount; after the unmount, focus is on the returnFocus line"
+    },
+  },
+  {
+    name: "InstallPrompt: when the install dialog fails to open, the card stays and says it did " +
+      "not work, focus stays on Install, and nothing is left uncaught",
+    pageId: "system",
+    run: async (page) => {
+      const errors: string[] = []
+      page.on("pageerror", (error) => errors.push(error.message))
+      const part = page.locator(`${INSTALL_DEMO} [data-e2e="install-prompt"]`)
+      await part.locator('[data-e2e="install-offer-broken"]').click()
+      const card = part.getByRole("region", { name: "Install this app" })
+      await card.getByRole("button", { name: "Install" }).press("Enter")
+      await card.locator(".text-danger", { hasText: INSTALL_FAILED }).waitFor()
+      await part.locator('[data-e2e="install-mode"]', { hasText: "mode: unavailable" }).waitFor()
+      const seen = await card.evaluate((element) => ({
+        status: element.querySelector('[role="status"]')?.textContent,
+        focus: document.activeElement?.textContent?.trim(),
+        inCard: element.contains(document.activeElement),
+      }))
+      if (seen.status !== INSTALL_FAILED || seen.focus !== "Install" || !seen.inCard) {
+        throw new Error(`after the failed dialog: ${JSON.stringify(seen)}`)
+      }
+      if (errors.length > 0) throw new Error(`uncaught: ${errors.join("; ")}`)
+      const axe = await axeCleanIn(page, `${INSTALL_DEMO} [data-e2e="install-prompt"] section`)
+      return `card kept with "${seen.status}", focus on Install, mode unavailable; axe: ${axe}`
+    },
+  },
+  {
+    name: "InstallPrompt: a Not now whose stored flag throws at once keeps the steps and says it " +
+      "did not work, with nothing uncaught",
+    pageId: "system",
+    run: async (page) => {
+      const errors: string[] = []
+      page.on("pageerror", (error) => errors.push(error.message))
+      const part = page.locator(`${INSTALL_DEMO} [data-e2e="install-ios"]`)
+      await part.locator('[data-e2e="install-throw-next"]').click()
+      const card = part.getByRole("region", { name: "Install this app" })
+      await card.getByRole("button", { name: "Not now" }).press("Enter")
+      await card.locator(".text-danger", { hasText: INSTALL_FAILED }).waitFor()
+      const state = await part.locator('[data-e2e="install-mode"]').textContent()
+      if (state !== "mode: ios, dismissed: false") throw new Error(`state line: ${state}`)
+      if (errors.length > 0) throw new Error(`uncaught: ${errors.join("; ")}`)
+      return `the steps stay with "${INSTALL_FAILED}", ${state}`
+    },
+  },
+  {
+    name: "ConflictChooser: when the page hands over a new list while Keep mine saves, focus " +
+      "still moves to the next conflict once the item leaves",
+    pageId: "system",
+    run: async (page) => {
+      const chooser = page.locator(CONFLICT_INLINE)
+      await page.locator(`${CONFLICT_DEMO} [data-e2e="conflict-slow-next"]`).click()
+      await conflictButton(chooser, "1", "Keep mine").press("Enter")
+      await chooser.locator('[data-conflict-id="1"]').waitFor({ state: "detached" })
+      const focus = await focusedConflictButton(page)
+      if (focus !== "2:Discard mine") throw new Error(`focus after the slow save: ${focus}`)
+      const axe = await axeCleanIn(page, CONFLICT_INLINE)
+      return `focus on ${focus}; axe: ${axe}`
+    },
+  },
+  {
+    name: "ConflictChooser: a failed choice keeps the item and says so under it, and a second " +
+      "item's failure puts new text in the live region, led by that item's label",
+    pageId: "system",
+    run: async (page) => {
+      const errors: string[] = []
+      page.on("pageerror", (error) => errors.push(error.message))
+      const chooser = page.locator(CONFLICT_INLINE)
+      const region = chooser.locator('[role="status"]')
+      const failNext = page.locator(`${CONFLICT_DEMO} [data-e2e="conflict-fail-next"]`)
+      const said: string[] = []
+      for (
+        const [id, button, label] of [
+          ["1", "Keep mine", "Buy milk"],
+          ["2", "Discard mine", "Call the plumber"],
+        ]
+      ) {
+        await failNext.click()
+        await conflictButton(chooser, id, button).press("Enter")
+        const under = chooser.locator(`[data-conflict-id="${id}"] .text-danger`)
+        await under.filter({ hasText: CONFLICT_FAILED }).waitFor()
+        await region.filter({ hasText: `${label}: ${CONFLICT_FAILED}` }).waitFor()
+        said.push(await region.textContent() ?? "")
+        const focus = await focusedConflictButton(page)
+        if (focus !== `${id}:${button}`) throw new Error(`focus after failing ${id}: ${focus}`)
+      }
+      const items = await chooser.locator("[data-conflict-id]").count()
+      const messages = await chooser.locator("[data-conflict-id] .text-danger").count()
+      if (items !== 3 || messages !== 1 || said[0] === said[1]) {
+        throw new Error(`items ${items}, messages ${messages}, said ${JSON.stringify(said)}`)
+      }
+      if (errors.length > 0) throw new Error(`uncaught: ${errors.join("; ")}`)
+      const axe = await axeCleanIn(page, CONFLICT_INLINE)
+      return `the region said ${JSON.stringify(said)}; axe: ${axe}`
     },
   },
   {

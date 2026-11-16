@@ -73,10 +73,10 @@
  * auth code is better placed to make, with the rules of the account store behind it, than a
  * component that has never seen that store.
  *
- * **`Field`'s `required` does not yet put `required` on the control it wraps** (#116), so every
- * field here passes `required` to both: to `Field`, for the visible `*`, and to the `Input`
- * directly, for the native constraint validation a password manager and a browser's own "please
- * fill this in" both rely on.
+ * **Every field passes `required` to both `Field` and its control.** `Field` draws the `*` and
+ * hands `required` to an element child, but a function child, such as the password's, sets it on
+ * its control itself. Passing it to the control too keeps the native constraint validation a
+ * password manager and a browser's own "please fill this in" rely on, however the child is passed.
  *
  * **The show/hide control is a real, named button, not a click zone on an icon.** It never submits
  * — `type="button"` — and it reports whether the password is showing through `aria-pressed` rather

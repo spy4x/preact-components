@@ -220,7 +220,40 @@ function isReference(node: BoundaryLintNode): boolean {
   if (type === "MemberExpression" && field(parent, "property") === node && !computed) return false
   const keyed = ["Property", "TSPropertySignature", "PropertyDefinition", "MethodDefinition"]
   if (keyed.includes(type as string) && field(parent, "key") === node && !computed) return false
-  return true
+  // The name another module exports, as `navigator` in `import { navigator as nav }`.
+  return !(type === "ImportSpecifier" && field(parent, "imported") === node)
+}
+
+/** For each kind of node that declares a name, the field that holds the declared identifier. */
+const DECLARING_FIELD: Record<string, string> = {
+  VariableDeclarator: "id",
+  FunctionDeclaration: "id",
+  FunctionExpression: "id",
+  ClassDeclaration: "id",
+  CatchClause: "param",
+  RestElement: "argument",
+  AssignmentPattern: "left",
+  ImportSpecifier: "local",
+  ImportDefaultSpecifier: "local",
+  ImportNamespaceSpecifier: "local",
+  TSParameterProperty: "parameter",
+}
+
+/**
+ * Whether an identifier declares a name of the module's own: a variable, a function or class, a
+ * parameter, a destructured name, a caught error or an import.
+ */
+function isBinding(node: BoundaryLintNode): boolean {
+  const parent = node.parent
+  const type = String(field(parent, "type"))
+  const params = field(parent, "params")
+  if (Array.isArray(params) && params.includes(node)) return true
+  if (type === "ArrayPattern") return true
+  if (type === "Property") {
+    return field(parent, "value") === node &&
+      field(field(parent, "parent"), "type") === "ObjectPattern"
+  }
+  return type in DECLARING_FIELD && field(parent, DECLARING_FIELD[type]) === node
 }
 
 /** Whether an identifier is a property read off the global object, as in `globalThis.fetch`. */
@@ -255,6 +288,11 @@ export function boundaryPlugin(options: BoundaryOptions = {}): BoundaryLintPlugi
               forbiddenName(source, importedNames(node), options)
             if (reason) context.report({ range: node.range, message: reason })
           }
+          // A name the module declares anywhere, such as a `location` prop, is its own, not the
+          // global: its reads are reported only off the global object. One scope per module keeps
+          // the rule short; a module that shadows a global in one function is left alone in all.
+          const declared = new Set<string>()
+          const reads: { name: string; node: BoundaryLintNode; global: boolean }[] = []
           return {
             ImportDeclaration: checkSource,
             ExportNamedDeclaration: checkSource,
@@ -263,11 +301,18 @@ export function boundaryPlugin(options: BoundaryOptions = {}): BoundaryLintPlugi
             Identifier(node) {
               const name = field(node, "name")
               if (typeof name !== "string" || !globals.has(name)) return
-              if (!isReference(node) && !isGlobalProperty(node)) return
-              context.report({
-                range: node.range,
-                message: `"${name}" reaches outside the screen; take it through props instead.`,
-              })
+              if (isGlobalProperty(node)) reads.push({ name, node, global: true })
+              else if (isBinding(node)) declared.add(name)
+              else if (isReference(node)) reads.push({ name, node, global: false })
+            },
+            "Program:exit"() {
+              for (const { name, node, global } of reads) {
+                if (!global && declared.has(name)) continue
+                context.report({
+                  range: node.range,
+                  message: `"${name}" reaches outside the screen; take it through props instead.`,
+                })
+              }
             },
           }
         },

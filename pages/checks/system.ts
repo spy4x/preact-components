@@ -8335,22 +8335,12 @@ async function conflictChooserChecks(devtools: Devtools): Promise<void> {
     JSON.stringify(first),
   )
 
-  await countUnhandledRejections(devtools)
+  // A failed choice first, so the next check proves a retry clears its message. What the failure
+  // shows and says is the spec in `e2e/system.spec.ts`.
   await click(devtools, `${CONFLICT} [data-e2e="conflict-fail-next"]`)
-  const focusedFailing = await focusConflictButton(devtools, "1", "Keep mine")
+  await focusConflictButton(devtools, "1", "Keep mine")
   await pressKey(devtools, "Enter")
   await poll(async () => Boolean((await readConflicts(devtools)).failures["1"]), 2_000)
-  const failed = await readConflicts(devtools)
-  const uncaught = await unhandledRejections(devtools)
-  check(
-    "a choice whose promise rejects keeps the item, says so under it and in the live region, and leaves nothing uncaught",
-    focusedFailing && failed.items.length === 3 &&
-      failed.failures["1"] === "Couldn't save your choice. Try again." &&
-      failed.announced === "Couldn't save your choice. Try again." &&
-      failed.log.join("|") === "failed: Buy milk" && failed.focus === "1:Keep mine" &&
-      uncaught === 0,
-    JSON.stringify({ failed, uncaught }),
-  )
 
   const focusedMine = await focusConflictButton(devtools, "1", "Keep mine")
   await pressKey(devtools, "Enter")
@@ -8516,21 +8506,7 @@ async function installPromptChecks(devtools: Devtools): Promise<void> {
     JSON.stringify({ before, offered }),
   )
 
-  // An event whose dialog fails to open replaces the good one.
-  await click(devtools, `${INSTALL_CARD} [data-e2e="install-offer-broken"]`)
-  await countUnhandledRejections(devtools)
-  const focusedBroken = await focusInstallButton(devtools, "prompt", "Install")
-  await pressKey(devtools, "Enter")
-  await poll(async () => (await readInstall(devtools, "prompt")).shown === "", 2_000)
-  const broken = await readInstall(devtools, "prompt")
-  const uncaughtInstall = await unhandledRejections(devtools)
-  check(
-    "a dialog that fails to open ends the offer, moves focus to returnFocus, and leaves nothing uncaught",
-    focusedBroken && broken.shown === "" && broken.state.startsWith("mode: unavailable") &&
-      broken.focus === "state" && uncaughtInstall === 0,
-    JSON.stringify({ broken, uncaughtInstall }),
-  )
-
+  // A dialog that fails to open: the spec in `e2e/system.spec.ts`.
   await click(devtools, `${INSTALL_CARD} [data-e2e="install-offer"]`)
   await poll(async () => (await readInstall(devtools, "prompt")).shown === "prompt", 2_000)
   const focused = await focusInstallButton(devtools, "prompt", "Install")
