@@ -1,6 +1,7 @@
 import { expect } from "@std/expect"
 import { describe, it } from "@std/testing/bdd"
 import { FakeTime } from "@std/testing/time"
+import { isUuid } from "@spy4x/platform/universal/uuid"
 import { createToastStore, type ToastId } from "./toast.ts"
 
 /**
@@ -28,6 +29,16 @@ function counterIds() {
 }
 
 describe("createToastStore add", () => {
+  it("gives each toast without an id a UUID version 7 of its own", () => {
+    const store = createToastStore()
+    const first = store.add({ body: "saved" })
+    const second = store.add({ body: "saved again" })
+    expect(isUuid(first, 7)).toBe(true)
+    expect(isUuid(second, 7)).toBe(true)
+    expect(first).not.toBe(second)
+    expect(store.list.value.length).toBe(2)
+  })
+
   it("fills in the defaults", () => {
     const store = createToastStore({ nextId: counterIds() })
     const id = store.add({ body: "saved" })

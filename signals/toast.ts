@@ -1,5 +1,6 @@
 import { type ReadonlySignal, signal } from "@preact/signals"
 import type { Translator } from "@spy4x/platform/universal/i18n"
+import { uuidV7 } from "@spy4x/platform/universal/uuid"
 import { catalogText } from "./catalog-text.ts"
 import type { ToastAction, ToastId, ToastMessage, ToastVariant } from "./types.ts"
 
@@ -92,7 +93,7 @@ export interface ToastStore {
 
 /** Injected collaborators and labels, all optional. */
 export interface ToastOptions {
-  /** Id source. Defaults to a random base-36 string. */
+  /** Id source. Defaults to a UUID version 7, so no two toasts share an id by chance. */
   nextId?: () => string
   /**
    * The title a toast gets when its message names none, per kind. Each kind left out keeps its
@@ -122,10 +123,6 @@ const defaultTitles: Record<ToastVariant, string> = {
   warning: "Warning",
 }
 
-function defaultNextId(): string {
-  return Math.random().toString(36).substring(7)
-}
-
 /**
  * Create a toast store.
  *
@@ -138,7 +135,7 @@ function defaultNextId(): string {
  * ```
  */
 export function createToastStore(options: ToastOptions = {}): ToastStore {
-  const nextId = options.nextId ?? defaultNextId
+  const nextId = options.nextId ?? uuidV7
   const translator = options.translator
   const titleFor = (kind: ToastVariant): string =>
     options.titles?.[kind] ??
