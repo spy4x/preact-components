@@ -1045,7 +1045,9 @@ the app's own code, or that reads `fetch`, `window`, `document` or another brows
   `@spy4x/preact-signals`, `wouter-preact`); a subpath, a version or a `jsr:`/`npm:` prefix of one
   is forbidden too. `forbiddenGlobals` defaults to `DEFAULT_FORBIDDEN_GLOBALS` (`fetch`,
   `XMLHttpRequest`, `WebSocket`, `EventSource`, `window`, `document`, `location`, `history`,
-  `navigator`, `localStorage`, `sessionStorage`). `appAliases` (import prefixes such as `"@api/"`)
+  `navigator`, `localStorage`, `sessionStorage`). A name the module declares itself, such as a
+  `location` prop, parameter or variable, is not the global: only its reads off `globalThis` or
+  `self` are reported then, anywhere in that module. `appAliases` (import prefixes such as `"@api/"`)
   and `appDirectories` (directory names such as `"apps"` that a relative import must not resolve
   into) default to none, because only the app knows them.
 - `forbiddenNames` lists exports an app must not import by name, each with the package it comes

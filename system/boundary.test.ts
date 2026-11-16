@@ -102,6 +102,30 @@ describe("checkModule", () => {
     expect(checkModule(source)).toEqual([])
   })
 
+  it("leaves a location, history or navigator the module declares itself alone", () => {
+    const source = `
+      import { navigator as nav } from "./ports.ts"
+      export function Screen({ location }: { location: URL }, [history] = [], ...navigator) {
+        return <p>{location.pathname}{history.length}{navigator}</p>
+      }
+      const Other = ({ api: history, document = 1 }) => history + document
+      try { Other() } catch (window) { window.message }
+    `
+    expect(messages(source)).toEqual([])
+  })
+
+  it("reports a declared name read off the global object, and an undeclared one bare", () => {
+    const source = `
+      export function Screen(location: URL) {
+        return <p>{globalThis.location.href}{location.href}{history.length}</p>
+      }
+    `
+    expect(messages(source)).toEqual([
+      `"location" reaches outside the screen; take it through props instead.`,
+      `"history" reaches outside the screen; take it through props instead.`,
+    ])
+  })
+
   it("checks the globals and packages the caller passes instead of the defaults", () => {
     const source = `
       import { signal } from "@preact/signals"
