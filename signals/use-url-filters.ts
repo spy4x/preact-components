@@ -62,8 +62,13 @@ export interface FilterField<T = string | number | null> {
   urlParam: string
   /** Value that means "no filter"; cleared from the URL rather than written to it. */
   initialValue: T
-  /** Custom URL-to-value coercion. Defaults to `parseInt` for numbers, identity otherwise. */
-  parser?: (value: string | null) => T
+  /**
+   * Custom URL-to-value coercion, called only with a parameter the address has; an absent one means
+   * `initialValue` without asking it. Without a parser, a field whose `initialValue` is a number
+   * parses with `parseInt`, and every other field gets the raw string, so a `number | null` field
+   * starting at `null` needs one to read `?zone=5` as `5`.
+   */
+  parser?: (value: string) => T
 }
 
 /** Result of {@link useUrlFilters}. */
@@ -392,6 +397,18 @@ export function useUrlFilters<T extends Record<string, FilterField>>(fields: T):
   const latestSearch = useRef(search)
   latestSearch.current = search
   const agreed = useRef(search)
+  // `seen` is the address the hook last read or wrote. A render that reports a new address other
+  // than that one means someone else moved it, and `unread` stays set until the read below has
+  // loaded it: a write before then would answer it with filters that do not know about it.
+  // `rendered` is the search the last render reported, because the read runs only when that moves;
+  // a flag raised for a render that schedules no read would hold back every write after it.
+  const seen = useRef(search)
+  const rendered = useRef(search)
+  const unread = useRef(false)
+  if (search !== rendered.current) {
+    rendered.current = search
+    unread.current = search !== seen.current
+  }
 
   // What every filter held when the filters and the address last agreed: at the first render, after
   // a read (which sets the entries it loads) and after the write effect has run. Taken with `peek`
@@ -414,6 +431,8 @@ export function useUrlFilters<T extends Record<string, FilterField>>(fields: T):
     // render that reports the address it wrote runs this effect again.
     if (search !== latestSearch.current) return
     isInitializing.value = true
+    seen.current = search
+    unread.current = false
     agreed.current = readAddress(fields, search, held.current)
     isInitializing.value = false
   }, [search])
@@ -435,6 +454,12 @@ export function useUrlFilters<T extends Record<string, FilterField>>(fields: T):
   useSignalEffect(() => {
     const pending = Object.values(fields).map((field) => filterWrite(field, field.signal.value))
     if (isInitializing.value) return
+    // Someone else moved the address and the read has not loaded it yet — a link clicked in the
+    // same task as a key press does this. Writing now would put every filter's old value over the
+    // link's, so the write waits: the read keeps the filter the reader changed (it no longer holds
+    // what `held` says), loads the rest, and flips `isInitializing`, which runs this again.
+    // `hold()` is skipped for the same reason; it would make the read forget the change.
+    if (unread.current) return
 
     const unchanged = filterSearch(agreed.current, pending) === agreed.current
     hold()
@@ -452,6 +477,7 @@ export function useUrlFilters<T extends Record<string, FilterField>>(fields: T):
     const next = filterSearch(latestSearch.current, pending)
     latestSearch.current = next
     agreed.current = next
+    seen.current = next
     typed.current = into === null ? undefined : { into, search: next, at: now }
 
     // Read the fragment here, at the moment of the write, rather than once when the hook mounted.

@@ -88,9 +88,9 @@ export interface ToastMessage {
    */
   duration?: number
   /**
-   * @deprecated Renamed to `duration`, which is what `Toastr` reads. Still accepted for one
-   * release so a caller written against the old name keeps working; when both are given,
-   * `duration` wins.
+   * @deprecated Renamed to `duration`, which is what `Toastr` reads. Still accepted, so a caller
+   * written against the old name keeps working, until the next major release removes it; when
+   * both are given, `duration` wins.
    */
   timeout?: number
   /**
