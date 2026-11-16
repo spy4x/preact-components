@@ -202,6 +202,45 @@ function heldSteps(page: Page): Promise<number> {
   return page.evaluate(() => (globalThis as Probe).e2eSteps?.size ?? -1)
 }
 
+/**
+ * The live `Timeline` in the `RailShell` card's demo, at `width`, with its frame at the top and
+ * "1 new event" showing after one press of "Add an event". The frame is the scroll container the
+ * timeline's jump button and the phone tab bar both stick to.
+ */
+async function railShellJump(page: Page, width: number) {
+  await page.setViewportSize({ width, height: 844 })
+  // The guide scrolls smoothly; an instant scroll lets the button be measured where it lands.
+  await page.evaluate(() => document.documentElement.style.scrollBehavior = "auto")
+  const frame = page.locator(`#demo-RailShell [data-e2e="rail-shell-demo"]`)
+  await frame.evaluate((element) => {
+    element.scrollTop = 0
+    element.scrollIntoView({ block: "start", behavior: "instant" })
+  })
+  await frame.locator(`[data-e2e="rail-shell-demo-add-event"]`).click()
+  const jump = frame.locator(`[data-e2e="rail-shell-demo-timeline"] [data-timeline-jump]`)
+  await jump.filter({ hasText: "1 new event" }).waitFor()
+  return jump.evaluate((button) => {
+    const box = button.getBoundingClientRect()
+    const hit = document.elementFromPoint(box.x + box.width / 2, box.y + box.height / 2)
+    return {
+      /** Whether a tap at the button's centre lands on the button or inside it. */
+      onButton: hit !== null && button.contains(hit),
+      /** What the tap lands on instead. */
+      hit: hit?.closest("[data-e2e]")?.getAttribute("data-e2e") ?? hit?.tagName ?? "nothing",
+      /** The sticky offset from the frame's bottom edge. */
+      bottom: button.parentElement ? getComputedStyle(button.parentElement).bottom : "",
+      centre: Math.round(box.y + box.height / 2),
+    }
+  })
+}
+
+/** Throws unless a tap at the jump button's centre lands on it. */
+function tappable(jump: Awaited<ReturnType<typeof railShellJump>>): void {
+  if (!jump.onButton) {
+    throw new Error(`a tap at the new events button's centre (y ${jump.centre}) hits ${jump.hit}`)
+  }
+}
+
 /** The live `Timeline` with the "N new events" button showing passes axe in one palette. */
 function liveAxe(colorScheme: "light" | "dark"): Spec {
   return {
@@ -480,6 +519,46 @@ export const specs: readonly Spec[] = [
       await tl.live.waitFor({ state: "detached" })
       same("step timers after leaving", await heldSteps(page), 0)
       return "0 before Start; 1, 0 after Stop, 1 again, 0 after leaving"
+    },
+  },
+  {
+    name: "Timeline live in RailShell below md: a tap at the new events button's centre lands " +
+      "on the button, not on the phone tab bar it sticks above",
+    pageId: "system",
+    run: async (page) => {
+      const jump = await railShellJump(page, 390)
+      tappable(jump)
+      // 1 rem, plus the bar's 64 px row, 24 px fade band, 8 px focus margin and 1 px rule.
+      same("the sticky offset", jump.bottom, "113px")
+      return `the button's centre at y ${jump.centre} hits the button`
+    },
+  },
+  {
+    name: "Timeline live in RailShell from md up, with no tab bar: the new events button sticks " +
+      "1 rem above the bottom, as outside RailShell",
+    pageId: "system",
+    run: async (page) => {
+      const jump = await railShellJump(page, 1440)
+      tappable(jump)
+      same("the sticky offset", jump.bottom, "16px")
+      return `the button's centre at y ${jump.centre} hits the button`
+    },
+  },
+  {
+    name: "Timeline live outside RailShell on a phone: the new events button sticks 1 rem above " +
+      "the bottom of its box",
+    pageId: "ui",
+    run: async (page) => {
+      await page.setViewportSize({ width: 390, height: 844 })
+      const tl = await livePage(page)
+      await tl.scrollBox("top")
+      await tl.step()
+      await tl.jump.filter({ hasText: "1 new event" }).waitFor()
+      const bottom = await tl.jump.evaluate((button) =>
+        button.parentElement ? getComputedStyle(button.parentElement).bottom : ""
+      )
+      same("the sticky offset", bottom, "16px")
+      return "1 rem"
     },
   },
   liveAxe("light"),
