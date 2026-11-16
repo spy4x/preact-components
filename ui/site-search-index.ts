@@ -112,3 +112,20 @@ export function orderGroups<T extends { group?: string }>(
     .sort((a, b) => a.rank - b.rank || a.index - b.index)
     .map((ranked) => ranked.option)
 }
+
+/**
+ * What a query lists: its `rows`, or `fallback` when a typed query found nothing, so the reader
+ * still has a way forward. An empty query keeps its rows, even none.
+ *
+ * @param rows The results and commands the query found.
+ * @param fallback The commands listed instead of nothing.
+ * @param query What the reader typed, trimmed.
+ */
+export function withFallback<T>(
+  rows: readonly T[],
+  fallback: readonly T[],
+  query: string,
+): { rows: readonly T[]; fellBack: boolean } {
+  const fellBack = query !== "" && rows.length === 0 && fallback.length > 0
+  return { rows: fellBack ? fallback : rows, fellBack }
+}

@@ -10,6 +10,7 @@ import {
   orderGroups,
   reportedQuery,
   searchSite,
+  withFallback,
 } from "./site-search-index.ts"
 import { parseSiteIndex } from "./site-search-check.ts"
 
@@ -130,6 +131,27 @@ describe("orderGroups", () => {
       "5",
       "2",
     ])
+  })
+})
+
+describe("withFallback", () => {
+  const fallback = [{ id: "docs" }]
+
+  it("lists the fallback when a typed query found nothing", () => {
+    expect(withFallback([], fallback, "qqxqq")).toEqual({ rows: fallback, fellBack: true })
+  })
+
+  it("keeps the rows a typed query found, and lists no fallback beside them", () => {
+    const rows = [{ id: "hello" }]
+    expect(withFallback(rows, fallback, "hello")).toEqual({ rows, fellBack: false })
+  })
+
+  it("lists nothing, not the fallback, on the empty query", () => {
+    expect(withFallback([], fallback, "")).toEqual({ rows: [], fellBack: false })
+  })
+
+  it("says it did not fall back when there is no fallback to list", () => {
+    expect(withFallback([], [], "qqxqq")).toEqual({ rows: [], fellBack: false })
   })
 })
 

@@ -16,6 +16,7 @@ import {
   reportedQuery,
   searchSite,
   type SiteIndex,
+  withFallback,
 } from "./site-search-index.ts"
 
 /** How many results a query lists, besides the commands it matches. */
@@ -52,7 +53,7 @@ export const defaultSiteSearchLabels: Readonly<Pick<SiteSearchLabels, "empty" | 
 export interface SiteSearchEvent {
   /** The last query, trimmed and cut to 64 characters; `""` when nothing was typed. */
   query: string
-  /** How many rows the last query listed, results and commands. */
+  /** How many rows the last query listed, results and commands; `0` when it listed `fallback`. */
   results: number
   /** The chosen row's place in the list, from 1; absent when the reader chose nothing. */
   chosenPosition?: number
@@ -73,6 +74,11 @@ export interface SiteSearchProps {
   fetch: (src: string) => Promise<Response>
   /** Commands listed with the results, filtered by the query, all of them on an empty query. */
   commands?: readonly SiteSearchCommand[]
+  /**
+   * Commands listed instead of the empty message when a typed query finds no result and matches
+   * no command: a way forward, such as "Read the docs". Unset, the palette says only `empty`.
+   */
+  fallback?: readonly SiteSearchCommand[]
   /** Group names listed first, in this order; other groups follow as they come. */
   groupOrder?: readonly string[]
   /** Overrides for the words; see {@link defaultSiteSearchLabels}. */
@@ -110,6 +116,8 @@ interface Session {
   query: string
   rows: readonly SiteSearchOption[]
   correction?: "layout" | "typo"
+  /** Whether `rows` are the `fallback`, listed because the query found nothing. */
+  fellBack?: boolean
   chosen?: SiteSearchOption
   reported: boolean
 }
@@ -171,14 +179,15 @@ export function SiteSearch(props: SiteSearchProps): JSX.Element {
       : groupOptions(now.rows).flatMap((group) => group.options).indexOf(now.chosen) + 1
     latest.current.onSearched?.({
       query: reportedQuery(now.query),
-      results: now.rows.length,
+      results: now.fellBack ? 0 : now.rows.length,
       chosenPosition: position > 0 ? position : undefined,
       chosenKind: now.chosen === undefined ? undefined : now.chosen.run ? "command" : "result",
       correction: now.correction,
     })
   }
 
-  const commandRows = commands.map((command) => {
+  /** `command` as a row that tells `onSearched` it was chosen before it runs. */
+  const commandRow = (command: SiteSearchCommand) => {
     const row: SiteSearchOption = {
       ...command,
       run: () => {
@@ -188,7 +197,9 @@ export function SiteSearch(props: SiteSearchProps): JSX.Element {
       },
     }
     return row
-  })
+  }
+  const commandRows = commands.map(commandRow)
+  const fallbackRows = (props.fallback ?? []).map(commandRow)
 
   const search = async (typed: string, signal: AbortSignal): Promise<SiteSearchOption[]> => {
     const text = typed.trim()
@@ -218,8 +229,10 @@ export function SiteSearch(props: SiteSearchProps): JSX.Element {
         ...rows,
       ]
     }
-    rows = orderGroups(rows, latest.current.groupOrder ?? groupOrder)
-    if (!signal.aborted) Object.assign(session.current, { query: text, rows, correction })
+    const listed = withFallback(rows, fallbackRows, text)
+    const fellBack = listed.fellBack
+    rows = orderGroups(listed.rows, latest.current.groupOrder ?? groupOrder)
+    if (!signal.aborted) Object.assign(session.current, { query: text, rows, correction, fellBack })
     return rows
   }
 
