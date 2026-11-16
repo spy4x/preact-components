@@ -485,7 +485,39 @@ export const specs: readonly Spec[] = [
   drawerNavigationFocusSpec(),
   cardRowHeightsSpec(),
   headerNameSpec(),
+  lazyRetrySpec(),
 ]
+
+/**
+ * A lazily loaded card whose module failed to load says so plainly, keeps the error's own text off
+ * the page, and "Try again" reloads the page, which fetches it again (#700). The map page's Map card
+ * is the one lazily loaded card: its package arrives as the bundle's split `+index-*.js` chunk,
+ * refused here once.
+ */
+function lazyRetrySpec(): Spec {
+  return {
+    name:
+      "Guide lazy slot: a card whose module failed to load says so without the raw error, and Try again loads it",
+    pageId: "map",
+    run: async (page) => {
+      const chunk = /\/assets\/\+index-[A-Z0-9]+\.js$/
+      await page.route(chunk, (route) => route.abort())
+      await page.reload()
+      await page.locator(`html[data-hydrated="true"]`).waitFor()
+      const failed = page.locator(`#demo-LeafletMap [data-e2e="map-failed"]`)
+      await failed.waitFor()
+      // The browser's own words for the refused chunk name the fetch or the import.
+      const text = await failed.innerText()
+      if (!text.includes("the map package did not load.") || /fetch|import/i.test(text)) {
+        throw new Error(`the failure line reads "${text}"`)
+      }
+      await page.unroute(chunk)
+      await failed.locator(`[data-e2e="map-retry"]`).click()
+      await page.locator("#demo-LeafletMap .leaflet-container").waitFor()
+      await failed.waitFor({ state: "detached" })
+    },
+  }
+}
 
 /**
  * The header shows the package's whole name at every width the issue measured (#990): no ellipsis,

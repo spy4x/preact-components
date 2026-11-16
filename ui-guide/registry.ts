@@ -72,8 +72,7 @@ export interface DemoProp {
 export interface Demo {
   /**
    * One plain sentence on what the component is for, as text. Inline Markdown code spans
-   * (`` `name` ``) render as code, so no literal backtick reaches the page. It is also what the
-   * search reads when {@link Demo.description} is JSX.
+   * (`` `name` ``) render as code, so no literal backtick reaches the page.
    */
   summary: string
   /**
