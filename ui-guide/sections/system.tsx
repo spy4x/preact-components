@@ -1625,6 +1625,7 @@ function AccountMenuDemo() {
         <AccountMenu
           user={railShellUser}
           headerHref="#account-you"
+          headerKeyshortcuts={["p"]}
           items={[
             { label: "Profile", href: "#account-profile" },
             {
@@ -2044,7 +2045,7 @@ function AppShellDemo() {
           items={items}
           currentPath={current.value}
           navigate={(href) => current.value = href}
-          notifications={{ href: "#app-notifications", unread: admin ? 0 : 3 }}
+          notifications={{ href: "#app-notifications", unread: admin ? 0 : 3, keyshortcuts: ["n"] }}
           account={{
             user: railShellUser,
             tag: admin ? "Admin" : undefined,
@@ -2885,12 +2886,13 @@ useEffect(() => {
         name: "account",
         type: "AppShellAccount",
         description:
-          'The signed-in person, the menu\'s items, the `language` (`AccountMenuLanguage`: a Language row in the menu and the phone sheet, opening `LanguageDialog`), the theme, **Sign out**, and an optional `tag` such as `"Admin"`, drawn as a neutral badge.',
+          "The signed-in person, the header row's `headerHref` and `headerKeyshortcuts` (announced, the first shown as `Kbd`), the menu's items, the `language` (`AccountMenuLanguage`: a Language row in the menu and the phone sheet, opening `LanguageDialog`), the theme, **Sign out**, and an optional `tag` such as `\"Admin\"`, drawn as a neutral badge.",
       },
       {
         name: "notifications",
         type: "AppShellNotifications",
-        description: "The bell's `href` and `unread` count, spoken in its name.",
+        description:
+          "The bell's `href` and `unread` count, spoken in its name. `keyshortcuts` names the keys the app binds to it, as an item's do: announced, and the first in its tooltip.",
       },
       {
         name: "connection",
@@ -2927,9 +2929,11 @@ useEffect(() => {
   ]}
   currentPath={location.pathname}
   navigate={(href) => router.go(href)}
-  notifications={{ href: "/notifications", unread }}
+  notifications={{ href: "/notifications", unread, keyshortcuts: ["n"] }}
   account={{
     user: { name: session.name, email: session.email },
+    headerHref: "/profile",
+    headerKeyshortcuts: ["p"],
     tag: isAdminApp ? "Admin" : undefined,
     items: [{ label: "Profile", href: "/profile" }],
     language: { languages: ["en", "de", "ar"], current: language, onSelect: switchLanguage },
@@ -3091,9 +3095,17 @@ useEffect(() => {
         type: `"up" | "down" | "auto"`,
         description: "Which way the menu opens; `up` by default, for the foot of a sidebar.",
       },
+      {
+        name: "headerHref / headerKeyshortcuts",
+        type: "string / string[]",
+        description:
+          "Makes the header row (avatar, name, e-mail) the first item, a link such as to the profile. `headerKeyshortcuts` announces the keys the app binds to it and shows the first at its right.",
+      },
     ],
     snippet: `<AccountMenu
   user={{ name: "Uma Lee", email: "uma@example.com" }}
+  headerHref="/profile"
+  headerKeyshortcuts={["p"]}
   items={[
     { label: "Profile", href: "/profile" },
     // The app binds "?" itself; the item announces it and shows it
