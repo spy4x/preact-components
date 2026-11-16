@@ -31,7 +31,7 @@
  *
  * **This is the repository's browser test path, and CI runs it.** Every unit test in the workspace
  * renders to an HTML string, so no effect, ref, key press or focus change is executed by any of
- * them; anything that lives behind one is proven here or nowhere. `.woodpecker.yml`
+ * them; anything that lives behind one is proven here or nowhere. `.woodpecker/woodpecker.yml`
  * runs `deno task check`, the build and this script on every pull request into `main` and on every
  * push to `main`, and the Pages deploy waits for that push build to pass. A missing or unusable
  * browser is a failed check, not a skip — `--static` is the one explicit way to leave the browser
@@ -233,7 +233,7 @@ const EXCEPT = blockNamesOf("--except=")
  *
  * It exists because the `e2e` part alone ran past the phase ceiling when several pipelines shared
  * the CI agent (#975). Each shard is a run of its own with its own browser and its own limits, so
- * the ceiling still stops a stuck shard. `pages/e2e/shard.test.ts` holds `.woodpecker.yml` to
+ * the ceiling still stops a stuck shard. `pages/e2e/shard.test.ts` holds `.woodpecker/woodpecker.yml` to
  * running every shard exactly once. A bad value, a shard passed to a run without the `e2e` block,
  * and a shard with no spec in it are each a failed check, and the run's last line says it was a
  * shard. A shard records only its specs' checks, so the shards' spec checks add up to the

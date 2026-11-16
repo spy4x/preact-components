@@ -6,11 +6,27 @@
 # still runs on every PR into `main` — from a fork or a feature branch — and on
 # a push to `main` itself. A `v*` tag gets its own entry, because a tag build has
 # no branch to match `main` against: it runs the same checks and then publishes to
-# JSR. Releases and PR-metadata edits are excluded: `pull_request_metadata` fires
-# on a title or label edit, which cannot change a check result.
+# JSR. Releases are excluded.
+#
+# A pull request whose title starts with `[WIP]` runs `wip.yml` (only `check`) instead of this
+# workflow, so a draft's pushes cost one quick step. Branch protection requires this workflow's
+# context, `ci/woodpecker/pr/woodpecker`, so a `[WIP]` head cannot merge. Removing `[WIP]` from
+# the title is a `pull_request_metadata` event with reason `edited` (Woodpecker sets
+# `CI_COMMIT_MESSAGE` to the title on pull request events), and it starts this workflow without a
+# new push. Other metadata events (labels, review requests) run nothing. Every step condition that
+# names `pull_request` also names `pull_request_metadata`, or a title-edit run would skip it and
+# still report green. The `[WIP]` conditions here are the exact negation of `wip.yml`'s, which
+# `infra/scripts/woodpecker-wip.test.ts` checks.
 when:
-  - event: [push, pull_request]
+  - event: push
     branch: main
+  - event: pull_request
+    branch: main
+    evaluate: 'not (CI_COMMIT_MESSAGE startsWith "[WIP]")'
+  # `CI_PIPELINE_EVENT_REASON` joins the reasons with commas; GitHub sends one per event.
+  - event: pull_request_metadata
+    branch: main
+    evaluate: 'CI_PIPELINE_EVENT_REASON contains "edited" && not (CI_COMMIT_MESSAGE startsWith "[WIP]")'
   - event: tag
     ref: refs/tags/v*
 
@@ -39,7 +55,7 @@ steps:
   pages-build:
     image: mcr.microsoft.com/playwright:v1.64.0-noble@sha256:06a9939e57531807f8d5fd76ce44b53165ffb7d7501d87ab10e285c20b1e971f
     when:
-      event: [push, pull_request]
+      event: [push, pull_request, pull_request_metadata]
     environment:
       DENO_DIR: /woodpecker/deno-dir
     commands:
@@ -66,7 +82,7 @@ steps:
   verify-ui:
     image: mcr.microsoft.com/playwright:v1.64.0-noble@sha256:06a9939e57531807f8d5fd76ce44b53165ffb7d7501d87ab10e285c20b1e971f
     when:
-      event: [push, pull_request]
+      event: [push, pull_request, pull_request_metadata]
     environment:
       DENO_DIR: /woodpecker/deno-dir
     commands:
@@ -77,7 +93,7 @@ steps:
   verify-e2e-1:
     image: mcr.microsoft.com/playwright:v1.64.0-noble@sha256:06a9939e57531807f8d5fd76ce44b53165ffb7d7501d87ab10e285c20b1e971f
     when:
-      event: [push, pull_request]
+      event: [push, pull_request, pull_request_metadata]
     environment:
       DENO_DIR: /woodpecker/deno-dir
     commands:
@@ -88,7 +104,7 @@ steps:
   verify-e2e-2:
     image: mcr.microsoft.com/playwright:v1.64.0-noble@sha256:06a9939e57531807f8d5fd76ce44b53165ffb7d7501d87ab10e285c20b1e971f
     when:
-      event: [push, pull_request]
+      event: [push, pull_request, pull_request_metadata]
     environment:
       DENO_DIR: /woodpecker/deno-dir
     commands:
@@ -99,7 +115,7 @@ steps:
   verify-e2e-3:
     image: mcr.microsoft.com/playwright:v1.64.0-noble@sha256:06a9939e57531807f8d5fd76ce44b53165ffb7d7501d87ab10e285c20b1e971f
     when:
-      event: [push, pull_request]
+      event: [push, pull_request, pull_request_metadata]
     environment:
       DENO_DIR: /woodpecker/deno-dir
     commands:
@@ -110,7 +126,7 @@ steps:
   verify-e2e-4:
     image: mcr.microsoft.com/playwright:v1.64.0-noble@sha256:06a9939e57531807f8d5fd76ce44b53165ffb7d7501d87ab10e285c20b1e971f
     when:
-      event: [push, pull_request]
+      event: [push, pull_request, pull_request_metadata]
     environment:
       DENO_DIR: /woodpecker/deno-dir
     commands:
@@ -121,7 +137,7 @@ steps:
   verify-rest:
     image: mcr.microsoft.com/playwright:v1.64.0-noble@sha256:06a9939e57531807f8d5fd76ce44b53165ffb7d7501d87ab10e285c20b1e971f
     when:
-      event: [push, pull_request]
+      event: [push, pull_request, pull_request_metadata]
     environment:
       DENO_DIR: /woodpecker/deno-dir
     commands:
@@ -131,8 +147,8 @@ steps:
 
   # Guards against an accidental release: a `v*` tag publishes to JSR with the global token, so
   # this step fails the build unless the tagged commit is already on `main` (reviewed, green CI).
-  # It is not access control: Woodpecker runs the tagged commit's own `.woodpecker.yml`, so a tag
-  # on a branch that predates this step, or one that removes it, still publishes. A tag build's
+  # It is not access control: Woodpecker runs the tagged commit's own `.woodpecker/` workflows, so
+  # a tag on a branch that predates this step, or one that removes it, still publishes. A tag build's
   # clone is full but has no `main` ref, which is why the step fetches it.
   on-main:
     image: alpine/git:2.47.2
