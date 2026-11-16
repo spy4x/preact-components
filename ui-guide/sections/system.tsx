@@ -1350,6 +1350,29 @@ function SiteHeaderLanguageDemo() {
 }
 
 /**
+ * `SiteHeader` for a single-page tool: `brand` and one action, no `links`. The bar draws no
+ * navigation and no menu button at any width.
+ */
+function SiteHeaderBareDemo() {
+  return (
+    <div data-e2e="site-header-bare-demo">
+      <SiteHeader
+        brand={
+          <span data-e2e="site-header-bare-brand" class="text-lg font-semibold text-foreground">
+            Unit converter
+          </span>
+        }
+        actions={
+          <Button size="sm" variant="secondary" data-e2e="site-header-bare-cta">
+            Source code
+          </Button>
+        }
+      />
+    </div>
+  )
+}
+
+/**
  * `SiteFooter` with every slot filled: a brand, three link groups (one link external), a newsletter
  * blurb in `aside` and a copyright line in `bottom`. Below `lg` the groups wrap two to a row and the
  * blurb moves under them; resize the browser window to see it.
@@ -3078,6 +3101,7 @@ useEffect(() => {
       <Stack gap="md">
         <SiteHeaderDemo />
         <SiteHeaderLanguageDemo />
+        <SiteHeaderBareDemo />
       </Stack>
     ),
   },

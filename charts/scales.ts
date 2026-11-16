@@ -15,6 +15,7 @@ export { niceStep, ticks }
 /** Domain returned when the caller passes values that cannot be plotted. */
 const FALLBACK_DOMAIN: readonly [number, number] = [0, 1]
 
+/** What `niceScale` returns: a rounded domain, its tick step and the ticks across it. */
 export interface NiceScale {
   /** Lower bound, rounded outward to a multiple of {@link NiceScale.step}. */
   min: number

@@ -68,8 +68,9 @@ Decisions already taken with the test in `AGENTS.md` ("What belongs in this libr
 ## Relationship to other repos
 
 - `spy4x/ts-libs` — framework-agnostic TypeScript, published on JSR as `@spy4x/*`. No workspace
-  coupling: packages import `@spy4x/platform`, `@spy4x/time` and `@spy4x/validation` from JSR at
-  one exact version, pinned in the root `deno.jsonc`.
+  coupling: packages import `@spy4x/platform`, `@spy4x/time`, `@spy4x/validation` and
+  `@spy4x/search` from JSR through one caret range each in the root `deno.jsonc`, so an app on a
+  newer compatible ts-libs needs no new release of these packages.
 - `spy4x/seed` — the SaaS app template, imports both.
 
 ## Naming policy
