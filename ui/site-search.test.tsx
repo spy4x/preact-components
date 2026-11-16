@@ -8,10 +8,10 @@ import {
   isSiteHref,
   MAX_REPORTED_QUERY,
   orderGroups,
-  parseSiteIndex,
   reportedQuery,
   searchSite,
 } from "./site-search-index.ts"
+import { parseSiteIndex } from "./site-search-check.ts"
 
 const BASE = "https://site.example/blog/post"
 /** A fetch port the string renders never call. */
