@@ -375,6 +375,23 @@ export function ariaKeyShortcuts(keys: string, apple: boolean): string {
   return parts.join("+")
 }
 
+/**
+ * The `aria-keyshortcuts` value of a control the app reaches with several keys: each single press
+ * through {@link ariaKeyShortcuts}, separated by spaces, or `undefined` when none is left. A
+ * sequence such as `"g i"` is left out, since the attribute has no syntax for one and reads a
+ * space as "either key"; a hint can still show it.
+ *
+ * @param keys Combinations or sequences, as {@link HotkeyBinding.keys} takes each.
+ * @param apple Whether `mod` means Command.
+ * @throws {Error} When a combination cannot be read.
+ */
+export function ariaKeyShortcutList(keys: readonly string[], apple: boolean): string | undefined {
+  const single = keys.filter((each) => !isSequence(each))
+  return single.length === 0
+    ? undefined
+    : single.map((each) => ariaKeyShortcuts(each, apple)).join(" ")
+}
+
 /** The open modal `<dialog>`, or `null`; `null` too in a browser that cannot match `:modal`. */
 function openModal(): Element | null {
   try {

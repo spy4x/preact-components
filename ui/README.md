@@ -2128,8 +2128,9 @@ Write the `+` key in a sequence as `plus` (`"g plus"`): `"g +"` reads as an unfi
 The server and the first browser render draw Ctrl, and an effect switches to ⌘ on an Apple
 platform, unless `apple` says which. A glyph such as ⌘ is hidden from screen readers and followed
 by its name in visually hidden text. `keyFaces(keys, apple, labels)` returns the text and the name
-of each key of one combination `Kbd` draws, and `KBD_LABELS` holds the English words it uses,
-which `labels` overrides one by one.
+of each key of one combination `Kbd` draws, `sequenceSteps(keys)` splits a sequence into the
+presses `Kbd` draws, and `KBD_LABELS` holds the English words it uses, which `labels` overrides one
+by one.
 
 `ShortcutsDialog` lists shortcuts under group headings, built on `Modal`.
 A row without `keys` lists only what it does, such as a command a command palette runs, and a
@@ -2179,10 +2180,13 @@ ambient global state the component rules forbid.
 
 `ariaKeyShortcuts(keys, apple)` writes a combination in the syntax `aria-keyshortcuts` takes:
 `"mod+k"` becomes `"Control+K"`, or `"Meta+K"` on an Apple platform, `"shift+space"` becomes
-`"Shift+Space"`. `useHotkeyClick(keys, options)` binds a key to any element of your own: it returns
-the ref to put on it. `clickByHotkey(element, event)` is the rule both use on a key press: it clicks
-the element and cancels the press only when the element is connected, enabled, not inert, rendered,
-and inside the dialog the press landed in (or inside the open modal dialog, when one is open).
+`"Shift+Space"`. `ariaKeyShortcutList(keys, apple)` writes a list of them, separated by spaces, for
+a control several keys reach; it leaves out a sequence such as `"g i"`, since the attribute has no
+syntax for one, and returns `undefined` when nothing is left. `useHotkeyClick(keys, options)` binds
+a key to any element of your own: it returns the ref to put on it. `clickByHotkey(element, event)`
+is the rule both use on a key press: it clicks the element and cancels the press only when the
+element is connected, enabled, not inert, rendered, and inside the dialog the press landed in (or
+inside the open modal dialog, when one is open).
 `clickByHotkey(element, event, shown)` asks whether `shown` is rendered instead, for an element
 hidden until it is wanted, such as a closed menu's item, whose trigger is `shown`;
 `hotkeyClickBinding(keys, element, shown)` takes it as a function too.

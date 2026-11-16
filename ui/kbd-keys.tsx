@@ -155,6 +155,9 @@ export const KEY_CLASS =
 /** The classes of the outer `<kbd>` around a combination of several keys. */
 export const GROUP_CLASS = "inline-flex items-center gap-1 text-xs text-muted"
 
+/** The classes of the outer `<kbd>` around a sequence of presses. */
+export const SEQUENCE_CLASS = "text-xs text-muted"
+
 /** Props of {@link KbdKeys}: the faces, and the finished class of each element. */
 export interface KbdKeysProps {
   faces: readonly KeyFace[]
