@@ -184,11 +184,14 @@ export function PeriodStepper({
           </Button>
         </Tooltip>
       </div>
-      {/* Below `sm` the name always takes its own line, so a long month's name cannot wrap alone. */}
+      {
+        /* Below `sm` the name always takes its own line, so a long month's name cannot wrap alone,
+        and starts at the line's start: `pc-num` would align it right, so its start would move. */
+      }
       <span
         aria-live="polite"
         aria-atomic="true"
-        class="pc-num basis-full text-sm font-semibold sm:basis-auto"
+        class="basis-full text-sm font-semibold tabular-nums sm:basis-auto"
       >
         {periodLabel(period, locale ?? language)}
       </span>

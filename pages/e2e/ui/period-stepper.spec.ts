@@ -143,8 +143,9 @@ interface Box {
 
 /**
  * The boxes a person aims at, relative to the stepper's top-left corner so a card growing above it
- * does not read as a move: the return button's slot, both arrows, and the name's start corner (its
- * width follows the month's name, so only where it starts must hold).
+ * does not read as a move: the return button's slot, both arrows, and the start corner of the
+ * name's text (its width follows the month's name, so only where it starts must hold). The text's
+ * own box, not the element's, so a name aligned to the end of a full-width line reads as moving.
  */
 async function stepperBoxes(
   view: { group: Locator; backSlot: Locator; previous: Locator; next: Locator; name: Locator },
@@ -161,12 +162,17 @@ async function stepperBoxes(
       height: Math.round(found.height),
     }
   }
-  const name = await box(view.name)
+  const text = await view.name.evaluate((element) => {
+    const range = document.createRange()
+    range.selectNodeContents(element)
+    const { x, y } = range.getBoundingClientRect()
+    return { x, y }
+  })
   return {
     back: await box(view.backSlot),
     previous: await box(view.previous),
     next: await box(view.next),
-    nameStart: { x: name.x, y: name.y },
+    nameStart: { x: Math.round(text.x - origin.x), y: Math.round(text.y - origin.y) },
   }
 }
 

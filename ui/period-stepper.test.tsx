@@ -46,10 +46,12 @@ describe("PeriodStepper", () => {
     expect(html).toMatch(/aria-live="polite" aria-atomic="true"[^>]*>November 2026</)
   })
 
-  it("puts the period's name on its own line below sm, whatever the name's length", () => {
+  it("puts the period's name on its own line below sm, from the line's start, whatever its length", () => {
     const name = stepper().match(/<span aria-live="polite"[^>]*>/)?.[0] ?? ""
     expect(name).toMatch(/class="[^"]*\bbasis-full\b/)
     expect(name).toMatch(/class="[^"]*\bsm:basis-auto\b/)
+    // `pc-num` aligns right, so on a full-width line the name's start would follow its length.
+    expect(name).not.toContain("pc-num")
   })
 
   it("hides the return button on the current period, keeping its key hint but binding no key", () => {
