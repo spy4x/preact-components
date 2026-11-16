@@ -983,6 +983,7 @@ const removalLeads = {
   link: "A link, and the hook is told to focus the button",
   field: "A hidden field",
   unseen: "A button that is not shown, in the last row only",
+  disabled: "A button that cannot be pressed",
 } as const
 
 /** One key of {@link removalLeads}. */
@@ -1159,6 +1160,11 @@ function RemovalRow(
       {lead === "link" && <a href="#demo-ErrorState" class="text-sm underline">About {name}</a>}
       {lead === "field" && <input type="hidden" name="person" value={name} />}
       {lead === "unseen" && <button type="button" hidden>Not shown</button>}
+      {lead === "disabled" && (
+        <Button variant="outline" size="sm" disabled>
+          Archive {name}
+        </Button>
+      )}
       <Button
         variant="outline"
         size="sm"

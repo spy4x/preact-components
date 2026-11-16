@@ -251,6 +251,20 @@ function removalSpecs(): Spec[] {
         await removedWithFocusOn(reset)
       },
     },
+    {
+      name:
+        "useFocusAfterRemoval: a disabled button at the start of a row is passed over for the row's enabled button",
+      pageId: "ui",
+      run: async (page) => {
+        const { open, showTestControls, startRowsWith, confirm, removedWithFocusOn } = removalDemo(
+          page,
+        )
+        await showTestControls()
+        await startRowsWith("A button that cannot be pressed")
+        await confirm("Grace")
+        await removedWithFocusOn(open("Linus"))
+      },
+    },
   ]
 }
 
