@@ -64,6 +64,12 @@ describe("DotPlot", () => {
     expect(muted).toMatch(/data-dot[^>]*style="[^"]*background:var\(--color-surface/)
   })
 
+  it("prints a muted row's value muted, so it never reads as a result", () => {
+    const html = render(<DotPlot rows={rows} domain={[0, 100]} />)
+    expect(html).toMatch(/class="text-right tabular-nums text-muted">75</)
+    expect(html).toMatch(/class="text-right tabular-nums text-foreground">25</)
+  })
+
   it("draws the summary row bolder, after a hairline, with a larger dot", () => {
     const html = render(
       <DotPlot rows={rows} domain={[0, 100]} summary={{ id: "all", label: "All", value: 50 }} />,

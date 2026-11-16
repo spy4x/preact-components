@@ -228,7 +228,7 @@ function SliderTick(
     >
       <span
         aria-hidden="true"
-        class="h-2 w-px bg-[var(--color-border-strong,oklch(0.707_0.022_261.325))]"
+        class="h-3 w-0.5 bg-[var(--color-border-strong,oklch(0.707_0.022_261.325))]"
       />
       <span>{mark.label}</span>
     </span>

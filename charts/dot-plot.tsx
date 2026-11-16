@@ -93,9 +93,9 @@ const bandColor = (strength: 1 | 2) =>
  *
  * HTML, not SVG: the rows are a list, the labels, details and values are real text, and only the
  * track with its dot and bands is hidden from assistive tech, so a screen reader reads the plot as
- * a list of labelled values. A `muted` row draws a hollow dot and prints its `note`. A band's
- * meaning is in the legend under the rows, beside its swatch. Rows keep one height whatever their
- * number, so four rows and ten look alike.
+ * a list of labelled values. A `muted` row draws a hollow dot and prints its value muted, with its
+ * `note`. A band's meaning is in the legend under the rows, beside its swatch. Rows keep one height
+ * whatever their number, so four rows and ten look alike.
  *
  * @param props The rows, the scale and the bands, see {@link DotPlotProps}.
  * @returns The list, the scale's ends and the legend.
@@ -235,7 +235,7 @@ function DotPlotItem(
         class={[
           "text-right tabular-nums",
           summary && "font-semibold",
-          row.value === null ? "text-muted" : "text-foreground",
+          row.value === null || row.muted ? "text-muted" : "text-foreground",
         ].filter(Boolean).join(" ")}
       >
         {row.value === null ? missing : format(row.value)}
