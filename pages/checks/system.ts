@@ -1765,6 +1765,22 @@ async function reloadAndWaitForLoad(devtools: Devtools, timeoutMs = 20_000): Pro
 }
 
 /**
+ * Wait until the shared page has hydrated again, after a no-script check re-enabled script.
+ *
+ * Bounded by the session's call budget: 15 s, multiplied by `--cpu-throttle`. A fixed 10 s failed
+ * the check after Shell's no-script keyboard check under a throttle of 4 on a loaded machine (#1231).
+ *
+ * @param devtools The connected session.
+ * @returns Whether the page hydrated in time.
+ */
+function rehydrates(devtools: Devtools): Promise<boolean> {
+  return poll(
+    () => read(devtools, `document.documentElement?.dataset.hydrated === "true"`, false),
+    devtools.callTimeoutMs,
+  )
+}
+
+/**
  * Wait until `scrollY` has held the same value for a full second, bounded.
  *
  * Written for `authFormNoScriptChecks`'s restoring reload specifically: the guide shell's
@@ -1955,10 +1971,7 @@ async function authFormNoScriptChecks(devtools: Devtools): Promise<void> {
         (settled ? "" : " (the submit never finished loading a page)"),
   )
 
-  const rehydrated = await poll(
-    () => read(devtools, `document.documentElement?.dataset.hydrated === "true"`, false),
-    10_000,
-  )
+  const rehydrated = await rehydrates(devtools)
   check(
     "the page rehydrates once script execution is re-enabled again",
     rehydrated,
@@ -4908,10 +4921,7 @@ async function siteHeaderNoScriptCheck(devtools: Devtools): Promise<void> {
       : `the <details> opened and all ${linkCount} links now have a rendered height`,
   )
 
-  const rehydrated = await poll(
-    () => read(devtools, `document.documentElement?.dataset.hydrated === "true"`, false),
-    10_000,
-  )
+  const rehydrated = await rehydrates(devtools)
   check(
     "the page rehydrates once script execution is re-enabled again",
     rehydrated,
@@ -5015,10 +5025,7 @@ async function siteHeaderHydrationSyncChecks(devtools: Devtools): Promise<void> 
       requestId = undefined
       await devtools.send("Fetch.disable")
 
-      rehydrated = await poll(
-        () => read(devtools, `document.documentElement?.dataset.hydrated === "true"`, false),
-        10_000,
-      )
+      rehydrated = await rehydrates(devtools)
       syncedAfterHydration = await poll(
         () =>
           read(
@@ -6750,10 +6757,7 @@ async function shellUserMenuNoScriptKeyboardCheck(devtools: Devtools): Promise<v
     await devtools.send("Emulation.setScriptExecutionDisabled", { value: false }).catch(() => {})
     await devtools.send("Page.reload", { ignoreCache: true }).catch(() => {})
     await waitForLoad(devtools)
-    const rehydrated = await poll(
-      () => read(devtools, `document.documentElement?.dataset.hydrated === "true"`, false),
-      10_000,
-    )
+    const rehydrated = await rehydrates(devtools)
     const scrollSettled = await waitForScrollSettle(devtools)
     check(
       "the page rehydrates and holds still after Shell's no-script keyboard check",
@@ -6840,6 +6844,10 @@ async function shellCollapseChecks(devtools: Devtools): Promise<void> {
     { id: "shell-collapse-frame", src: pageHref("system"), label: "Shell collapse" },
     async (frame) => {
       const doc = `${frame}?.contentDocument`
+      // A fresh load of the whole guide in the frame outlasted a fixed 15 s under
+      // `--cpu-throttle=4` on a loaded machine (#1231). The session's call budget is 15 s and
+      // grows with the throttle, so a slower page is not reported as wrong.
+      const started = Date.now()
       const restored = await poll(async () => {
         const hydrated = await read(
           devtools,
@@ -6849,12 +6857,13 @@ async function shellCollapseChecks(devtools: Devtools): Promise<void> {
         if (!hydrated) return false
         const state = await readShellCollapse(devtools, doc)
         return state.found && state.expanded === "false" && !state.sidebarShown
-      }, 15_000)
+      }, devtools.callTimeoutMs)
+      const waited = Date.now() - started
       const state = await readShellCollapse(devtools, doc)
       check(
         "a fresh load of the guide draws Shell's sidebar collapsed, as the card remembered it",
         restored,
-        JSON.stringify(state),
+        `${JSON.stringify(state)} after ${waited} ms`,
       )
     },
   )
@@ -7744,10 +7753,7 @@ async function railShellNoScriptCheck(devtools: Devtools): Promise<void> {
       : "the dialog opened on More and closed on the close button with no script running",
   )
 
-  const rehydrated = await poll(
-    () => read(devtools, `document.documentElement?.dataset.hydrated === "true"`, false),
-    10_000,
-  )
+  const rehydrated = await rehydrates(devtools)
   check(
     "the page rehydrates after RailShell's no-script check re-enables script execution",
     rehydrated,
