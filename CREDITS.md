@@ -15,6 +15,11 @@ extraction and the code around them are his.
 
 Thank you, Eirene. The library is a thin wrapper around work you had already done well.
 
+## Permission
+
+Eirene has agreed that her design CSS, the component styling and the UI-guide markup are published
+in this repository under the MIT licence. The owner confirmed her agreement on 2026-11-17.
+
 ## Preferred form of credit
 
 The wording above was written without asking you first, which is not ideal. If you would prefer a
