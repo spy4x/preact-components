@@ -70,7 +70,7 @@ minor; a fix alone bumps the patch. The whole set takes the largest bump any of 
    deno task private-names /path/to/names.txt
    ```
 
-4. Tag that commit `v<version>` and push the tag. Woodpecker's tag build (`.woodpecker.yml`) runs
+4. Tag that commit `v<version>` and push the tag. Woodpecker's tag build (`.woodpecker/woodpecker.yml`) runs
    `check` and `publish:dry` again; its `publish` step then refuses a tag that is not `v` plus the
    version every package declares (`infra/scripts/release-tag.ts`), and runs `deno publish` with
    the `JSR_TOKEN` secret, which publishes every named workspace member at once:

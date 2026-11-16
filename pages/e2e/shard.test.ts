@@ -35,7 +35,9 @@ Deno.test("finds a missing, a repeated and a miscounted shard", () => {
 })
 
 Deno.test("the Woodpecker pipeline runs every e2e shard exactly once and e2e nowhere else", async () => {
-  const pipeline = await Deno.readTextFile(new URL(`../../.woodpecker.yml`, import.meta.url))
+  const pipeline = await Deno.readTextFile(
+    new URL(`../../.woodpecker/woodpecker.yml`, import.meta.url),
+  )
   // A commented-out step still holds its command, so comment lines are not runs.
   const runs = pipeline.split(`\n`)
     .filter((line) => !line.trim().startsWith(`#`) && /deno task --cwd pages verify\b/.test(line))

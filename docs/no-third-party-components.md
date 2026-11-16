@@ -194,7 +194,7 @@ holds.
 
 ### Nothing in CI checks the allowlist
 
-Woodpecker (`.woodpecker.yml`) runs `deno task check`, which is exactly `fmt:check`, `lint`,
+Woodpecker (`.woodpecker/woodpecker.yml`) runs `deno task check`, which is exactly `fmt:check`, `lint`,
 `ts:check` and `test`, then `deno task publish:dry`, `deno task --cwd pages build` and
 `deno task --cwd pages verify` as their own steps, on every pull request into `main` and every push
 to `main`. The GitHub workflow (`.github/workflows/pages.yml`) only builds and deploys the demo once

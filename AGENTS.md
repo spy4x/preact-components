@@ -79,7 +79,8 @@ one `needs-decision` issue, so they do not hold back the rest of their area.
   `verify`; `--static` and `--only` are not full runs. On a busy machine run the full run in parts
   (same file, "Running a full run in parts").
 - CI: Woodpecker runs `check`, `publish:dry`, the build and the browser checks (`e2e` in four
-  shards) on every PR and every push to `main`. GitHub Actions only deploys `main` to Pages.
+  shards) on every PR and every push to `main`; a PR whose title starts with `[WIP]` runs only
+  `check` (`.woodpecker/wip.yml`). GitHub Actions only deploys `main` to Pages.
 
 ## Releases
 
