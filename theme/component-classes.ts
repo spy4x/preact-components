@@ -4,7 +4,7 @@
 
 /**
  * Every Tailwind class the published `@spy4x/preact-*` components can render, separated by
- * spaces, for an app's `@source inline("…")` (1454 classes). See README.md →
+ * spaces, for an app's `@source inline("…")` (1460 classes). See README.md →
  * "Install".
  */
 export const COMPONENT_CLASSES: string = [
@@ -31,6 +31,7 @@ export const COMPONENT_CLASSES: string = [
   "-translate-x-1/2",
   "-translate-x-full",
   "-translate-y-1/2",
+  "-translate-y-full",
   "@2xl:[&>article[data-card-size=auto]:has([data-card-part=demo]_:is(table,[role=menu]))]:col-span-2",
   "@2xl:col-span-2",
   "@2xl:grid-cols-2",
@@ -291,6 +292,7 @@ export const COMPONENT_CLASSES: string = [
   "bottom-0.5",
   "bottom-1",
   "bottom-3",
+  "bottom-4",
   "bottom-4!",
   "bottom-[max(--spacing(4),env(safe-area-inset-bottom,0px))]",
   "bottom-auto",
@@ -564,6 +566,7 @@ export const COMPONENT_CLASSES: string = [
   "group-open:block",
   "group-open:hidden",
   "grow",
+  "h-0",
   "h-0.5",
   "h-1",
   "h-11",
@@ -577,6 +580,7 @@ export const COMPONENT_CLASSES: string = [
   "h-5",
   "h-6",
   "h-64",
+  "h-72",
   "h-8",
   "h-80",
   "h-9",
@@ -904,6 +908,7 @@ export const COMPONENT_CLASSES: string = [
   "min-h-48",
   "min-h-60",
   "min-h-8",
+  "min-h-9",
   "min-h-96",
   "min-h-[300px]",
   "min-h-dvh",
@@ -931,6 +936,7 @@ export const COMPONENT_CLASSES: string = [
   "motion-reduce:transition-none",
   "motion-safe:[&:dir(rtl)]:starting:-translate-x-8",
   "motion-safe:[&:dir(rtl)]:starting:translate-x-8",
+  "motion-safe:animate-pulse",
   "motion-safe:duration-150",
   "motion-safe:duration-200",
   "motion-safe:duration-300",
