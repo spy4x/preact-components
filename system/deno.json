@@ -20,8 +20,8 @@
     "./boundary": "./boundary.ts",
     // The boundary as ready tests an app registers with its own test function; see the file.
     "./boundary-runner": "./boundary-runner.ts",
-    // The Playwright options every app shares. It imports nothing, so no app resolves Playwright
-    // through this package.
+    // The Playwright options every app shares, re-exported from `@spy4x/preact-playwright`, which
+    // imports nothing, so no app resolves Playwright through this package.
     "./playwright": "./playwright.ts",
     "./conflict-chooser": "./conflict-chooser.tsx",
     "./install-prompt": "./install-prompt.tsx",

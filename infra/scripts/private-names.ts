@@ -63,6 +63,7 @@ export const PUBLISHED_PACKAGES: readonly string[] = [
   "map",
   "ui-guide",
   "server",
+  "playwright",
 ]
 
 /** Strip ANSI colour codes from `deno publish`'s output so the file list parses cleanly. */

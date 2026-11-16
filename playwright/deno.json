@@ -1,0 +1,14 @@
+{
+  "name": "@spy4x/preact-playwright",
+  "version": "16.0.0",
+  // No `imports` block and no import in any published file: an app that installs this package
+  // through npm for its `playwright.config.ts` gains this one package and nothing else.
+  "exports": {
+    ".": "./+index.ts"
+  },
+  "publish": {
+    // This package's own `*.test.*` suites, none reachable from `exports`; see `ui/deno.json` for
+    // why the glob starts with `**/`.
+    "exclude": ["**/*.test.ts"]
+  }
+}

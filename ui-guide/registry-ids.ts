@@ -18,7 +18,7 @@ export const packageIds = ["ui", "charts", "map", "system", "crud"] as const
  * scan them. `theme` still has a page, for the classes its preset ships; `server`'s one component,
  * `Head`, renders nothing of its own and is excused in `COMPONENTS_WITHOUT_CARD`.
  */
-export const helperPackageIds = ["theme", "signals", "cn", "server"] as const
+export const helperPackageIds = ["theme", "signals", "cn", "server", "playwright"] as const
 
 /**
  * Every package the coverage rule accounts for: {@link packageIds}, then {@link helperPackageIds}.

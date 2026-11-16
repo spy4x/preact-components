@@ -156,6 +156,8 @@ through Playwright, so they are known to load. What to know about the setup:
   packages in `deno.lock` (the other packages of this library, `@spy4x/platform` and what it needs),
   `nodemailer` where the app had none, and 15 to 17 MB in `node_modules`. Nothing loads them. Only
   `playwright.config.ts` imports the npm name; every other file keeps `@spy4x/preact-system`.
+  From the next release the function also comes from `@spy4x/preact-playwright` (npm
+  `@jsr/spy4x__preact-playwright`), which has no dependencies.
 - **The `exclude` entry covers more than this package.** The pattern also lifts the one-day rule
   for the `@spy4x` ts-libs packages that come along under their npm names, such as
   `@jsr/spy4x__time`.

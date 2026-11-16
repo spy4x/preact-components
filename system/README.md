@@ -1092,39 +1092,10 @@ signal and touch `document` inside an effect, which "Component rules" in `AGENTS
 
 ## The Playwright base configuration
 
-`@spy4x/preact-system/playwright` is a development tool too: the Playwright options every app
-shares, so an app's `playwright.config.ts` holds only its own values.
-
-- `playwrightBaseConfig(options)` takes the app's `baseURL`, whether the run is in CI (`ci`), the
-  device from the app's own Playwright (`chromium: devices["Desktop Chrome"]`) and optional extra
-  `use` options. It returns `testDir` (`./e2e`), `testMatch` (any `*.e2e.ts`), `outputDir`, the CI
-  switches (`forbidOnly`, two `retries`), one worker, the timeouts, the HTML and list reporters, a
-  trace kept for each failed test, `data-e2e` as the test id attribute and one `chromium` project.
-- `PlaywrightBaseOptions`, `PlaywrightBaseConfig`, `PlaywrightBaseUse` and `PlaywrightReporter` type
-  what goes in and what comes out.
-
-```ts
-// playwright.config.ts
-import { defineConfig, devices } from "@playwright/test"
-import { playwrightBaseConfig } from "@jsr/spy4x__preact-system/playwright"
-
-export default defineConfig({
-  ...playwrightBaseConfig({
-    baseURL: "http://app.localhost",
-    ci: !!Deno.env.get("CI"),
-    chromium: devices["Desktop Chrome"],
-  }),
-  webServer: { command: "deno task start", url: "http://app.localhost/health" },
-})
-```
-
-The import is the package's npm name, `@jsr/spy4x__preact-system`: Playwright loads its
-configuration file itself and finds only packages in `node_modules`, so the JSR name fails there
-with `Cannot find module`. [`docs/app-checks.md`](../docs/app-checks.md) has the one-time setup (two lines
-in `deno.jsonc`), lists every shared value, says how to override one, and has
-the CI step that installs Deno into the Playwright image.
-
-The module imports nothing, `@playwright/test` included, so this package pins no Playwright version.
+`playwrightBaseConfig(options)`, the Playwright options every app shares, now lives in
+[`@spy4x/preact-playwright`](../playwright/README.md), a package with no dependencies.
+`@spy4x/preact-system/playwright` re-exports it and its types, so an app that imports it from here
+keeps working; a new app imports the new package instead.
 
 ## Not in this package
 

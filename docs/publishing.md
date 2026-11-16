@@ -90,10 +90,11 @@ subset of the packages: a package published alone at a new version breaks the ru
 The `publish` step needs three things that live outside this repository, all set up once by the
 owner:
 
-- the ten packages, created on jsr.io in the `spy4x` scope before the first tag — `deno publish`
+- the twelve packages, created on jsr.io in the `spy4x` scope before the first tag — `deno publish`
   with a token does not create a package, it refuses the whole run and names the missing ones:
   `preact-cn`, `preact-icons`, `preact-signals`, `preact-theme`, `preact-charts`,
-  `preact-system`, `preact-ui`, `preact-crud`, `preact-map` and `preact-ui-guide`, each at
+  `preact-system`, `preact-ui`, `preact-crud`, `preact-map`, `preact-ui-guide`, `preact-server`
+  and `preact-playwright`, each at
   `https://jsr.io/new?scope=spy4x&package=<name>`;
 - a JSR token that may publish to the `spy4x` scope (the one `spy4x/ts-libs` publishes with will
   do);

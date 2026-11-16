@@ -22,6 +22,7 @@ deno add jsr:@spy4x/preact-crud      # list and editor scaffold for one collecti
 deno add jsr:@spy4x/preact-map       # map on Leaflet (resolves leaflet)
 deno add jsr:@spy4x/preact-ui-guide  # the live component catalogue, mounted in one line
 deno add jsr:@spy4x/preact-server    # website server: routes, pages, islands, static files
+deno add jsr:@spy4x/preact-playwright  # the Playwright options every app shares; no dependencies
 ```
 
 Which package imports which sibling, read from the sources: `ui` imports `cn`, `icons` and

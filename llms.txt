@@ -284,6 +284,11 @@ default	helper	@spy4x/preact-map/i18n/ja	The `map` catalog in ja: `createTransla
 default	helper	@spy4x/preact-map/i18n/pt-BR	The `map` catalog in pt-BR: `createTranslator({ catalogs: [{ source: en, translation: this }] })`.
 default	helper	@spy4x/preact-map/i18n/ru	The `map` catalog in ru: `createTranslator({ catalogs: [{ source: en, translation: this }] })`.
 default	helper	@spy4x/preact-map/i18n/zh-CN	The `map` catalog in zh-CN: `createTranslator({ catalogs: [{ source: en, translation: this }] })`.
+PlaywrightBaseConfig	type	@spy4x/preact-playwright	What `playwrightBaseConfig` returns: a value for Playwright's `defineConfig`.
+PlaywrightBaseOptions	type	@spy4x/preact-playwright	What an app tells `playwrightBaseConfig`.
+PlaywrightBaseUse	type	@spy4x/preact-playwright	The `use` options `playwrightBaseConfig` sets for every app.
+PlaywrightReporter	type	@spy4x/preact-playwright	One reporter: its name, then its options when it takes any.
+playwrightBaseConfig	helper	@spy4x/preact-playwright	Build the Playwright configuration every app shares.
 App	helper	@spy4x/preact-server	The app: middleware, routes and an app wrapper, as Fresh's `App`.
 Assets	type	@spy4x/preact-server	What the build tells the renderer: the stylesheets, the client script and the build id.
 Context	helper	@spy4x/preact-server	The request's context, as Fresh's `Context`.

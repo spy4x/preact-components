@@ -89,20 +89,21 @@ Every install line, the dependencies between packages and the UI guide as a comp
 
 ## Packages
 
-| Package                                        | What it holds                                                     |
-| ---------------------------------------------- | ----------------------------------------------------------------- |
-| [`@spy4x/preact-ui`](ui/README.md)             | the component set: layout, buttons, tables, dialogs, forms        |
-| [`@spy4x/preact-theme`](theme/README.md)       | design tokens, the Tailwind preset and the classes components use |
-| [`@spy4x/preact-icons`](icons/README.md)       | the merged icon set, one component per glyph                      |
-| [`@spy4x/preact-charts`](charts/README.md)     | server-rendered charts with tooltips                              |
-| [`@spy4x/preact-system`](system/README.md)     | app-level pieces: auth form, calendar, shells, SEO head           |
-| [`@spy4x/preact-crud`](crud/README.md)         | list and editor scaffold for one collection                       |
-| [`@spy4x/preact-map`](map/README.md)           | map on Leaflet                                                    |
-| [`@spy4x/preact-signals`](signals/README.md)   | stores and state helpers; no components                           |
-| [`@spy4x/preact-cn`](cn/README.md)             | class-name join with Tailwind conflict resolution                 |
-| [`@spy4x/preact-ui-guide`](ui-guide/README.md) | the live component catalogue, mounted in one line                 |
-| [`@spy4x/preact-server`](server/README.md)     | website server: routes, pages, islands, static files              |
-| [`pages/`](pages/README.md)                    | the demo site and browser checks; not published                   |
+| Package                                            | What it holds                                                     |
+| -------------------------------------------------- | ----------------------------------------------------------------- |
+| [`@spy4x/preact-ui`](ui/README.md)                 | the component set: layout, buttons, tables, dialogs, forms        |
+| [`@spy4x/preact-theme`](theme/README.md)           | design tokens, the Tailwind preset and the classes components use |
+| [`@spy4x/preact-icons`](icons/README.md)           | the merged icon set, one component per glyph                      |
+| [`@spy4x/preact-charts`](charts/README.md)         | server-rendered charts with tooltips                              |
+| [`@spy4x/preact-system`](system/README.md)         | app-level pieces: auth form, calendar, shells, SEO head           |
+| [`@spy4x/preact-crud`](crud/README.md)             | list and editor scaffold for one collection                       |
+| [`@spy4x/preact-map`](map/README.md)               | map on Leaflet                                                    |
+| [`@spy4x/preact-signals`](signals/README.md)       | stores and state helpers; no components                           |
+| [`@spy4x/preact-cn`](cn/README.md)                 | class-name join with Tailwind conflict resolution                 |
+| [`@spy4x/preact-ui-guide`](ui-guide/README.md)     | the live component catalogue, mounted in one line                 |
+| [`@spy4x/preact-server`](server/README.md)         | website server: routes, pages, islands, static files              |
+| [`@spy4x/preact-playwright`](playwright/README.md) | the Playwright options every app shares; no dependencies          |
+| [`pages/`](pages/README.md)                        | the demo site and browser checks; not published                   |
 
 ## Development
 
