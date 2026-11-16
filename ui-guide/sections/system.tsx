@@ -104,6 +104,8 @@ import {
   Modal,
   Select,
   Stack,
+  Timeline,
+  type TimelineItem,
 } from "@spy4x/preact-ui"
 import { makeStorage } from "@spy4x/platform/browser/storage"
 import { useSignal } from "@preact/signals"
@@ -1790,7 +1792,8 @@ function RailShellDemoAccount(
  * checkbox takes the port away, and the links are ordinary links again. The primary action has no
  * `href`, so it is a button through `navigate`. The frame scrolls the shell, so it takes the tab
  * bar's scroll padding itself and takes it off the root, as the component's doc asks of such a
- * caller.
+ * caller. A live `Timeline` of the page's activity, longer than the frame, gains an entry per press
+ * of "Add an event"; scrolled up, its "1 new event" button sits above the phone tab bar.
  */
 function RailShellDemo() {
   const current = useSignal("home")
@@ -1798,6 +1801,7 @@ function RailShellDemo() {
   const routeLinks = useSignal(true)
   const workspace = useSignal("acme")
   const theme = useSignal<AccountMenuTheme>("system")
+  const activity = useSignal(Array.from({ length: 14 }, (_, index) => railShellEvent(index)))
   const unread = 3
   return (
     <div
@@ -1863,6 +1867,23 @@ function RailShellDemo() {
             Workspace: <strong>{workspace.value}</strong>, theme:{" "}
             <strong data-e2e="rail-shell-demo-theme">{theme.value}</strong>
           </p>
+          <Button
+            variant="outline"
+            size="sm"
+            class="self-start"
+            data-e2e="rail-shell-demo-add-event"
+            onClick={() => {
+              activity.value = [...activity.value, railShellEvent(activity.value.length)]
+            }}
+          >
+            Add an event
+          </Button>
+          <Timeline
+            live
+            label="Activity"
+            items={activity.value}
+            dataE2E="rail-shell-demo-timeline"
+          />
           {Array.from(
             { length: 12 },
             (_, index) => (
@@ -1878,6 +1899,18 @@ function RailShellDemo() {
       </RailShell>
     </div>
   )
+}
+
+/** Entry `index` of the `RailShell` demo's activity, a minute after the one before it. */
+function railShellEvent(index: number): TimelineItem {
+  const titles = ["Edited a draft", "Published a post", "Replied to a comment", "Invited a member"]
+  const clock = `09:${String(index % 60).padStart(2, "0")}`
+  return {
+    id: index,
+    title: titles[index % titles.length],
+    at: `2026-03-04T${clock}:00Z`,
+    when: clock,
+  }
 }
 
 /** The rail demo's destinations: a personal site's, read by first-time visitors. */
