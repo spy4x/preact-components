@@ -108,6 +108,37 @@ describe("DonutChart", () => {
     expect(html).toContain('href="/products"')
   })
 
+  it("links a legend entry whose href is relative, a fragment, http(s) or mailto", () => {
+    const hrefs = [
+      "/path",
+      "?source=referral",
+      "#x",
+      "https://example.com/a",
+      "mailto:a@example.com",
+    ]
+    for (const href of hrefs) {
+      const html = render(<DonutChart data={[{ label: "slice", value: 1, href }]} />)
+
+      expect(html).toContain(`href="${href}"`)
+    }
+  })
+
+  it("renders a legend entry as plain text when its href has an unsafe scheme", () => {
+    const hrefs = [
+      "javascript:alert(1)",
+      "data:text/html,<b>x</b>",
+      " JaVaScRiPt:alert(1)",
+      "\tjava\nscript:alert(1)",
+      "vbscript:x",
+    ]
+    for (const href of hrefs) {
+      const html = render(<DonutChart data={[{ label: "slice", value: 1, href }]} />)
+
+      expect(html).not.toContain("<a ")
+      expect(html).toContain(">slice</span>")
+    }
+  })
+
   it("drops the legend on request", () => {
     const html = render(<DonutChart data={data} showLegend={false} />)
 
