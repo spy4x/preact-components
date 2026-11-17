@@ -126,7 +126,10 @@ describe("Toastr", () => {
 
       expect(classes.filter((name) => /^(top|end|bottom|start)-/.test(name)).sort(), corner)
         .toEqual([
-          `${vertical}-(--toastr-gap)`,
+          vertical === "top"
+            ? "top-(--toastr-gap)"
+            // A bottom corner stands above the phone tab bar and a dock, when the page has them.
+            : "bottom-[calc(var(--toastr-gap)+var(--pc-tab-bar-room,0px)+var(--pc-dock-height,0px))]",
           `${horizontal}-(--toastr-gap)`,
           `${otherHorizontal}-(--toastr-far)`,
         ].sort())

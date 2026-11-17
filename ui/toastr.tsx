@@ -164,15 +164,23 @@ const stackSizing = "[--toastr-gap:1rem] [--toastr-far:1rem] [--toastr-width:aut
   "sm:[--toastr-max:20rem] md:[--toastr-max:24rem] w-(--toastr-width) max-w-(--toastr-max)"
 
 /**
+ * A bottom corner's offset: the gutter, plus `RailShell`'s phone tab bar (`--pc-tab-bar-room`) and
+ * a `Dock` (`--pc-dock-height`) when the page has them, so the stack shows above both.
+ */
+const bottomOffset =
+  "bottom-[calc(var(--toastr-gap)+var(--pc-tab-bar-room,0px)+var(--pc-dock-height,0px))]"
+
+/**
  * Where each corner puts the stack: `--toastr-gap` from the corner's two edges and `--toastr-far`
  * from the opposite side, which is the same gutter on a phone and `auto` from `sm` up. `top-right`
- * is the default. The sides are logical, so a right-to-left page mirrors every corner.
+ * is the default. The sides are logical, so a right-to-left page mirrors every corner. A bottom
+ * corner adds the tab bar and the dock to its gutter ({@link bottomOffset}).
  */
 const cornerClasses: Record<ToastCorner, string> = {
   "top-left": "top-(--toastr-gap) end-(--toastr-far) start-(--toastr-gap)",
   "top-right": "top-(--toastr-gap) end-(--toastr-gap) start-(--toastr-far)",
-  "bottom-left": "end-(--toastr-far) bottom-(--toastr-gap) start-(--toastr-gap)",
-  "bottom-right": "end-(--toastr-gap) bottom-(--toastr-gap) start-(--toastr-far)",
+  "bottom-left": `end-(--toastr-far) ${bottomOffset} start-(--toastr-gap)`,
+  "bottom-right": `end-(--toastr-gap) ${bottomOffset} start-(--toastr-far)`,
 }
 
 /**
