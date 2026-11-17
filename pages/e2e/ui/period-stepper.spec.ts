@@ -128,6 +128,66 @@ function periodAndUsageSpecs(): Spec[] {
         return said.join("; ")
       },
     },
+    {
+      name: "PeriodStepper: right-aligned at 1440 px, the arrows stay put through 12 months and " +
+        "7 weeks whose names differ in width (#1368)",
+      pageId: "ui",
+      run: async (page) => {
+        await page.setViewportSize({ width: 1440, height: 900 })
+        // The guide's font, not a fallback, decides each name's width.
+        await page.evaluate(() => document.fonts.ready.then(() => undefined))
+        const said: string[] = []
+        const cases = [
+          // January to December 2026, September and May included: `[` back from October, then `]`.
+          { e2e: "guide-period-month", back: 9, forward: 11, next: "Next month", keys: true },
+          // Sunday weeks from 1 November 2026; the keys are off, so the arrow is clicked. The
+          // fifth, 29 November to 5 December, crosses a month.
+          { e2e: "guide-period-week", back: 0, forward: 6, next: "Next week", keys: false },
+        ]
+        for (const { e2e, back, forward, next, keys } of cases) {
+          const example = page.locator(`[data-e2e="${e2e}"]`)
+          const name = example.locator(`[aria-live="polite"]`)
+          const previousArrow = example.getByRole("button", { name: /^Previous/ })
+          const nextArrow = example.getByRole("button", { name: next })
+          // As in a page header: the stepper as wide as its content, at the end of the row.
+          await example.evaluate((element: HTMLElement) => {
+            element.style.display = "flex"
+            element.style.flexDirection = "column"
+            element.style.alignItems = "flex-end"
+          })
+          await example.scrollIntoViewIfNeeded()
+          const step = async (press: () => Promise<void>) => {
+            const before = await name.innerText()
+            await press()
+            await name.filter({ hasNotText: before }).waitFor()
+          }
+          for (let i = 0; i < back; i++) await step(() => page.locator("body").press("["))
+          const seen: { name: string; previous: number; next: number }[] = []
+          const record = async () => {
+            const previousBox = await previousArrow.boundingBox()
+            const nextBox = await nextArrow.boundingBox()
+            if (!previousBox || !nextBox) throw new Error(`${e2e}: an arrow has no box`)
+            seen.push({ name: await name.innerText(), previous: previousBox.x, next: nextBox.x })
+          }
+          await record()
+          for (let i = 0; i < forward; i++) {
+            await step(() => keys ? page.locator("body").press("]") : nextArrow.click())
+            await record()
+          }
+          const moved = seen.filter((at) =>
+            at.previous !== seen[0].previous || at.next !== seen[0].next
+          )
+          if (moved.length > 0) {
+            throw new Error(`${e2e}: the arrows moved: ${JSON.stringify(seen)}`)
+          }
+          said.push(
+            `${e2e}: ${seen.map((at) => at.name).join(", ")} with arrows at ` +
+              `${seen[0].previous} and ${seen[0].next}`,
+          )
+        }
+        return said.join("; ")
+      },
+    },
     axeSpec("light"),
     axeSpec("dark"),
   ]

@@ -4,12 +4,13 @@ import {
   currentPeriod,
   type Period,
   periodLabel,
+  periodOf,
   type PeriodOptions,
   PeriodUnit,
   shiftPeriod,
 } from "@spy4x/time/period"
 import type { JSX } from "preact"
-import { useRef } from "preact/hooks"
+import { useMemo, useRef } from "preact/hooks"
 import { Button } from "./button.tsx"
 import { HotkeyHint } from "./hotkey-hint.tsx"
 import { useApplePlatform } from "./hotkeys.ts"
@@ -80,14 +81,33 @@ const arrow = "size-11 sm:size-9"
 const fromStartEdge = "start-0 translate-x-0 [&:dir(rtl)]:translate-x-0"
 
 /**
+ * Every period of `unit` that starts in `year`: its 12 months, or the weeks whose first day falls
+ * in it, laid out by `options`.
+ */
+function periodsOfYear(unit: PeriodUnit, year: string, options?: PeriodOptions): Period[] {
+  if (unit === PeriodUnit.Month) {
+    return Array.from(
+      { length: 12 },
+      (_, month) => periodOf(unit, `${year}-${String(month + 1).padStart(2, "0")}-01`),
+    )
+  }
+  const periods: Period[] = []
+  let week = periodOf(unit, `${year}-01-01`, options)
+  if (!week.from.startsWith(year)) week = shiftPeriod(week, 1)
+  for (; week.from.startsWith(year); week = shiftPeriod(week, 1)) periods.push(week)
+  return periods
+}
+
+/**
  * Steps a screen through weeks or months: "This month  ‹ › November 2026".
  *
  * A button back to the current period, two joined arrow buttons and the period's name, which
  * takes its own line below `sm`. The return button comes first and shows only while another
  * period is on screen; on the current period it is hidden but keeps its width, so the arrows and
  * the name never move under the pointer. `[` goes back, `]` forward and `t` to today's period,
- * anywhere outside a text field and an open dialog; each tooltip shows its key. The name is a
- * polite live region, so a screen reader hears the new period after each step. Pressing the
+ * anywhere outside a text field and an open dialog; each tooltip shows its key. The name keeps
+ * the width of the unit's widest name in that year, so a right-aligned stepper's arrows never
+ * move. The name is a polite live region, so a screen reader hears the new period after each step. Pressing the
  * return button hides it, so focus moves to the next arrow rather than falling to the page.
  *
  * The period maths is `@spy4x/time/period`; the stepper keeps no state of its own.
@@ -115,6 +135,17 @@ export function PeriodStepper({
   const previous = week ? words.previousWeek : words.previousMonth
   const next = week ? words.nextWeek : words.nextMonth
   const back = week ? words.currentWeek : words.currentMonth
+  const nameLocale = locale ?? language
+  const year = period.from.slice(0, 4)
+  const firstWeekday = options?.firstWeekday
+  // Every name the unit takes in this year, stacked unseen under the shown one to size its cell.
+  const sizers = useMemo(
+    () =>
+      periodsOfYear(period.unit, year, { firstWeekday }).map((each) =>
+        periodLabel(each, nameLocale)
+      ),
+    [period.unit, year, nameLocale, firstWeekday],
+  )
 
   function goToCurrent(): void {
     const hadFocus = returnRef.current !== null && returnRef.current === document.activeElement
@@ -185,14 +216,16 @@ export function PeriodStepper({
       </div>
       {
         /* Below `sm` the name always takes its own line, so a long month's name cannot wrap alone,
-        and starts at the line's start: `pc-num` would align it right, so its start would move. */
+        and starts at the line's start: `pc-num` would align it right, so its start would move.
+        From `sm` the cell is as wide as the widest name it can show, so the arrows hold still. */
       }
-      <span
-        aria-live="polite"
-        aria-atomic="true"
-        class="basis-full text-sm font-semibold tabular-nums sm:basis-auto"
-      >
-        {periodLabel(period, locale ?? language)}
+      <span class="grid basis-full text-sm font-semibold tabular-nums sm:basis-auto">
+        {sizers.map((name) => (
+          <span key={name} aria-hidden="true" class="invisible [grid-area:1/1]">{name}</span>
+        ))}
+        <span aria-live="polite" aria-atomic="true" class="[grid-area:1/1]">
+          {periodLabel(period, nameLocale)}
+        </span>
       </span>
     </div>
   )
