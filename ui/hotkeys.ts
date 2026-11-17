@@ -31,7 +31,11 @@ export interface HotkeyBinding {
   group?: string
   /** Also fire while the reader types in a text field, a select or editable content. */
   inFields?: boolean
-  /** Also fire while focus is inside a dialog or a menu, or while a modal dialog is open. */
+  /**
+   * Also fire while focus is inside a dialog or a menu, or while a modal dialog is open; and, for a
+   * key that types a character, while focus is inside a hotkey scope (`data-hotkey-scope`, which
+   * `Dock` sets).
+   */
   inDialogs?: boolean
   /** Whether to cancel the key press's default action. Defaults to `true`. */
   preventDefault?: boolean
@@ -64,7 +68,10 @@ export interface HotkeyPress {
   getModifierState?(key: string): boolean
   /** The press landed in a text field, a select or editable content. */
   typing: boolean
-  /** The press landed inside a dialog or a menu, or a modal dialog is open. */
+  /**
+   * The press landed inside a dialog or a menu, or a modal dialog is open; or the press types a
+   * character and landed inside a hotkey scope, such as a `Dock`.
+   */
   inDialog: boolean
 }
 
@@ -97,6 +104,30 @@ const DIALOG_SELECTOR = "dialog, [role='dialog'], [role='alertdialog']"
 
 /** Elements a press inside of skips every binding without {@link HotkeyBinding.inDialogs}. */
 const SCOPE_SELECTOR = `${DIALOG_SELECTOR}, [role='menu']`
+
+/**
+ * A hotkey scope, such as a `Dock`: a non-modal part of the page whose single keys are its own. A
+ * press that types a character inside one skips every binding without
+ * {@link HotkeyBinding.inDialogs}, and an element's hotkey fires only from the scope that holds it,
+ * so the page's `n` and the scope's `n` never both answer. Chords such as `mod+k`, and named keys
+ * such as Escape, pass through.
+ */
+const HOTKEY_SCOPE_SELECTOR = "[data-hotkey-scope]"
+
+/**
+ * Whether a key press types a character: one code point, with no Control, Command or Alt held,
+ * as {@link isSingleKey} reads a combination.
+ */
+function typesCharacter(event: KeyboardEvent): boolean {
+  // A plain `Event`, which some browsers send on autofill, has no `key`.
+  return !event.ctrlKey && !event.metaKey && !event.altKey && [...(event.key ?? "")].length === 1
+}
+
+/** The hotkey scope that holds `element`, or `null`. */
+function hotkeyScope(element: Partial<Element> | null): Element | null {
+  // The target can be the document or a text node, which have no `closest`.
+  return element?.closest?.(HOTKEY_SCOPE_SELECTOR) ?? null
+}
 
 /** Whether `keys` is a sequence of presses, such as `"g i"`. */
 function isSequence(keys: string): boolean {
@@ -214,7 +245,8 @@ function keydownListener(
         // A plain `Event`, which some browsers send on autofill, has no `getModifierState`.
         getModifierState: event.getModifierState?.bind(event),
         typing: isTypingTarget(target as HTMLElement | null),
-        inDialog: (target?.closest?.(SCOPE_SELECTOR) ?? null) !== null || openModal() !== null,
+        inDialog: (target?.closest?.(SCOPE_SELECTOR) ?? null) !== null || openModal() !== null ||
+          (typesCharacter(event) && hotkeyScope(target) !== null),
       },
       apple,
       event,
@@ -247,7 +279,8 @@ function useKeydown(
  *
  * Key presses in a text field, a select or `contenteditable` content are left alone, and so are
  * presses inside a dialog or a menu and while a modal dialog is open, unless a binding opts in with
- * `inFields` or `inDialogs`. A sequence such as `"g i"` fires on its last key, and never in those
+ * `inFields` or `inDialogs`. A press that types a character inside a hotkey scope, such as a
+ * `Dock`, is left alone the same way. A sequence such as `"g i"` fires on its last key, and never in those
  * places. A press another handler already cancelled, and a press that composes text through an
  * input method, run nothing. A matched press has its default action cancelled unless the binding
  * says `preventDefault: false`. The listener itself is {@link createHotkeyListener}.
@@ -409,7 +442,8 @@ function openModal(): Element | null {
  * It does nothing when the element is gone, disabled (`disabled`, or `aria-disabled="true"` as a
  * busy `Button` sets), inert, not rendered (inside a closed `<details>`, a hidden tab panel or a
  * closed dialog), or outside the dialog the press landed in. While a modal dialog is open, only an
- * element inside it is clicked.
+ * element inside it is clicked. A press that types a character clicks only an element in the same
+ * hotkey scope (such as a `Dock`) as the press, or one outside every scope from outside them.
  *
  * A key held down repeats its press. A repeat is cancelled, as the first press was, but clicks
  * nothing: holding N makes one note, not twenty.
@@ -439,14 +473,16 @@ export function clickByHotkey(
 /**
  * Whether a key press may act on `home`: it is not inert, and the press landed outside every
  * dialog with no modal dialog open, or in the dialog that holds `home`. With `home` `null`, only
- * outside every dialog with none modal open.
+ * outside every dialog with none modal open. Outside every dialog, a press that types a character
+ * also has to land in the hotkey scope that holds `home`, or in none when none holds it.
  */
 function hotkeyReaches(home: Element | null, event: KeyboardEvent): boolean {
   if (home !== null && home.closest("[inert]") !== null) return false
   // The target can be the document, which has no `closest`.
   const target = event.target as Partial<Element> | null
   const scope = target?.closest?.(DIALOG_SELECTOR) ?? openModal()
-  return scope === null || (home !== null && scope.contains(home))
+  if (scope !== null) return home !== null && scope.contains(home)
+  return !typesCharacter(event) || hotkeyScope(target) === hotkeyScope(home)
 }
 
 /**
