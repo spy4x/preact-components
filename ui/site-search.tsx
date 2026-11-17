@@ -157,6 +157,8 @@ export function SiteSearch(props: SiteSearchProps): JSX.Element {
   const { src = "/search.json", commands = [], groupOrder = [], trigger = "field" } = props
   const own = useLabels("SiteSearch", defaultSiteSearchLabels, props.labels, { empty: ["query"] })
   const query = useSignal("")
+  /** Whether the list shows `fallback`, so the status says nothing matched, not "1 result". */
+  const listsFallback = useSignal(false)
   const loading = useRef<Promise<SiteIndex> | null>(null)
   const session = useRef<Session>({ query: "", rows: [], reported: true })
   const latest = useRef(props)
@@ -232,7 +234,10 @@ export function SiteSearch(props: SiteSearchProps): JSX.Element {
     const listed = withFallback(rows, fallbackRows, text)
     const fellBack = listed.fellBack
     rows = orderGroups(listed.rows, latest.current.groupOrder ?? groupOrder)
-    if (!signal.aborted) Object.assign(session.current, { query: text, rows, correction, fellBack })
+    if (!signal.aborted) {
+      Object.assign(session.current, { query: text, rows, correction, fellBack })
+      listsFallback.value = fellBack
+    }
     return rows
   }
 
@@ -255,6 +260,7 @@ export function SiteSearch(props: SiteSearchProps): JSX.Element {
           ...props.labels,
           error: own.error,
           empty: query.value === "" ? "" : own.empty(query.value),
+          ...(listsFallback.value ? { results: () => own.empty(query.value) } : {}),
         }}
         onOpenChange={(open) => {
           if (open) session.current = { query: "", rows: [], reported: false }

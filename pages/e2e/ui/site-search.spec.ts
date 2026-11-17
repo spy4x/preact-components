@@ -96,6 +96,9 @@ export const specs: readonly Spec[] = [
       await search.trigger.click()
       await search.field.fill("qqxqq")
       await search.options.filter({ hasText: "Browse every component" }).waitFor()
+      // A screen reader hears that nothing matched, not "1 result" for the fallback row.
+      await search.dialog.locator(`[data-e2e="site-search-count"]`)
+        .filter({ hasText: "Nothing for “qqxqq”" }).waitFor()
       await page.keyboard.press("Enter")
       await search.dialog.waitFor({ state: "hidden" })
       await page.locator(`[data-e2e="site-search-ran"]`).filter({
