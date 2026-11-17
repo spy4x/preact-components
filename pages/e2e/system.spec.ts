@@ -894,10 +894,11 @@ export const specs: readonly Spec[] = [
       await page.setViewportSize({ width: 390, height: 844 })
       const bar = page.locator(`#demo-RailShell [data-e2e="rail-shell-tabbar"]`)
       const target = page.locator(`[data-e2e="rail-shell-demo-focus-target"]`)
-      const checkbox = page.locator(`[data-e2e="rail-shell-demo-route-links"]`)
+      const before = page.locator(`[data-e2e="rail-shell-demo-focus-before"]`)
       // The demo scrolls inside a 600 px box; an app's shell scrolls the window. Lift the box's
       // bounds so the window scrolls the shell, and add the last control of the page after its
-      // last line, as a form's last button or a "Danger zone" would sit.
+      // last line, as a form's last button or a "Danger zone" would sit, with a control right
+      // before it to Tab from.
       await page.evaluate(() => {
         const frame = document.querySelector<HTMLElement>(`[data-e2e="rail-shell-demo"]`)
         if (!frame) throw new Error("the RailShell demo frame is missing")
@@ -919,11 +920,16 @@ export const specs: readonly Spec[] = [
         button.type = "button"
         button.textContent = "Last control"
         button.setAttribute("data-e2e", "rail-shell-demo-focus-target")
-        document.querySelector(`[data-e2e="rail-shell-demo-last-line"]`)?.after(button)
+        const previous = document.createElement("button")
+        previous.type = "button"
+        previous.textContent = "Previous control"
+        previous.setAttribute("data-e2e", "rail-shell-demo-focus-before")
+        document.querySelector(`[data-e2e="rail-shell-demo-last-line"]`)?.after(previous, button)
       })
-      await checkbox.focus()
+      await before.focus()
       // Scroll the window so the control's bottom edge sits 10 px above the window's, which is
-      // behind the 65 px bar, then reach it from the checkbox with Tab as a keyboard user would.
+      // behind the 65 px bar, then reach it with Tab from the control before it, as a keyboard
+      // user would.
       await target.evaluate((element) => {
         const { bottom } = element.getBoundingClientRect()
         globalThis.scrollBy({ top: bottom - (globalThis.innerHeight - 10), behavior: "instant" })
