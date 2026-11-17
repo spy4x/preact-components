@@ -7,24 +7,26 @@ import { siteSearchDemoEntries } from "../../../ui-guide/sections/site-search-en
 const INDEX = "**/site-search-demo/search.json"
 
 /**
- * The field `SiteSearch` on its card: its trigger, its dialog, and the note that shows what
- * `onSearched` heard.
+ * A `SiteSearch` on its card: its trigger, its dialog, and the note that shows what `onSearched`
+ * heard.
  *
  * @param page The guide's UI page.
+ * @param e2e The instance's `dataE2E`: `"site-search"`, the field with a `fallback`, by default, or
+ * `"site-search-icon"`, the icon without one.
  */
-function siteSearch(page: Page) {
+function siteSearch(page: Page, e2e = "site-search") {
   const card = page.locator("#demo-SiteSearch")
-  const dialog = page.locator(`dialog[data-e2e="site-search"]`)
+  const dialog = page.locator(`dialog[data-e2e="${e2e}"]`)
   const note = (name: string) => card.locator(`[data-e2e="site-search-${name}"]`)
   return {
     card,
     dialog,
     field: dialog.getByRole("combobox"),
-    trigger: card.locator(`[data-e2e="site-search-open"]`),
+    trigger: card.locator(`[data-e2e="${e2e}-open"]`),
     options: dialog.getByRole("option"),
     /** Waits until the status line shows `text` where a sighted reader sees it. */
     shows: (text: string) =>
-      dialog.locator(`[data-e2e="site-search-status"]:not(.sr-only)`).filter({ hasText: text })
+      dialog.locator(`[data-e2e="${e2e}-status"]:not(.sr-only)`).filter({ hasText: text })
         .waitFor(),
     /** Waits until `onSearched` has been called exactly `count` times. */
     sessionsAre: (count: number) =>
@@ -80,9 +82,61 @@ export const specs: readonly Spec[] = [
       await search.field.fill("contact")
       await search.options.filter({ hasText: "Email the maintainer" }).waitFor()
       await search.field.fill("tricky")
-      await search.shows("Nothing for “tricky”")
+      await search.options.filter({ hasText: "Browse every component" }).waitFor()
       const listed = await search.options.count()
-      if (listed !== 0) throw new Error(`"tricky" lists ${listed} rows`)
+      if (listed !== 1) throw new Error(`"tricky" lists ${listed} rows, not only the fallback`)
+    },
+  },
+  {
+    name: "SiteSearch: a query that finds nothing lists the fallback, choosing it runs it, and " +
+      "onSearched reports no results",
+    pageId: "ui",
+    run: async (page) => {
+      const search = siteSearch(page)
+      await search.trigger.click()
+      await search.field.fill("qqxqq")
+      await search.options.filter({ hasText: "Browse every component" }).waitFor()
+      // A screen reader hears that nothing matched, not "1 result" for the fallback row.
+      await search.dialog.locator(`[data-e2e="site-search-count"]`)
+        .filter({ hasText: "Nothing for “qqxqq”" }).waitFor()
+      await page.keyboard.press("Enter")
+      await search.dialog.waitFor({ state: "hidden" })
+      await page.locator(`[data-e2e="site-search-ran"]`).filter({
+        hasText: "Browse every component",
+      })
+        .waitFor()
+      await search.sessionsAre(1)
+      const heard = await search.last()
+      const wanted = { query: "qqxqq", results: 0, chosenPosition: 1, chosenKind: "command" }
+      if (JSON.stringify(heard) !== JSON.stringify(wanted)) {
+        throw new Error(`onSearched heard ${JSON.stringify(heard)}`)
+      }
+    },
+  },
+  {
+    name: "SiteSearch: a query that matches a command lists that command, not the fallback",
+    pageId: "ui",
+    run: async (page) => {
+      const search = siteSearch(page)
+      await search.trigger.click()
+      await search.field.fill("hello")
+      await search.options.filter({ hasText: "Say hello" }).waitFor()
+      const fallback = await search.options.filter({ hasText: "Browse every component" }).count()
+      if (fallback !== 0) throw new Error("the fallback shows beside a matching command")
+    },
+  },
+  {
+    name: "SiteSearch without a fallback says only that nothing matched",
+    pageId: "ui",
+    run: async (page) => {
+      await page.setViewportSize({ width: 1280, height: 800 })
+      const search = siteSearch(page, "site-search-icon")
+      await search.trigger.scrollIntoViewIfNeeded()
+      await search.trigger.click()
+      await search.field.fill("qqxqq")
+      await search.shows("Nothing for “qqxqq”")
+      const listed = await search.options.count()
+      if (listed !== 0) throw new Error(`"qqxqq" lists ${listed} rows`)
     },
   },
   {

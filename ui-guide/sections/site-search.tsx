@@ -31,12 +31,19 @@ function SiteSearchDemo() {
     group: "Commands",
     run: () => ran.value = "Say hello",
   }]
+  const fallback = [{
+    id: "browse",
+    label: "Browse every component",
+    group: "Nothing found? Try",
+    run: () => ran.value = "Browse every component",
+  }]
   return (
     <Stack>
       <SiteSearch
         src={SITE_SEARCH_DEMO_SRC}
         fetch={(src) => fetch(src)}
         commands={commands}
+        fallback={fallback}
         groupOrder={["Components", "Commands"]}
         labels={{ placeholder: "Search the guide…" }}
         hotkeys={["mod+shift+f"]}
@@ -57,7 +64,8 @@ function SiteSearchDemo() {
           {last.value === null ? "none" : JSON.stringify(last.value)}
         </span>; ran{" "}
         <span data-e2e="site-search-ran">{ran.value}</span>. Try “palette”, “kbd”, “contact” or
-        “tricky”: the last finds a <code>javascript:</code> link, which never shows.
+        “tricky”: the last finds a <code>javascript:</code>{" "}
+        link, which never shows, so the field offers its fallback instead.
       </DemoNote>
     </Stack>
   )
@@ -87,6 +95,12 @@ export const siteSearchDemos = {
         name: "commands",
         type: "{ id, label, run, group?, icon?, keepOpen?, … }[]",
         description: "Client-side commands listed with the results, filtered by the query.",
+      },
+      {
+        name: "fallback",
+        type: "{ id, label, run, group?, … }[]",
+        description:
+          "Commands listed instead of the empty message when a query finds nothing: a way forward. `onSearched` then reports `results: 0`.",
       },
       {
         name: "groupOrder",
@@ -125,6 +139,7 @@ export const siteSearchDemos = {
   labels={{ placeholder: "Search posts, projects, services…" }}
   groupOrder={["Pages", "Posts"]}
   commands={[{ id: "theme", label: "Toggle theme", group: "Commands", run: toggleTheme }]}
+  fallback={[{ id: "docs", label: "Read the docs", group: "Nothing found? Try", run: openDocs }]}
   onSearched={(event) => analytics.track("search", event)}
 />
 
