@@ -1021,7 +1021,7 @@ export const COMPONENT_CLASSES: string = [
   "pb-4",
   "pb-6",
   "pb-8",
-  "pb-[var(--pc-dock-height,0px)]",
+  "pb-dock",
   "pb-px",
   "pb-safe",
   "pb-safe-3",
