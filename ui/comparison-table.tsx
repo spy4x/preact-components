@@ -21,7 +21,9 @@ export interface ComparisonRow {
 
 /** The page a {@link ComparisonRow}'s facts come from, such as a product's own pricing page. */
 export interface ComparisonSource {
-  /** The link's text, the whole of its accessible name: say whose page it is, and when it was read. */
+  /**
+   * The link's text, the whole of its accessible name: say whose page it is, and when it was read.
+   */
   label: string
   /** The page's address. It opens in the same tab. */
   href: string
@@ -153,10 +155,11 @@ const HINT_COVER =
 const HEADER_HINT_COVER = `${HINT_COVER} dark:shadow-none`
 /**
  * A row's source link: small and muted like the note, always underlined so it reads as a link, on
- * its own line and at least 24 px tall for a finger, with the library's focus ring.
+ * its own line, 44 px tall on a phone and 36 px from `sm` for a finger, with the library's focus
+ * ring.
  */
 const SOURCE_LINK =
-  "flex min-h-6 w-fit items-center rounded-sm text-xs font-normal text-muted underline underline-offset-2 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2 focus-visible:ring-offset-focus"
+  "flex min-h-11 sm:min-h-9 w-fit items-center rounded-sm text-xs font-normal text-muted hover:text-foreground underline underline-offset-2 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2 focus-visible:ring-offset-focus"
 
 /**
  * A comparison of capabilities across products, for a public page: a legend, a real `<table>`
@@ -167,11 +170,11 @@ const SOURCE_LINK =
  * and a row header per capability (`scope="row"`). Every cell shows an icon and a visible "Yes",
  * "Partial" or "No", so colour is never the only signal, and the caller's own column says "Ours"
  * under its name besides being tinted. A row with a `source` links it under the capability, in the
- * same tab, so every claim names the page it was checked against. It renders on the server and needs no JavaScript. Product
- * names wrap below the `sm` breakpoint, so two products fit beside their capabilities at 390 px.
- * A table wider than its screen scrolls sideways inside its own focusable container with the
- * capability column held in place and a shadow at the right edge while more lies that way; the
- * page itself never scrolls sideways.
+ * same tab, so every claim names the page it was checked against. It renders on the server and
+ * needs no JavaScript. Product names wrap below the `sm` breakpoint, so two products fit beside
+ * their capabilities at 390 px. A table wider than its screen scrolls sideways inside its own
+ * focusable container with the capability column held in place and a shadow at the right edge
+ * while more lies that way; the page itself never scrolls sideways.
  *
  * @throws When a row's `values` and `products` differ in length: a missing value would shift every
  * later cell under the wrong product.
