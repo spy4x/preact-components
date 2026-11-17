@@ -167,6 +167,12 @@ describe("DependencyGraph", () => {
     expect(html).toContain('aria-label="Ship, #2, Waiting on review"')
   })
 
+  it("keeps a space between the label and the badge, so the link's text is in its name", () => {
+    const html = graph([{ id: "a", label: "Ship", badge: "#2", href: "/a" }], [])
+    const text = html.replace(/<ul class="sr-only">[\s\S]*$/, "").replace(/<[^>]+>/g, "")
+    expect(text).toContain("Ship #2")
+  })
+
   it("cuts a long label where its box ends and keeps it whole in the title and the list", () => {
     const html = graph()
     expect(html).toMatch(
