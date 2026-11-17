@@ -64,6 +64,9 @@ Need → component → where to see it used. `ui/` is `@spy4x/preact-ui`, `syste
   `ui-guide/sections/crud.tsx`.
 - A toast → `Toastr` (`ui/toastr.tsx`) fed by `createToastStore` (`signals/toast.ts`). Example:
   `ui-guide/mini-app.tsx`.
+- Something that waits for the reader on every page, such as decisions to answer → `Dock`
+  (`ui/dock.tsx`), pinned to the bottom-end corner, never modal. Example:
+  `ui-guide/sections/dock.tsx`.
 
 ## Lists and states
 
