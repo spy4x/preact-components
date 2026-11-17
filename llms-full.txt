@@ -4696,7 +4696,7 @@ the named gaps, the no-outer-margin rule and a page built from the layout compon
 `findOffScaleSpacing` returns one `{ line, column, className, reason }` per finding, with the
 variant prefix and any `-` kept in `className` (`sm:-mt-4`). Besides spacing classes it reports an
 arbitrary property that sets padding, margin or a gap (`[padding:…]`) and a `--spacing()` call whose
-argument is not a numeric step. It cannot see a raw CSS declaration (`padding: 10px`), an inline
+argument, without its sign, is not a numeric step. It cannot see a raw CSS declaration (`padding: 10px`), an inline
 `style`, a class name built at run time or Tailwind's legacy `theme()` function, so it is a floor
 that review builds on, not a proof. It reads any file's text — TypeScript, TSX,
 CSS with `@apply`, HTML — and uses no Deno API, so an app can call it from its own test. This is
@@ -4725,7 +4725,8 @@ imports no test framework: you pass your own `test` function, and a failure is a
 - `guardFiles(options)` is the walk on its own: the files under each directory with one of
   `extensions`, as sorted paths relative to the root. It leaves out test files and
   `skipDirectories`, and throws for an empty `directories` list, a missing or empty directory, a
-  symbolic link with a checked extension and a file under `requiredFiles` it did not find.
+  symbolic link or other special file whose name is not in `skipDirectories` (it never follows a
+  link) and a file under `requiredFiles` it did not find.
 - `guardRoot(root)` turns a path or a `file:` URL into a path with no trailing separator.
 - `DEFAULT_SKIPPED_DIRECTORIES` is `node_modules`, `dist`, `build`, `.vite` and `_fresh`;
   `DEFAULT_SPACING_EXTENSIONS` is `.ts`, `.tsx`, `.css` and `.html`.
