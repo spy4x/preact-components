@@ -1,34 +1,52 @@
 /**
  * `Dock`'s card, spread at the end of the Feedback section after `DecisionCard`'s. The dock is
  * pinned to the window, so it would cover the guide; it shows only after "Show the dock". It holds
- * `DecisionCard`'s demo queue, one item at a time, with the count of items left on its toggle.
+ * `DecisionCard`'s demo queue, one item at a time, with the count of items waiting on its toggle.
  *
  * The card binds `d` on the page to open and close the dock, the way an app would; inside the dock
- * `d` does nothing, and the card's keys (`1` to `9`, `n`, `e`) work only while focus is inside it.
- * "A new item arrives" puts an answered item back, to show that a change of content never moves
- * focus. `pages/e2e/ui/dock.spec.ts` drives the keys, Escape, the focus, the toast offset and axe.
+ * `d` does nothing, and the item's keys (`1` to `9`, `n`, `e`) work only while focus is inside it.
+ * "A new item arrives" adds an item at the end of the queue, to show that a change of content
+ * never moves focus. `pages/e2e/ui/dock.spec.ts` drives the keys, Escape, the focus, the layout,
+ * the toast offset and axe.
  */
 
 import { Button, Cluster, DecisionCard, Dock, Stack, useHotkeys } from "@spy4x/preact-ui"
 import { useSignal } from "@preact/signals"
-import { QUEUE } from "./decision-card.tsx"
+import { QUEUE, type QueueItem } from "./decision-card.tsx"
 import type { DemoFragment } from "../registry.ts"
+
+/** An item in the dock's queue; `serial` keys it, since the demo's items come round again. */
+interface Waiting {
+  serial: number
+  item: QueueItem
+}
 
 function DockDemo() {
   const shown = useSignal(false)
   const open = useSignal(true)
   const inside = useSignal(false)
-  const answered = useSignal(0)
+  // Focus follows to the next item only after an answer given from inside the dock.
+  const follow = useSignal(false)
+  const queue = useSignal<readonly Waiting[]>(QUEUE.map((item, serial) => ({ serial, item })))
+  const arrivals = useSignal(QUEUE.length)
   const last = useSignal("")
   useHotkeys(
     [{ keys: "d", description: "Open or close the dock", handler: () => open.value = !open.value }],
     { enabled: shown.value },
   )
-  const left = QUEUE.length - answered.value
-  const item = QUEUE[answered.value]
+  const current = queue.value[0]
   const next = (answer: string) => {
     last.value = answer
-    answered.value += 1
+    follow.value = inside.value
+    queue.value = queue.value.slice(1)
+  }
+  const arrive = () => {
+    follow.value = false
+    queue.value = [
+      ...queue.value,
+      { serial: arrivals.value, item: QUEUE[arrivals.value % QUEUE.length] },
+    ]
+    arrivals.value += 1
   }
   const withNote = (answer: string, note: string) => note === "" ? answer : `${answer} (${note})`
   return (
@@ -46,12 +64,7 @@ function DockDemo() {
         >
           Show the dock
         </Button>
-        <Button
-          variant="secondary"
-          disabled={!shown.value || answered.value === 0}
-          onClick={() => answered.value -= 1}
-          data-e2e="dock-arrive"
-        >
+        <Button variant="secondary" disabled={!shown.value} onClick={arrive} data-e2e="dock-arrive">
           A new item arrives
         </Button>
       </Cluster>
@@ -63,29 +76,34 @@ function DockDemo() {
           open={open.value}
           onOpenChange={(next) => open.value = next}
           label="Decisions"
-          count={left}
+          count={queue.value.length}
           header={
-            <p class="text-xs text-muted" data-e2e="dock-position">
-              {left === 0 ? "All answered" : `Item ${answered.value + 1} of ${QUEUE.length}`}
+            <p class="text-xs text-muted">
+              Answers stay in this demo; nothing is sent.
             </p>
           }
           onFocusWithinChange={(now) => inside.value = now}
         >
-          {item === undefined
+          {current === undefined
             ? <p class="text-sm text-muted">Nothing waits for you.</p>
             : (
               <DecisionCard
-                key={item.id}
-                kind={item.kind}
-                title={item.title}
-                meta={item.meta}
-                context={item.context}
-                options={item.options}
-                onChoose={item.options && ((option, note) => next(withNote(option.label, note)))}
-                onSend={item.options || item.answer ? (text) => next(`"${text}"`) : undefined}
-                onDone={item.done ? (note) => next(withNote("Marked done", note)) : undefined}
+                key={current.serial}
+                kind={current.item.kind}
+                title={current.item.title}
+                meta={current.item.meta}
+                context={current.item.context}
+                options={current.item.options}
+                onChoose={current.item.options &&
+                  ((option, note) => next(withNote(option.label, note)))}
+                onSend={current.item.options || current.item.answer
+                  ? (text) => next(`"${text}"`)
+                  : undefined}
+                onDone={current.item.done
+                  ? (note) => next(withNote("Marked done", note))
+                  : undefined}
                 headingLevel={3}
-                autoFocus={inside.value}
+                autoFocus={follow.value}
                 hotkeys={inside.value}
               />
             )}
@@ -145,8 +163,8 @@ export const dockDemos: DemoFragment = {
     key={item.id}
     title={item.question}
     options={item.options}
-    onChoose={(option, note) => answer(item, option, note)}
-    autoFocus={inside.value} // only follow the reader's own answer
+    onChoose={(option, note) => answer(item, option, note)} // set answeredInside = inside.value
+    autoFocus={answeredInside.value} // focus follows only the reader's own answer
     hotkeys={inside.value} // 1 to 9, n and e only while focus is in the dock
   />
 </Dock>`,

@@ -41,6 +41,7 @@ import { specs as themePreview } from "./ui/theme-preview.spec.ts"
 import { specs as quickAdd } from "./ui/quick-add.spec.ts"
 import { specs as confirmDialog } from "./ui/confirm-dialog.spec.ts"
 import { specs as decisionCard } from "./ui/decision-card.spec.ts"
+import { specs as dock } from "./ui/dock.spec.ts"
 import { specs as removal } from "./ui/removal.spec.ts"
 import { specs as focusHook } from "./ui/focus-hook.spec.ts"
 import { specs as toastr } from "./ui/toastr.spec.ts"
@@ -117,6 +118,7 @@ export const specsByFile: Readonly<Record<string, readonly Spec[]>> = {
   "quick-add": quickAdd,
   "confirm-dialog": confirmDialog,
   "decision-card": decisionCard,
+  dock,
   removal,
   "focus-hook": focusHook,
   toastr,
