@@ -57,16 +57,19 @@ const LAYER =
   "pointer-events-none fixed inset-x-0 bottom-[max(0px,calc(var(--pc-tab-bar-room,0px)-(--spacing(8))))] z-30 flex justify-end md:px-4 md:pb-4"
 
 /**
- * The panel: a sheet with rounded top corners below `md`, a card from `md`. Expanded, it is at
- * most 80 % of the window's height below `md` and `min(70dvh, 36rem)` from it.
+ * The panel: a sheet with rounded top corners below `md`, a card from `md`. Expanded, it is 24rem
+ * wide from `md` and at most 80 % of the window's height below `md`, `min(70dvh, 36rem)` from it.
+ * Collapsed, it is 16rem wide from `md`, so it hides less of the page.
  */
 const PANEL =
-  "pointer-events-auto flex w-full flex-col overflow-hidden rounded-t-[var(--radius-card,0.75rem)] border border-b-0 border-subtle bg-surface text-foreground shadow-popover md:w-96 md:rounded-card md:border-b"
+  "pointer-events-auto flex w-full flex-col overflow-hidden rounded-t-[var(--radius-card,0.75rem)] border border-b-0 border-subtle bg-surface text-foreground shadow-popover md:rounded-card md:border-b"
 
-const PANEL_OPEN = "max-h-[80dvh] md:max-h-[min(70dvh,36rem)]"
+const PANEL_OPEN = "max-h-[80dvh] md:w-96 md:max-h-[min(70dvh,36rem)]"
+
+const PANEL_CLOSED = "md:w-64"
 
 const TOGGLE =
-  "flex min-h-11 w-full shrink-0 cursor-pointer items-center gap-2 px-4 py-2 text-start text-sm font-medium hover:bg-hover focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-inset"
+  "flex min-h-11 w-full shrink-0 cursor-pointer items-center gap-2 px-4 py-2 text-start text-sm font-semibold hover:bg-hover focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-inset"
 
 /** The body slides up a little as it opens, through `@starting-style`; not under reduced motion. */
 const BODY =
@@ -145,7 +148,7 @@ export function Dock(props: DockProps): JSX.Element {
       <div
         role={open ? "region" : undefined}
         aria-label={open ? label : undefined}
-        class={join(PANEL, open && PANEL_OPEN, className)}
+        class={join(PANEL, open ? PANEL_OPEN : PANEL_CLOSED, className)}
         onKeyDown={onKeyDown}
         onFocusIn={() => focusMoved(true)}
         onFocusOut={(event) =>
@@ -161,7 +164,7 @@ export function Dock(props: DockProps): JSX.Element {
           onClick={() => onOpenChange(!open)}
           data-e2e="dock-toggle"
         >
-          <span class="min-w-0 flex-1 truncate">{label}</span>
+          <span class="min-w-0 truncate">{label}</span>
           {count !== undefined && (
             <Badge
               text={String(count)}
@@ -170,7 +173,7 @@ export function Dock(props: DockProps): JSX.Element {
             />
           )}
           <IconChevronDown
-            class={join("size-4 motion-safe:transition-transform", !open && "rotate-180")}
+            class={join("ms-auto size-4 motion-safe:transition-transform", !open && "rotate-180")}
           />
         </button>
         {open && (
