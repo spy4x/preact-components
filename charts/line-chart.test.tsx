@@ -16,6 +16,16 @@ function linePaths(html: string): string[] {
   return [...html.matchAll(/<path d="([^"]+)"(?![^>]*data-chart-bridge)[^>]*>/g)].map(([, d]) => d)
 }
 
+/** Fails when a path has a Y coordinate above or below the 0…1000 plot. */
+function expectInsidePlot(paths: string[]): void {
+  for (const path of paths) {
+    for (const [, y] of path.matchAll(/[ML][-\d.]+,([-\d.]+)/g)) {
+      expect(Number(y)).toBeGreaterThanOrEqual(0)
+      expect(Number(y)).toBeLessThanOrEqual(1000)
+    }
+  }
+}
+
 /** The `left` of every X label, with its text. */
 function xLabels(html: string): string[] {
   const row = html.slice(html.lastIndexOf(`class="absolute inset-y-0 inset-x-3"`))
@@ -30,6 +40,49 @@ describe("LineChart", () => {
 
     expect(linePaths(html)).toEqual(["M0.0,1000.0 L1000.0,0.0"])
     expect(html).toContain(`preserveAspectRatio="none"`)
+  })
+
+  it("keeps a fixed Y domain exactly when every value fits in it", () => {
+    const html = render(<LineChart series={twoPoints} yDomain={[0, 20]} yTicks={2} />)
+
+    expect(linePaths(html)).toEqual(["M0.0,1000.0 L1000.0,500.0"])
+    for (const label of [">0<", ">10<", ">20<"]) expect(html).toContain(label)
+  })
+
+  it("grows a fixed Y domain to hold a value above it", () => {
+    const series: LineSeries[] = [{
+      name: "Runs",
+      points: [{ x: "Jan", y: 0 }, { x: "Feb", y: 50 }],
+    }]
+    const html = render(<LineChart series={series} yDomain={[0, 10]} />)
+
+    expect(linePaths(html)).toEqual(["M0.0,1000.0 L1000.0,0.0"])
+    expectInsidePlot(linePaths(html))
+    expect(html).toContain(">50<")
+  })
+
+  it("grows a fixed Y domain to hold a value below it", () => {
+    const series: LineSeries[] = [{
+      name: "Runs",
+      points: [{ x: "Jan", y: -30 }, { x: "Feb", y: 5 }],
+    }]
+    const html = render(<LineChart series={series} yDomain={[0, 10]} />)
+
+    expect(linePaths(html)).toEqual(["M0.0,1000.0 L1000.0,125.0"])
+    expectInsidePlot(linePaths(html))
+    expect(html).toContain(">-30<")
+  })
+
+  it("grows a fixed Y domain to hold a reference value outside it", () => {
+    const html = render(
+      <LineChart series={twoPoints} yDomain={[0, 10]} referenceValue={90} referenceLabel="Goal" />,
+    )
+
+    const top = Number(html.match(/style="top:([-\d.]+)%;[^"]*" data-chart-reference/)?.[1])
+    expect(top).toBeGreaterThanOrEqual(0)
+    expect(top).toBeLessThanOrEqual(100)
+    expect(top).toBe(10)
+    expectInsidePlot(linePaths(html))
   })
 
   it("draws one dot per point whose native tooltip names the series, the X and the value", () => {

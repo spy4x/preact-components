@@ -70,7 +70,10 @@ export interface LineChartProps {
   yFormat?: (value: number) => string
   /** X label and tooltip heading format; a time axis passes a `Date`. */
   xFormat?: (x: string | Date) => string
-  /** Fixes the Y domain instead of deriving a padded one from the data. */
+  /**
+   * Fixes the Y domain instead of deriving a padded one from the data. A range that does not hold
+   * every value (or `referenceValue`) grows to hold them, rounded outward to whole ticks.
+   */
   yDomain?: readonly [number, number]
   /** Requested number of Y steps. Defaults to `5`. */
   yTicks?: number
@@ -755,8 +758,10 @@ function pathOf(
 /**
  * Explicit domain when the caller gave one, otherwise a padded and rounded-outward one.
  *
- * An explicit domain is honoured exactly — two panels can share one axis — but it still gets ticks,
- * and a single-value domain is widened so it cannot divide by zero.
+ * An explicit domain that holds every plotted value and the reference value is kept exactly — two
+ * panels can share one axis — but it still gets ticks, and a single-value domain is widened so it
+ * cannot divide by zero. One that does not is grown to hold them, rounded outward to its ticks, so
+ * no line or marker is drawn outside the plot.
  */
 function resolveYDomain(
   override: readonly [number, number] | undefined,
@@ -765,7 +770,11 @@ function resolveYDomain(
 ): { min: number; max: number; ticks: number[] } {
   if (override && Number.isFinite(override[0]) && Number.isFinite(override[1])) {
     const [low, high] = override[0] <= override[1] ? override : [override[1], override[0]]
-    if (low < high) return { min: low, max: high, ticks: ticks(low, high, target) }
+    const fits = bounds[0] >= low && bounds[1] <= high
+    if (low < high && fits) return { min: low, max: high, ticks: ticks(low, high, target) }
+    if (low < high) {
+      return niceScale(Math.min(low, bounds[0]), Math.max(high, bounds[1]), { target, padRatio: 0 })
+    }
   }
 
   return niceScale(bounds[0], bounds[1], { target })
