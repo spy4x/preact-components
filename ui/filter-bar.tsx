@@ -301,7 +301,7 @@ const triggerCount =
  * close. From `sm` up it is the ordinary dropdown under its trigger.
  */
 const sheetPanel =
-  "max-sm:fixed max-sm:inset-x-0 max-sm:top-auto max-sm:bottom-0 max-sm:z-50 max-sm:m-0 max-sm:max-h-[70dvh] max-sm:overflow-y-auto max-sm:rounded-t-xl max-sm:rounded-b-none max-sm:pb-4 max-sm:shadow-[0_0_0_100vmax_var(--color-scrim)] max-sm:whitespace-normal max-sm:[&_button]:min-h-11 max-sm:[&_a]:min-h-11 sm:min-w-56"
+  "max-sm:fixed max-sm:inset-x-0 max-sm:w-auto max-sm:top-auto max-sm:bottom-0 max-sm:z-50 max-sm:m-0 max-sm:max-h-[70dvh] max-sm:overflow-y-auto max-sm:rounded-t-xl max-sm:rounded-b-none max-sm:pb-4 max-sm:shadow-[0_0_0_100vmax_var(--color-scrim)] max-sm:whitespace-normal max-sm:[&_button]:min-h-11 max-sm:[&_a]:min-h-11 sm:min-w-56"
 
 /** The sheet's visible title, on a phone only: a sheet at the bottom has no trigger beside it. */
 function SheetTitle({ children }: { children: string }): JSX.Element {
