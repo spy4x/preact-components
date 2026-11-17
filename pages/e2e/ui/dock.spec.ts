@@ -45,6 +45,18 @@ function near(actual: number, expected: number, what: string): void {
   if (Math.abs(actual - expected) > 1) throw new Error(`${what} is ${actual}px, not ${expected}px`)
 }
 
+/**
+ * Puts focus on the dock's toggle and waits until the item's keys listen: the item draws its `1`
+ * hint in the render focus causes, and Preact attaches the key listener after the next frame.
+ */
+async function focusInside(page: Page, toggle: Locator): Promise<void> {
+  await toggle.focus()
+  await page.locator(`[data-e2e="dock"] [aria-keyshortcuts="1"]`).waitFor()
+  await page.evaluate(() =>
+    new Promise((done) => requestAnimationFrame(() => requestAnimationFrame(done)))
+  )
+}
+
 /** Leaves focus on nothing, so a key press lands on the page outside the dock. */
 async function blur(page: Page): Promise<void> {
   await page.evaluate(() => (document.activeElement as HTMLElement | null)?.blur())
@@ -100,7 +112,7 @@ export const specs: readonly Spec[] = [
       const notes = page.locator(`[data-e2e="hotkey-count"]`)
       const notesBefore = await notes.textContent()
 
-      await toggle.focus()
+      await focusInside(page, toggle)
       await page.keyboard.press("d")
       await expanded(true)
       await page.keyboard.press("n")
@@ -121,7 +133,7 @@ export const specs: readonly Spec[] = [
       await page.keyboard.press("d")
       await expanded(true)
 
-      await toggle.focus()
+      await focusInside(page, toggle)
       await page.keyboard.press("1")
       await last.filter({ hasText: "Last answer: Release today" }).waitFor()
       await page.getByRole("button", { name: "Decisions: 2" }).waitFor()
