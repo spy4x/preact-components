@@ -985,7 +985,8 @@ function RadioChipsDemo() {
 
 /**
  * A multi-select tag filter, tags in colours of their own, and a single-select status filter, the
- * first and last echoing their value, then seven weekday chips that must fit one phone-wide row.
+ * first and last echoing their value, then seven weekday chips that wrap on a phone without
+ * overflowing.
  */
 function ToggleChipsDemo() {
   const tags = useSignal<string[]>(["work"])
