@@ -37,7 +37,8 @@ is appended to their own classes, not merged into them: to replace one of their 
 mark the replacement important, `<Lightbox class="p-8!">`. Tailwind 4 writes the `!` at the end.
 `Button`, `buttonClasses`, `Input`, `Textarea`, `Select` and `EnhancedForm` merge a caller's
 `class` through `cn` since #861, so a caller's utility wins and an island that renders one of them
-carries `tailwind-merge`. Both `ImageGallery` and `Lightbox` render a `Button`, so their islands
+carries `tailwind-merge`; `buttonClassesJoined` from `@spy4x/preact-ui/button-classes` is the
+same button classes through `join`. Both `ImageGallery` and `Lightbox` render a `Button`, so their islands
 carry it too.
 
 ## The theme-class rule

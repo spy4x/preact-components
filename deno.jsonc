@@ -50,8 +50,8 @@
     // that grant, to prove the committed class list matches the packages' sources (#323). No other
     // test gets the grant. `infra/scripts/llms-txt.test.ts` also runs on its own, with
     // `--allow-run=deno` added: it runs `deno doc` to prove `llms.txt` is fresh. So does
-    // `ui/island-bundle.test.ts`: it runs `deno bundle` to prove an island that renders `Button`,
-    // `ImageGallery` or `Lightbox` carries no `tailwind-merge` (#471). So does
+    // `ui/island-bundle.test.ts`: it runs `deno bundle` to prove which islands carry
+    // `tailwind-merge` (#471). So does
     // `ui-guide/registry-props.test.ts`: it runs `deno doc` to read each component's props and
     // holds the guide's snippets and props tables to them. No other test gets that grant,
     // except `system/playwright-config.test.ts`, which runs last with `--allow-write` too: it writes

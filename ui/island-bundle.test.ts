@@ -9,7 +9,9 @@
  * through `cn` since #861 (the owner's pick: a caller's class always wins, and islands carry
  * `tailwind-merge`), so every island that renders one of them — `ImageGallery`, `Lightbox`, `Field`,
  * `PricingTable`, `ScreenTour` and the modal over a combobox, through `Button` or `Input` — carries
- * it, under a ceiling of its own. Each fixture under `testdata/` is such an island, and is bundled
+ * it, under a ceiling of its own. `buttonClassesJoined` (#1367) composes `Button`'s classes with
+ * `join`, so an island that styles a link as a button through it carries neither `tailwind-merge`
+ * nor `Button`'s own code. Each fixture under `testdata/` is such an island, and is bundled
  * here the way an app's build bundles one: `deno bundle --platform browser --minify`.
  *
  * `tailwind-merge`'s minified code keeps its class-group names as strings, so its presence is read
@@ -120,6 +122,8 @@ describe("a browser bundle of a library component", () => {
       "island-toastr.tsx",
       "island-explorable-bars.tsx",
       "island-prose-code-copy.tsx",
+      // A link styled as a button: 12.1 KB, Preact and the class tables alone (#1367).
+      "island-button-classes-joined.tsx",
     ]
   ) {
     it(`carries no tailwind-merge, and stays under the ceiling, for ${fixture}`, async () => {
@@ -142,5 +146,11 @@ describe("a browser bundle of a library component", () => {
     // The island copies through the shared clipboard helper, not through `CopyButton`, whose
     // module renders a `Button`: a docs page that ships only this island stays small.
     expect(await bundle("island-prose-code-copy.tsx")).not.toContain(BUTTON_HOTKEY_MARKER)
+  })
+
+  it("carries none of Button's code for an island that styles a link with buttonClassesJoined", async () => {
+    // `button-classes.ts` holds the class tables alone; reaching `button.tsx` would bring its
+    // hotkeys and, through `cn`, `tailwind-merge` (#1367).
+    expect(await bundle("island-button-classes-joined.tsx")).not.toContain(BUTTON_HOTKEY_MARKER)
   })
 })

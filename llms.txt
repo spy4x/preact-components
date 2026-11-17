@@ -1024,6 +1024,7 @@ avatarFace	helper	@spy4x/preact-ui	Pick an avatar's face: the image while it is 
 backdropClickDismisses	helper	@spy4x/preact-ui	Whether one click should dismiss the dialog.
 badgeClasses	helper	@spy4x/preact-ui	Compose a badge's class list without rendering one, so a pill that is not a `Badge` — a pressable chip, say — draws from the same palette.
 buttonClasses	helper	@spy4x/preact-ui	Compose the class list of a button without rendering one.
+buttonClassesJoined	helper	@spy4x/preact-ui	Compose the class list of a button with `join`, without `tailwind-merge`, so an island that styles a link or a button this way does not carry the ~28 KB it adds.
 clampProgress	helper	@spy4x/preact-ui	Clamp a progress reading into `0…max` and derive its completion fraction.
 clearCommandPaletteRecent	helper	@spy4x/preact-ui	Forgets the recent picks a `CommandPalette` keeps under `storageKey`, such as on sign-out, so the next person on the device does not see them.
 clickByHotkey	helper	@spy4x/preact-ui	Click an element for a key press, the way a hotkey should: only when the reader could have clicked it themselves.

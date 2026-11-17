@@ -71,6 +71,7 @@ export {
   type ButtonSize,
   type ButtonVariant,
 } from "./button.tsx"
+export { buttonClassesJoined } from "./button-classes.ts"
 export { Checkbox, type CheckboxProps, type CheckboxShape } from "./checkbox.tsx"
 export {
   COLOR_PRESETS,
