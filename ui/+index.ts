@@ -516,6 +516,7 @@ export {
 } from "./zoomable-images.tsx"
 export {
   activeShortcuts,
+  ariaKeyShortcutList,
   ariaKeyShortcuts,
   clickByHotkey,
   createHotkeyListener,
@@ -550,7 +551,15 @@ export {
   useFocusAfterRemoval,
   useFocusFallback,
 } from "./use-focus-after-removal.ts"
-export { Kbd, KBD_LABELS, type KbdLabels, type KbdProps, type KeyFace, keyFaces } from "./kbd.tsx"
+export {
+  Kbd,
+  KBD_LABELS,
+  type KbdLabels,
+  type KbdProps,
+  type KeyFace,
+  keyFaces,
+  sequenceSteps,
+} from "./kbd.tsx"
 export {
   groupShortcuts,
   type Shortcut,

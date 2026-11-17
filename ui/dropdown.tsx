@@ -7,7 +7,7 @@ import { readFallback } from "./dropdown-fallback.ts"
 import { buttonClasses } from "./button.tsx"
 import { HotkeyHint } from "./hotkey-hint.tsx"
 import {
-  ariaKeyShortcuts,
+  ariaKeyShortcutList,
   hotkeyClickBinding,
   type HotkeyProps,
   useApplePlatform,
@@ -251,7 +251,8 @@ export interface DropdownItemProps extends HotkeyProps {
    * Combinations the app binds itself that also choose this item, such as `["?"]` for an item that
    * opens the same dialog as `?`. They are announced in `aria-keyshortcuts` and the first shows as
    * the hint at the item's right edge, but the item binds none of them. With `hotkey` too, `hotkey`
-   * comes first in both.
+   * comes first in both. A sequence such as `"g p"` is shown, "G then P", but not announced: the
+   * attribute has no syntax for one.
    */
   keyshortcuts?: readonly string[]
   /**
@@ -340,9 +341,7 @@ export function DropdownItem(
     { enabled: hotkey !== undefined },
   )
   const announced = hotkey === undefined ? keyshortcuts : [hotkey, ...keyshortcuts]
-  const shortcuts = announced.length === 0
-    ? undefined
-    : announced.map((keys) => ariaKeyShortcuts(keys, apple)).join(" ")
+  const shortcuts = ariaKeyShortcutList(announced, apple)
   const hint = announced.length > 0 && hotkeyHint
     ? <HotkeyHint keys={announced[0]} apple={apple} labels={kbdLabels} class="ms-auto ps-4" />
     : null

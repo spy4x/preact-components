@@ -34,6 +34,22 @@ function returnButton(html: string, name = "This month"): string {
   return button
 }
 
+/** The cell holding the period's name: its unseen sizers, then the live region. */
+function nameCell(html: string): string {
+  const cell = html.match(/<span class="grid[^"]*">.*?<span aria-live="polite".*?<\/span><\/span>/)
+    ?.[0]
+  if (!cell) throw new Error(`no name cell in ${html}`)
+  return cell
+}
+
+/** The names stacked unseen in the name's cell, in order. */
+function sizers(html: string): string[] {
+  return [
+    ...nameCell(html).matchAll(/<span aria-hidden="true" class="invisible[^"]*">(.*?)<\/span>/g),
+  ]
+    .map((match) => match[1])
+}
+
 /** Whether a button is hidden with `invisible`, keeping its place. */
 function isHidden(button: string): boolean {
   return /class="[^"]*\binvisible\b/.test(button)
@@ -47,11 +63,69 @@ describe("PeriodStepper", () => {
   })
 
   it("puts the period's name on its own line below sm, from the line's start, whatever its length", () => {
-    const name = stepper().match(/<span aria-live="polite"[^>]*>/)?.[0] ?? ""
+    const name = nameCell(stepper()).match(/^<span[^>]*>/)?.[0] ?? ""
     expect(name).toMatch(/class="[^"]*\bbasis-full\b/)
     expect(name).toMatch(/class="[^"]*\bsm:basis-auto\b/)
     // `pc-num` aligns right, so on a full-width line the name's start would follow its length.
     expect(name).not.toContain("pc-num")
+  })
+
+  it("sizes the name's cell by the 12 months of the year shown, unseen and unread", () => {
+    const html = stepper({ period: AUGUST })
+    expect(sizers(html)).toEqual([
+      "January 2026",
+      "February 2026",
+      "March 2026",
+      "April 2026",
+      "May 2026",
+      "June 2026",
+      "July 2026",
+      "August 2026",
+      "September 2026",
+      "October 2026",
+      "November 2026",
+      "December 2026",
+    ])
+    expect(sizers(stepper({ period: periodOf(PeriodUnit.Month, "2027-03-01", {}) }))[0])
+      .toBe("January 2027")
+  })
+
+  it("puts only the current period's name in the live region", () => {
+    const live = stepper({ period: AUGUST }).match(/<span aria-live="polite"[^>]*>(.*?)<\/span>/)
+    expect(live?.[1]).toBe("August 2026")
+  })
+
+  it("sizes a week's name by every week that starts in its year, laid out from its first weekday", () => {
+    const monday = sizers(stepper({ period: periodOf(PeriodUnit.Week, "2026-10-12", {}) }))
+    // 2026 has 52 Mondays, the first on 5 January and the last on 28 December.
+    expect(monday).toHaveLength(52)
+    expect(monday[0]).toBe("5–11 Jan 2026")
+    expect(monday.at(-1)).toBe("28 Dec 2026 – 3 Jan 2027")
+    const sunday = sizers(
+      stepper({
+        period: periodOf(PeriodUnit.Week, "2026-10-12", { firstWeekday: 7 }),
+        options: { firstWeekday: 7 },
+      }),
+    )
+    expect(sunday[0]).toBe("4–10 Jan 2026")
+  })
+
+  it("names the sizers in the locale prop over the translator's language", () => {
+    const german = createTranslator({ language: "de", catalogs: [{ source: en, translation: de }] })
+    const html = (locale?: string) =>
+      render(
+        <I18nContext.Provider value={german}>
+          <PeriodStepper
+            period={AUGUST}
+            onChange={() => {}}
+            now={NOW}
+            timeZone={ZONE}
+            locale={locale}
+          />
+        </I18nContext.Provider>,
+      )
+    expect(sizers(html())[2]).toBe("März 2026")
+    expect(sizers(html("en-GB"))[2]).toBe("March 2026")
   })
 
   it("hides the return button on the current period, keeping its key hint but binding no key", () => {

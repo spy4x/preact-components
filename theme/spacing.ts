@@ -71,8 +71,18 @@ const UTILITIES = [
 /** Where a class may start: not inside a longer word, a custom property or a path. */
 const START = String.raw`(?<![\w\-./:\[\]$@])`
 
-/** A variant chain: `sm:`, `dark:hover:`, `data-[open]:`, `[&>*]:`, `group-hover/name:`. */
-const VARIANTS = String.raw`((?:(?:[\w\-@*&]+(?:\[[^\]\s]*\])?|\[[^\]\s]*\])(?:\/[\w-]+)?:)*)`
+/**
+ * A variant's bracket group, which may hold one nested group: `[open]`, `[&>*]`, `[[data-x]]`,
+ * `[&_[data-open]]`. A character is either plain or opens a group, so the match never backtracks.
+ */
+const VARIANT_BRACKETS = String.raw`\[(?:[^\[\]\s]|\[[^\[\]\s]*\])*\]`
+
+/**
+ * A variant chain: `sm:`, `dark:hover:`, `data-[open]:`, `[&>*]:`, `group-hover/name:`,
+ * `has-[[data-x]]:`, `[&_[data-open]]:`.
+ */
+const VARIANTS = String.raw`((?:(?:[\w\-@*&]+(?:${VARIANT_BRACKETS})?|${VARIANT_BRACKETS})` +
+  String.raw`(?:\/[\w-]+)?:)*)`
 
 /**
  * A class-shaped token: a variant chain, an optional `!` and `-`, a spacing utility, then a value —
@@ -104,8 +114,11 @@ const ARBITRARY_PROPERTY = new RegExp(
   "g",
 )
 
-/** Tailwind's spacing function with its argument, in a stylesheet or inside an arbitrary value. */
-const SPACING_FUNCTION = /--spacing\(\s*([\w.]*)\s*\)/g
+/**
+ * Tailwind's spacing function with its argument, in a stylesheet or inside an arbitrary value. Group
+ * 1 is the argument with its sign, group 2 without it.
+ */
+const SPACING_FUNCTION = /--spacing\(\s*(-?([\w.]*))\s*\)/g
 
 const STEPS: ReadonlySet<string> = new Set(SPACING_STEPS)
 
@@ -116,7 +129,8 @@ const NUMERIC_STEPS = SPACING_STEPS.filter((step) => step !== "px").join(" ")
  * Finds every spacing class in `source` that uses a step outside {@link SPACING_STEPS} or an
  * arbitrary value, written in square brackets or as a custom property in parentheses; every
  * arbitrary property that sets padding, margin, a gap or their scroll forms; and every use of
- * Tailwind's spacing function whose argument is not a numeric step.
+ * Tailwind's spacing function whose argument is not a numeric step, with or without a `-` sign: a
+ * negative step on the scale passes, as `-m-4` does.
  *
  * `source` is any file's text: TypeScript, TSX, CSS with `@apply`, or HTML. Every class-shaped
  * token is checked wherever it stands, comments included, because Tailwind's own scanner reads
@@ -151,7 +165,7 @@ export function findOffScaleSpacing(source: string): SpacingViolation[] {
       })
     }
     for (const match of text.matchAll(SPACING_FUNCTION)) {
-      if (match[1] !== "px" && STEPS.has(match[1])) continue
+      if (match[2] !== "px" && STEPS.has(match[2])) continue
       found.push({
         index: match.index ?? 0,
         className: match[0],

@@ -37,7 +37,8 @@ export interface BoundaryRunnerOptions {
   extensions?: readonly string[]
   /**
    * Directory names to leave out wherever they appear below a walked directory. Defaults to
-   * `DEFAULT_SKIPPED_DIRECTORIES` from `@spy4x/preact-theme/spacing-runner`.
+   * `DEFAULT_SKIPPED_DIRECTORIES` from `@spy4x/preact-theme/spacing-runner`. A symbolic link the
+   * walk should pass over goes here by name too; any other link fails the test.
    */
   skipDirectories?: readonly string[]
   /** Files the walk must find, relative to `root`, such as `"libs/ui/auth-screen.tsx"`. */

@@ -98,8 +98,9 @@ export interface RailItem {
    * such as `["mod+k", "/"]` for a search the app opens from anywhere. The rail does not bind them:
    * the app does. The entry announces them all in `aria-keyshortcuts`, and the icons variant's
    * tooltip shows the first one after the label as the platform writes it: "Search (Ctrl K)", or
-   * "Search (⌘K)" on Apple platforms. The phone's tab and sheet row show no hint, since a touch
-   * screen has no keys to press.
+   * "Search (⌘K)" on Apple platforms. A sequence such as `"g x"` is shown, "Transactions (G X)",
+   * but not announced: the attribute has no syntax for one. The phone's tab and sheet row show no
+   * hint, since a touch screen has no keys to press.
    */
   keyshortcuts?: readonly string[]
 }

@@ -58,7 +58,8 @@ export interface GuardWalkOptions {
   /**
    * Directory names to leave out wherever they appear below a walked directory. Defaults to
    * {@link DEFAULT_SKIPPED_DIRECTORIES}. A directory above `root` with one of these names does not
-   * count: a checkout under a folder named `build` is still walked.
+   * count: a checkout under a folder named `build` is still walked. A symbolic link the walk should
+   * pass over goes here by name too; any other link fails the walk.
    */
   skipDirectories?: readonly string[]
   /**
@@ -104,8 +105,9 @@ export function guardRoot(root: string | URL): string {
  * the root with `/` separators.
  *
  * @throws When `options.directories` is empty, when a directory does not exist or holds no file to
- *   check, when an entry with a wanted name is a symbolic link or another special file, or when
- *   one of `options.requiredFiles` was not found.
+ *   check, when an entry is a symbolic link or another special file whose name is not in
+ *   `options.skipDirectories` (the walk never follows a link: a linked directory could loop, count
+ *   files twice or leave the root), or when one of `options.requiredFiles` was not found.
  */
 export async function guardFiles(options: GuardWalkOptions): Promise<string[]> {
   const fs = options.fs ?? denoFileSystem
@@ -119,12 +121,15 @@ export async function guardFiles(options: GuardWalkOptions): Promise<string[]> {
     const files: string[] = []
     for (const entry of await fs.readDir(`${root}/${directory}`)) {
       const path = `${directory}/${entry.name}`
-      if (entry.isDirectory && !skipped.includes(entry.name)) files.push(...await walk(path))
-      else if (entry.isFile && wanted(entry.name)) files.push(path)
-      else if (!entry.isDirectory && !entry.isFile && wanted(entry.name)) {
+      if (entry.isFile) {
+        if (wanted(entry.name)) files.push(path)
+      } else if (skipped.includes(entry.name)) continue
+      else if (entry.isDirectory) files.push(...await walk(path))
+      else {
         throw new Error(
-          `The guard cannot read ${path} in ${root}: it is a symbolic link or another special ` +
-            `file. Put the file itself there, or leave it out with skipDirectories.`,
+          `The guard cannot walk ${path} in ${root}: it is a symbolic link or another special ` +
+            `file, which the guard does not follow. Put the real directory or file there, or ` +
+            `list "${entry.name}" in skipDirectories.`,
         )
       }
     }

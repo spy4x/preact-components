@@ -4,6 +4,7 @@ import { h } from "preact"
 import { render } from "preact-render-to-string"
 import {
   activeShortcuts,
+  ariaKeyShortcutList,
   ariaKeyShortcuts,
   clickByHotkey,
   createHotkeyListener,
@@ -354,6 +355,18 @@ describe("ariaKeyShortcuts", () => {
 
   it("throws on a combination useHotkeys could not read either", () => {
     expect(() => ariaKeyShortcuts("g i", false)).toThrow("sequence")
+  })
+})
+
+describe("ariaKeyShortcutList", () => {
+  it("announces every single press, separated by spaces", () => {
+    expect(ariaKeyShortcutList(["mod+k", "/"], true)).toBe("Meta+K /")
+  })
+
+  it("leaves out a sequence, and returns undefined when nothing is left", () => {
+    expect(ariaKeyShortcutList(["mod+k", "g s"], false)).toBe("Control+K")
+    expect(ariaKeyShortcutList(["g i"], false)).toBeUndefined()
+    expect(ariaKeyShortcutList([], false)).toBeUndefined()
   })
 })
 

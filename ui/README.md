@@ -76,7 +76,7 @@ Each line: the component, its subpath, then its ports and key props.
 - `Combobox` (`combobox`): `items`, `value`, `onChange`, `getLabel?`, `aliasesOf?`, `filter?` (default: `searchEntries` over label and aliases), `groupOf?`, `isGroupLead?`, `onCreate?` (may return a promise), `loading?`, `loadingMessage?`, `ariaLabel?`, `aria-labelledby?`, `id?`, `required?`, `requiredMessage?`, `autoFocus?`
 - `CommandPalette` (`command-palette`): `options` (filtered locally; an option may be a command with `icon`, `kbd`, `state`, `disabledReason`, `run` and `keepOpen`) or `search(query, signal, show?)` (debounced, stale calls aborted; `show(options)` lists an early answer that the final one replaces, keeping the highlighted option), `onSelect(option, { alternative, text? })` (Ctrl/⌘+Enter, a Ctrl/⌘-click or a middle click asks for the alternative, such as a new tab), `onOpenChange?(open)`, `filter?` (default `matchOptions`: typos, word order, the other layout and alphabet, `aliases`), `trigger?` (`"button"`, `"field"`, `"icon"`, or a function drawing a trigger of its own from `CommandPaletteTrigger`), `triggerHref?` (a link until hydration), `defaultQuery?`, `showMatch?`, `matchLabels?`, `recent?` (`{ storageKey, storage }`, the recent picks; `clearCommandPaletteRecent(storageKey, storage)` forgets them), `hotkeys?`, `kbdLabels?`, `debounce?`, `labels?`, `dataE2E?`
 - `ComparisonTable` (`comparison-table`): `caption`, `products` (first is yours, highlighted), `rows` of `{ capability, values, note? }` (`"yes"`, `"partial"`, `"no"`), `checkedOn`, `method`, `fit?`, `locale?`, `timeZone?`, `labels?` — scrolls inside itself, first column held
-- `ConfirmDialog` (`confirm-dialog`): `title`, `message?`, `onConfirm`, `onCancel`, `confirmLabel?`, `cancelLabel?`, `closeLabel?`, `tone?`, `busy?` and `busyLabel?` (no cancel while busy), `confirmDataE2E?`, `cancelDataE2E?`
+- `ConfirmDialog` (`confirm-dialog`): `title`, `message?`, `onConfirm`, `onCancel`, `confirmLabel?`, `cancelLabel?`, `closeLabel?`, `tone?`, `busy?` and `busyLabel?` (no cancel while busy), `confirmDataE2E?`, `cancelDataE2E?`, `secondaryAction?` (a third button between cancel and confirm; a blank label draws none) and `busyAction?` (`"confirm"` or `"secondary"`: which button is busy)
 - `CopyBlock` (`copy-block`): `text`, `singleLine?`, `textLabel?` (names `singleLine` text that overflows), `copy?` (clipboard port), `copyLabel?`, `copiedLabel?`, `failedLabel?` — built on `CopyButton`
 - `CopyButton` (`copy-button`): `textToCopy` (string, or function read on click), `text?` (visible text; without it, the icon alone; deprecated `title`), `copy?` (port; `false` or a throw is a failure), `variant?` (`"outline"` or `"primary"`, for a button with `text`), `copiedLabel?`, `failedLabel?`, `data-*`, `hotkey?`
 - `CurrencyField` (`currency-field`): `value` (code or `null`), `onChange`, `options` (ts-libs `currencyOptions`), `recent?`, `id?`, `ariaLabel?` or `aria-labelledby?`, `required?`, `placeholder?`, `autoFocus?`, `optionLabel?`, `emptyMessage?`, `countMessage?`, `clearLabel?`, `requiredMessage?`, `class?`
@@ -2129,8 +2129,9 @@ Write the `+` key in a sequence as `plus` (`"g plus"`): `"g +"` reads as an unfi
 The server and the first browser render draw Ctrl, and an effect switches to ⌘ on an Apple
 platform, unless `apple` says which. A glyph such as ⌘ is hidden from screen readers and followed
 by its name in visually hidden text. `keyFaces(keys, apple, labels)` returns the text and the name
-of each key of one combination `Kbd` draws, and `KBD_LABELS` holds the English words it uses,
-which `labels` overrides one by one.
+of each key of one combination `Kbd` draws, `sequenceSteps(keys)` splits a sequence into the
+presses `Kbd` draws, and `KBD_LABELS` holds the English words it uses, which `labels` overrides one
+by one.
 
 `ShortcutsDialog` lists shortcuts under group headings, built on `Modal`.
 A row without `keys` lists only what it does, such as a command a command palette runs, and a
@@ -2180,10 +2181,13 @@ ambient global state the component rules forbid.
 
 `ariaKeyShortcuts(keys, apple)` writes a combination in the syntax `aria-keyshortcuts` takes:
 `"mod+k"` becomes `"Control+K"`, or `"Meta+K"` on an Apple platform, `"shift+space"` becomes
-`"Shift+Space"`. `useHotkeyClick(keys, options)` binds a key to any element of your own: it returns
-the ref to put on it. `clickByHotkey(element, event)` is the rule both use on a key press: it clicks
-the element and cancels the press only when the element is connected, enabled, not inert, rendered,
-and inside the dialog the press landed in (or inside the open modal dialog, when one is open).
+`"Shift+Space"`. `ariaKeyShortcutList(keys, apple)` writes a list of them, separated by spaces, for
+a control several keys reach; it leaves out a sequence such as `"g i"`, since the attribute has no
+syntax for one, and returns `undefined` when nothing is left. `useHotkeyClick(keys, options)` binds
+a key to any element of your own: it returns the ref to put on it. `clickByHotkey(element, event)`
+is the rule both use on a key press: it clicks the element and cancels the press only when the
+element is connected, enabled, not inert, rendered, and inside the dialog the press landed in (or
+inside the open modal dialog, when one is open).
 `clickByHotkey(element, event, shown)` asks whether `shown` is rendered instead, for an element
 hidden until it is wanted, such as a closed menu's item, whose trigger is `shown`;
 `hotkeyClickBinding(keys, element, shown)` takes it as a function too.
