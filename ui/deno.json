@@ -11,6 +11,7 @@
     "./brand-mark": "./brand-mark.tsx",
     "./breadcrumbs": "./breadcrumbs.tsx",
     "./button": "./button.tsx",
+    "./button-classes": "./button-classes.ts",
     "./card": "./card.tsx",
     "./change-list": "./change-list.tsx",
     "./checkbox": "./checkbox.tsx",
