@@ -155,6 +155,23 @@ describe("registerBoundaryTests: the walk over the screens", () => {
     expect(await failure(walk)).toBe("The guard could not read libs/ui/gone.tsx in /repo.")
   })
 
+  it("rejects a linked directory unless its name is in skipDirectories", async () => {
+    const fs = memoryFs({ "/repo/libs/ui/screen.tsx": PURE })
+    const withLink: GuardFileSystem = {
+      ...fs,
+      readDir: async (path) => [
+        ...await fs.readDir(path),
+        ...(path === "/repo/libs/ui"
+          ? [{ name: "shared", isDirectory: false, isFile: false }]
+          : []),
+      ],
+    }
+    const [linked] = register({}, { fs: withLink })
+    expect(await failure(linked)).toContain("cannot walk libs/ui/shared in /repo")
+    const [skipped] = register({}, { fs: withLink, skipDirectories: ["shared"] })
+    expect(await failure(skipped)).toBeNull()
+  })
+
   it("rejects when a file the app requires was not walked", async () => {
     const [walk] = register({ "/repo/libs/ui/screen.tsx": PURE }, {
       requiredFiles: ["libs/ui/auth-screen.tsx"],
