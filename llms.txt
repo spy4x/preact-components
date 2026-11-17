@@ -702,7 +702,7 @@ CommandPaletteRemoteProps	type	@spy4x/preact-ui	The remote data mode: the palett
 ComparisonRow	type	@spy4x/preact-ui	One capability of a `ComparisonTable`: a row, with one value per product.
 ComparisonTable	component	@spy4x/preact-ui	A comparison of capabilities across products, for a public page: a legend, a real `<table>` and the method and fit that make it trustworthy.
 ComparisonValue	type	@spy4x/preact-ui	How far a product covers one capability.
-ConfirmDialog	component	@spy4x/preact-ui	Confirmation panel: a title, one question, and two labelled actions.
+ConfirmDialog	component	@spy4x/preact-ui	Confirmation panel: a title, one question, and two labelled actions, or three with `ConfirmDialogProps.secondaryAction`.
 CopyBlock	component	@spy4x/preact-ui	A box of monospace text with a copy control beside it: an install command, an API key, an id.
 CopyButton	component	@spy4x/preact-ui	Copy a string to the clipboard through an injected port or the browser API, and say whether it worked.
 CurrencyField	component	@spy4x/preact-ui	Picks a currency by its code, its name or its symbol: a `Combobox` of `options`.
@@ -1165,6 +1165,7 @@ wrapIndex	helper	@spy4x/preact-ui	Move `delta` steps through a sequence of `tota
 failedAfterSrcChange	helper	@spy4x/preact-ui/avatar	Carry an avatar's "this image failed" flag across a change of `src`.
 BillingIntervalValue	type	@spy4x/preact-ui/billing	A billing interval: this package's enum, or the same number from an app's own enum, so an app passes its value without a cast.
 SubscriptionStatusValue	type	@spy4x/preact-ui/billing	A subscription status: this package's enum, or the same number from another package's enum, such as `@spy4x/billing`'s, so an app passes its value without a cast.
+ConfirmDialogSecondaryAction	type	@spy4x/preact-ui/confirm-dialog	The optional third answer of a `ConfirmDialog`, between cancel and confirm.
 CommandPaletteSelectDetails	type	@spy4x/preact-ui/command-palette	What a pick tells `onSelect` and `run` besides the option.
 CommandPaletteTrigger	type	@spy4x/preact-ui/command-palette	What a `CommandPalette`'s `trigger` function gets to draw a trigger of its own, such as an app shell's search button.
 MENU_GROUP	constant	@spy4x/preact-ui/dropdown	The `name` of the exclusive `<details>` group that every library menu drawn as a `<details>` joins: a `Dropdown` before it hydrates, and `SiteHeader`'s mobile menu.

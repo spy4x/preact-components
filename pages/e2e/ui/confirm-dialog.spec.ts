@@ -1,5 +1,5 @@
 import { AxeBuilder } from "@axe-core/playwright"
-import type { Locator } from "playwright-core"
+import type { Locator, Page } from "playwright-core"
 import type { Spec } from "../runner.ts"
 import { unsavedGuardWithAChange } from "./shared.ts"
 
@@ -63,6 +63,88 @@ function confirmDialogNameSpecs(): Spec[] {
   ]
 }
 
+/**
+ * Opens the guide's three-way dialog, "Stop the sync?", and checks it with axe-core.
+ *
+ * @param page The guide page.
+ * @returns The open dialog.
+ */
+async function openThreeWay(page: Page): Promise<Locator> {
+  const dialog = page.getByRole("alertdialog", { name: "Stop the sync?" })
+  await page.locator("#demo-ConfirmDialog").getByRole("button", { name: "Stop sync" }).click()
+  await dialog.waitFor()
+  const { violations } = await new AxeBuilder({ page }).include("dialog[open]").analyze()
+  if (violations.length > 0) {
+    throw new Error(`axe on the open dialog: ${violations.map(({ id }) => id).join(", ")}`)
+  }
+  return dialog
+}
+
+/** `ConfirmDialog`'s optional second action: order, names, busy state and a phone's width. */
+function confirmDialogSecondActionSpecs(): Spec[] {
+  return [
+    {
+      name:
+        "ConfirmDialog: a second action sits between cancel and confirm, and while it is busy the dialog cannot be cancelled",
+      pageId: "ui",
+      run: async (page) => {
+        const dialog = await openThreeWay(page)
+        await buttonsAreNamed(dialog, ["Close", "Keep syncing", "Stop now", "Finish and stop"])
+        const order = await dialog.locator("footer button").evaluateAll((buttons) =>
+          buttons.map((button) => button.textContent?.trim())
+        )
+        if (order.join(" | ") !== "Keep syncing | Stop now | Finish and stop") {
+          throw new Error(`footer order: ${order.join(" | ")}`)
+        }
+
+        await dialog.getByRole("button", { name: "Stop now" }).click()
+        const stopping = dialog.locator('[data-e2e="confirm-dialog-secondary"]')
+        await stopping.and(page.locator('[aria-busy="true"]')).waitFor()
+        await page.keyboard.press("Escape")
+        const state = await dialog.evaluate((element) => ({
+          open: (element as HTMLDialogElement).open,
+          cancel: element.querySelector<HTMLButtonElement>('[data-e2e="confirm-dialog-cancel"]')
+            ?.disabled,
+          confirm: element.querySelector<HTMLButtonElement>('[data-e2e="confirm-dialog-confirm"]')
+            ?.disabled,
+          confirmBusy: element.querySelector('[data-e2e="confirm-dialog-confirm"]')
+            ?.getAttribute("aria-busy"),
+        }))
+        if (!state.open || !state.cancel || !state.confirm || state.confirmBusy !== null) {
+          throw new Error(`while Stop now is busy: ${JSON.stringify(state)}`)
+        }
+        await dialog.waitFor({ state: "detached", timeout: 5_000 })
+        await page.locator("#demo-ConfirmDialog")
+          .getByText("Outcome: stopped at once", { exact: true }).waitFor()
+      },
+    },
+    {
+      name:
+        "ConfirmDialog: at 390 px the three-button dialog fits, every button inside it and none overflowing",
+      pageId: "ui",
+      run: async (page) => {
+        await page.setViewportSize({ width: 390, height: 844 })
+        const dialog = await openThreeWay(page)
+        const fit = await dialog.evaluate((element) => {
+          const box = element.getBoundingClientRect()
+          const outside = [...element.querySelectorAll("button")].filter((button) => {
+            const r = button.getBoundingClientRect()
+            return r.left < box.left || r.right > box.right || r.top < box.top ||
+              r.bottom > box.bottom
+          }).map((button) => button.textContent?.trim() || button.getAttribute("aria-label"))
+          const onScreen = box.left >= 0 && box.right <= innerWidth
+          return { scroll: element.scrollWidth, client: element.clientWidth, outside, onScreen }
+        })
+        if (fit.scroll > fit.client || fit.outside.length > 0 || !fit.onScreen) {
+          throw new Error(`overflow at 390 px: ${JSON.stringify(fit)}`)
+        }
+        return `dialog ${fit.client} px wide, no button outside it`
+      },
+    },
+  ]
+}
+
 export const specs: readonly Spec[] = [
   ...confirmDialogNameSpecs(),
+  ...confirmDialogSecondActionSpecs(),
 ]

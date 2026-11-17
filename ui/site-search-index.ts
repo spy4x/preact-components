@@ -1,37 +1,9 @@
 // Not exported from the package: how `SiteSearch` loads, checks and searches a site's index.
 
-import { type } from "arktype"
-import { loadIndex, type SearchEntry, type SearchIndex, type SearchIndexJSON } from "@spy4x/search"
+import { loadIndex, type SearchEntry, type SearchIndex } from "@spy4x/search"
 
 /** The longest query `onSearched` reports, in characters. */
 export const MAX_REPORTED_QUERY = 64
-
-/** One entry as `/search.json` holds it; keys the palette does not read pass through unchecked. */
-const entrySchema = type({
-  label: "string",
-  "aliases?": "string[]",
-  "keywords?": "string[]",
-  "detail?": "string",
-  "text?": "string",
-  "group?": "string",
-  "href?": "string",
-  "id?": "string",
-})
-
-/** What `SearchIndex.toJSON()` writes: the entries and MiniSearch's own plain object. */
-const payloadSchema = type({ entries: entrySchema.array(), index: "object" })
-
-/**
- * The parsed body of `/search.json`, checked.
- *
- * @param data The parsed JSON.
- * @throws When it is not `{ entries, index }` with a `label` on every entry.
- */
-export function parseSiteIndex(data: unknown): SearchIndexJSON {
-  const payload = payloadSchema(data)
-  if (payload instanceof type.errors) throw new Error(`Not a site search index: ${payload.summary}`)
-  return payload as SearchIndexJSON
-}
 
 /**
  * Whether a result may link to `href`: a `mailto:` address, or an address on the page's own origin
@@ -75,6 +47,9 @@ export async function fetchSiteIndex(
 ): Promise<SiteIndex> {
   const response = await get(src)
   if (!response.ok) throw new Error(`${src} answered ${response.status}`)
+  // A dynamic import, so a bundler splits arktype into a chunk fetched with the index, not on page
+  // load: arktype is about 157 KB, and its `new Function` probe trips a strict CSP.
+  const { parseSiteIndex } = await import("./site-search-check.ts")
   const json = parseSiteIndex(await response.json())
   const blocked = json.entries.filter((entry) => !isSiteHref(entry.href, base)).length
   return { index: loadIndex(json), blocked }
@@ -136,4 +111,21 @@ export function orderGroups<T extends { group?: string }>(
   return options.map((option, index) => ({ option, index, rank: rank(option) }))
     .sort((a, b) => a.rank - b.rank || a.index - b.index)
     .map((ranked) => ranked.option)
+}
+
+/**
+ * What a query lists: its `rows`, or `fallback` when a typed query found nothing, so the reader
+ * still has a way forward. An empty query keeps its rows, even none.
+ *
+ * @param rows The results and commands the query found.
+ * @param fallback The commands listed instead of nothing.
+ * @param query What the reader typed, trimmed.
+ */
+export function withFallback<T>(
+  rows: readonly T[],
+  fallback: readonly T[],
+  query: string,
+): { rows: readonly T[]; fellBack: boolean } {
+  const fellBack = query !== "" && rows.length === 0 && fallback.length > 0
+  return { rows: fellBack ? fallback : rows, fellBack }
 }
