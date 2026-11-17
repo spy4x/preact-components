@@ -79,10 +79,41 @@ export interface ConfirmDialogProps {
   cancelDataE2E?: string
   /** Extra utilities for the dialog element. */
   class?: string
+  /**
+   * A third answer, drawn between cancel and confirm: "Save, Discard or Cancel", or "Finish and
+   * stop, Stop now or Keep going". Left out, the panel has its two actions and renders exactly as
+   * without this prop. A label that is blank once trimmed draws no button at all: the panel falls
+   * back to its two actions, because a button with no name is worse than a missing one, and there
+   * is no default verb that could stand in for the caller's.
+   */
+  secondaryAction?: ConfirmDialogSecondaryAction
+  /**
+   * Which action `busy` belongs to. Defaults to `"confirm"`. The named button shows `Button`'s busy
+   * state and `busyLabel`; the other one is disabled, and every way of cancelling is refused as
+   * for {@link ConfirmDialogProps.busy}. `"secondary"` without a drawn second action counts as
+   * `"confirm"`.
+   */
+  busyAction?: "confirm" | "secondary"
+}
+
+/** The optional third answer of a {@link ConfirmDialog}, between cancel and confirm. */
+export interface ConfirmDialogSecondaryAction {
+  /** The button's text and accessible name. Blank once trimmed, the button is not drawn. */
+  label: string
+  /**
+   * Injected port, called with the click event. Like `onConfirm`, the dialog does **not** close
+   * itself and ignores the return value: the caller unmounts it when the work succeeds.
+   */
+  onClick: (event: MouseEvent) => boolean | void
+  /** `"danger"` for a destructive answer such as "Stop now". Defaults to `"secondary"`. */
+  variant?: "secondary" | "danger"
+  /** `data-e2e` of the button. Defaults to `"confirm-dialog-secondary"`. */
+  dataE2E?: string
 }
 
 /**
- * Confirmation panel: a title, one question, and two labelled actions.
+ * Confirmation panel: a title, one question, and two labelled actions, or three with
+ * {@link ConfirmDialogProps.secondaryAction}.
  *
  * A thin composition of {@link Modal} — every behaviour (top layer, focus containment, Escape,
  * scroll lock, backdrop hit-test, focus restore) is the modal's, and the only thing added here is
@@ -131,6 +162,8 @@ export function ConfirmDialog(
     confirmDataE2E = CONFIRM_DATA_E2E,
     cancelDataE2E = CANCEL_DATA_E2E,
     class: className,
+    secondaryAction,
+    busyAction = "confirm",
   }: ConfirmDialogProps,
 ): JSX.Element {
   // An English default rather than a throw: every user-visible string in this package has one, and
@@ -147,8 +180,15 @@ export function ConfirmDialog(
     translate(translator, "ConfirmDialog.cancelLabel", "Cancel"),
   )
   const closeText = labelOr(closeLabel, translate(translator, "ConfirmDialog.closeLabel", "Close"))
+  // A blank second label draws no button rather than a nameless one: no default verb fits it.
+  const secondText = labelOr(secondaryAction?.label, "")
+  const second = secondText === "" ? undefined : secondaryAction
+  const secondBusy = busy && busyAction === "secondary" && second !== undefined
+  const confirmBusy = busy && !secondBusy
   // No two buttons of the panel share a name: `Modal` draws no corner control without a label.
-  const cornerLabel = closeText === cancelText || closeText === confirmText ? undefined : closeText
+  const cornerLabel = [cancelText, confirmText, secondText].includes(closeText)
+    ? undefined
+    : closeText
   // The question's own id, from the framework's hook for the same reason `Modal`'s title id is:
   // unique on a page, and the same string in the server's render and the browser's.
   const questionId = `confirm-question-${useId()}`
@@ -177,10 +217,23 @@ export function ConfirmDialog(
           >
             {cancelText}
           </Button>
+          {second && (
+            <Button
+              variant={second.variant ?? "secondary"}
+              busy={secondBusy}
+              busyLabel={busyLabel}
+              disabled={confirmBusy}
+              data-e2e={second.dataE2E ?? SECONDARY_DATA_E2E}
+              onClick={(event) => second.onClick(event)}
+            >
+              {secondText}
+            </Button>
+          )}
           <Button
             variant={confirmVariant(tone)}
-            busy={busy}
+            busy={confirmBusy}
             busyLabel={busyLabel}
+            disabled={secondBusy}
             data-e2e={confirmDataE2E}
             onClick={(event) => onConfirm(event)}
           >
@@ -211,6 +264,9 @@ const CONFIRM_DATA_E2E = "confirm-dialog-confirm"
 
 /** `data-e2e` a {@link ConfirmDialog}'s cancel button carries when the caller names none. */
 const CANCEL_DATA_E2E = "confirm-dialog-cancel"
+
+/** `data-e2e` a {@link ConfirmDialog}'s second action carries when the caller names none. */
+const SECONDARY_DATA_E2E = "confirm-dialog-secondary"
 
 /**
  * The caller's label, or the library's English default.
