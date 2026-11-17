@@ -375,7 +375,7 @@ the named gaps, the no-outer-margin rule and a page built from the layout compon
 `findOffScaleSpacing` returns one `{ line, column, className, reason }` per finding, with the
 variant prefix and any `-` kept in `className` (`sm:-mt-4`). Besides spacing classes it reports an
 arbitrary property that sets padding, margin or a gap (`[padding:…]`) and a `--spacing()` call whose
-argument is not a numeric step. It cannot see a raw CSS declaration (`padding: 10px`), an inline
+argument, without its sign, is not a numeric step. It cannot see a raw CSS declaration (`padding: 10px`), an inline
 `style`, a class name built at run time or Tailwind's legacy `theme()` function, so it is a floor
 that review builds on, not a proof. It reads any file's text — TypeScript, TSX,
 CSS with `@apply`, HTML — and uses no Deno API, so an app can call it from its own test. This is

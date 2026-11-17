@@ -78,6 +78,19 @@ describe("findOffScaleSpacing", () => {
     ])
   })
 
+  it("reads variants with one nested bracket group, like has-[[data-x]]: and [&_[data-open]]:", () => {
+    expect(flagged(`class="[&_[data-open]]:p-5"`)).toEqual(["[&_[data-open]]:p-5"])
+    expect(flagged(`class="has-[[data-x]]:mt-[13px]"`)).toEqual(["has-[[data-x]]:mt-[13px]"])
+    expect(flagged(`class="[&_[data-open]]:[padding:3px]"`)).toEqual([
+      "[&_[data-open]]:[padding:3px]",
+    ])
+  })
+
+  it("still passes ordinary and nested variants on a step of the scale", () => {
+    expect(flagged(`class="data-[open]:p-4 sm:p-2 [&_[data-open]]:p-4 has-[[data-x]]:mt-2"`))
+      .toEqual([])
+  })
+
   it("reports a negative margin off the scale and accepts one on it", () => {
     expect(flagged(`class="-mt-2 -mx-px -mt-7 sm:-ml-5"`)).toEqual(["-mt-7", "sm:-ml-5"])
   })
@@ -158,6 +171,15 @@ describe("findOffScaleSpacing", () => {
     expect(findOffScaleSpacing(`--spacing(7)`)[0].reason).toBe(
       "--spacing(7) is not a step on the scale (0 1 2 3 4 6 8 12 16)",
     )
+  })
+
+  it("judges a negative spacing function by its size, like a negative margin", () => {
+    expect(flagged(`.a { padding: --spacing(-5) }`)).toEqual(["--spacing(-5)"])
+    expect(findOffScaleSpacing(`--spacing(-5)`)[0].reason).toBe(
+      "--spacing(-5) is not a step on the scale (0 1 2 3 4 6 8 12 16)",
+    )
+    expect(flagged(`.a { margin: --spacing(-4) --spacing( -12 ) }`)).toEqual([])
+    expect(flagged(`.a { margin: --spacing(-px) }`)).toEqual(["--spacing(-px)"])
   })
 
   it("reports the spacing function inside an @apply arbitrary value too", () => {
@@ -274,6 +296,13 @@ describe("findPhysicalDirection", () => {
         "focus:left-4! → focus:start-4!",
         "@max-md:pr-0 → @max-md:pe-0",
       ])
+  })
+
+  it("reads a variant with one nested bracket group and keeps it in the logical class", () => {
+    expect(physical(`<a class="[&_[data-open]]:ml-4 has-[[data-x]]:pr-2">`)).toEqual([
+      "[&_[data-open]]:ml-4 → [&_[data-open]]:ms-4",
+      "has-[[data-x]]:pr-2 → has-[[data-x]]:pe-2",
+    ])
   })
 
   it("accepts logical classes, both-sides classes and other words that share a prefix", () => {
