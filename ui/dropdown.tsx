@@ -195,7 +195,8 @@ const DropdownTrigger = createContext<RefObject<HTMLButtonElement> | null>(null)
  *
  * `whitespace-normal` undoes the menu panel's `whitespace-nowrap` for the item's text, so a label
  * too long for a capped menu wraps onto a second line instead of pushing the key hint past the
- * menu's edge (#1381). An uncapped menu still takes its width from the unwrapped text.
+ * menu's edge (#1381). The panel's `w-max` keeps an uncapped menu as wide as its unwrapped text:
+ * without it, the absolute panel shrinks to the trigger's narrow wrapper and short labels wrap.
  */
 const itemClasses =
   "flex w-full items-center gap-2 whitespace-normal px-4 py-2 text-start text-sm text-foreground hover:bg-hover focus:bg-hover disabled:pointer-events-none disabled:opacity-50"
@@ -715,7 +716,7 @@ export function Dropdown(props: DropdownProps): JSX.Element {
     <div
       ref={panelRef}
       class={cn(
-        "absolute z-10 whitespace-nowrap rounded-md bg-surface shadow-popover ring-1 ring-subtle focus:outline-hidden",
+        "absolute z-10 w-max whitespace-nowrap rounded-md bg-surface shadow-popover ring-1 ring-subtle focus:outline-hidden",
         horizontalClass,
         verticalClass,
         originClass,

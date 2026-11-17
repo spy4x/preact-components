@@ -329,6 +329,30 @@ export const specs: readonly Spec[] = [
   },
   {
     name:
+      "Dropdown: a menu with no width cap opened from an icon trigger keeps every item on one " +
+      "line",
+    pageId: "ui",
+    run: async (page) => {
+      const card = page.locator("#demo-Dropdown")
+      await card.getByRole("button", { name: "Row actions", exact: true }).first().click()
+      const menu = card.getByRole("menu", { name: "Row actions", exact: true })
+      await menu.getByRole("menuitem").first().waitFor()
+      const rows = await menu.getByRole("menuitem").evaluateAll((items) =>
+        items.map((element) => ({
+          text: element.textContent?.trim(),
+          height: element.getBoundingClientRect().height,
+          lineHeight: parseFloat(getComputedStyle(element).lineHeight),
+        }))
+      )
+      const wrapped = rows.filter((row) => row.height > 2 * row.lineHeight)
+      if (rows.length === 0 || wrapped.length > 0) {
+        throw new Error(`wrapped items: ${JSON.stringify(wrapped.length ? wrapped : rows)}`)
+      }
+      return `${rows.length} items, each on one line`
+    },
+  },
+  {
+    name:
       "DropdownItem: the arrow keys reach an unchecked group of a switcher, Enter chooses it, " +
       "the check moves to it and the menu closes with focus on its trigger",
     pageId: "ui",
