@@ -123,13 +123,14 @@ describe("DonutChart", () => {
     }
   })
 
-  it("renders a legend entry as plain text when its href has an unsafe scheme", () => {
+  it("renders a legend entry as plain text when its href has an unsafe scheme or does not parse", () => {
     const hrefs = [
       "javascript:alert(1)",
       "data:text/html,<b>x</b>",
       " JaVaScRiPt:alert(1)",
       "\tjava\nscript:alert(1)",
       "vbscript:x",
+      "http://[::1",
     ]
     for (const href of hrefs) {
       const html = render(<DonutChart data={[{ label: "slice", value: 1, href }]} />)

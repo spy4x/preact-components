@@ -43,10 +43,10 @@ describe("LineChart", () => {
   })
 
   it("keeps a fixed Y domain exactly when every value fits in it", () => {
-    const html = render(<LineChart series={twoPoints} yDomain={[0, 20]} yTicks={2} />)
+    const html = render(<LineChart series={twoPoints} yDomain={[0, 25]} yTicks={2} />)
 
-    expect(linePaths(html)).toEqual(["M0.0,1000.0 L1000.0,500.0"])
-    for (const label of [">0<", ">10<", ">20<"]) expect(html).toContain(label)
+    // Rounded outward to its ticks the domain would end at 30 and draw 10 at 666.7, not 600.
+    expect(linePaths(html)).toEqual(["M0.0,1000.0 L1000.0,600.0"])
   })
 
   it("grows a fixed Y domain to hold a value above it", () => {
