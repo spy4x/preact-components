@@ -172,19 +172,23 @@ function comparisonTableSourceSpecs(): Spec[] {
       run: async (page) => {
         const card = page.locator("#demo-ComparisonTable")
         await card.evaluate((element) => element.setAttribute("dir", "rtl"))
-        const header = comparisonScroller(page, 0).locator(`tbody th:has(a)`).first()
-        await header.scrollIntoViewIfNeeded()
-        const gap = await header.evaluate((cell) => {
-          const link = cell.querySelector("a")
-          if (link === null) return Number.NaN
-          const inner = cell.getBoundingClientRect().right -
-            parseFloat(getComputedStyle(cell).paddingRight)
-          return Math.round(inner - link.getBoundingClientRect().right)
-        })
-        if (!(Math.abs(gap) <= 1)) {
-          throw new Error(`the link ends ${gap}px from the cell's right content edge`)
+        await card.scrollIntoViewIfNeeded()
+        // A link that wraps fills its cell and proves nothing, so only the narrower ones count.
+        const gaps = await card.evaluate((element) =>
+          [...element.querySelectorAll("tbody th:has(a)")].flatMap((cell) => {
+            const link = cell.querySelector("a")!.getBoundingClientRect()
+            const style = getComputedStyle(cell)
+            const box = cell.getBoundingClientRect()
+            const right = box.right - parseFloat(style.paddingRight)
+            const width = right - box.left - parseFloat(style.paddingLeft)
+            return width - link.width > 8 ? [Math.round(right - link.right)] : []
+          })
+        )
+        if (gaps.length === 0) throw new Error("every source link fills its cell: nothing to prove")
+        if (gaps.some((gap) => Math.abs(gap) > 1)) {
+          throw new Error(`links end ${gaps.join(", ")}px from their cell's right content edge`)
         }
-        return `the link ends ${gap}px from the cell's right content edge`
+        return `links end ${gaps.join(", ")}px from their cell's right content edge`
       },
     },
   ]
