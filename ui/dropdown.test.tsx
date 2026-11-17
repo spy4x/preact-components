@@ -284,8 +284,30 @@ describe("DropdownItem", () => {
     ) {
       expect(attrOf(html, /<(a|button)\b[^>]*>/, "aria-keyshortcuts")).toBe("Control+E")
       expect(html).toMatch(
-        /Edit<span aria-hidden="true" data-hotkey-hint class="hidden pointer-fine:inline-flex ms-auto ps-4"><kbd[^>]*><kbd[^>]*>Ctrl<\/kbd>/,
+        /Edit<span aria-hidden="true" data-hotkey-hint class="hidden pointer-fine:inline-flex ms-auto shrink-0 whitespace-nowrap ps-4"><kbd[^>]*><kbd[^>]*>Ctrl<\/kbd>/,
       )
+    }
+  })
+
+  /** A link item and a button item, each with a two-key hint. */
+  const hintedItems = () => [
+    render(<DropdownItem href="/export" keyshortcuts={["g e"]}>Export everything</DropdownItem>),
+    render(
+      <DropdownItem onClick={() => {}} keyshortcuts={["g e"]}>Export everything</DropdownItem>,
+    ),
+  ]
+
+  it("lets a link or button item's label wrap inside a menu that keeps its text on one line", () => {
+    for (const html of hintedItems()) {
+      const item = attrOf(html, /<(a|button)\b[^>]*>/, "class")?.split(" ")
+      expect(item).toContain("whitespace-normal")
+    }
+  })
+
+  it("keeps a link or button item's hint on one line at its full width", () => {
+    for (const html of hintedItems()) {
+      const hint = attrOf(html, /<span aria-hidden="true" data-hotkey-hint[^>]*>/, "class")
+      expect(hint?.split(" ")).toEqual(expect.arrayContaining(["shrink-0", "whitespace-nowrap"]))
     }
   })
 

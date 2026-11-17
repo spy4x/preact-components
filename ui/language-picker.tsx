@@ -362,7 +362,7 @@ const MENU_ROOT = "max-sm:static max-sm:block"
  * and 16 px in from both sides of that ancestor; lined up with the globe's end from `sm` up.
  */
 const MENU_PANEL =
-  "min-w-56 py-1 max-sm:min-w-0 max-sm:inset-x-4 max-sm:top-auto max-sm:bottom-auto max-sm:mt-2 max-sm:mb-0"
+  "min-w-56 py-1 max-sm:w-auto max-sm:min-w-0 max-sm:inset-x-4 max-sm:top-auto max-sm:bottom-auto max-sm:mt-2 max-sm:mb-0"
 
 /** `"menu"` mode of {@link LanguagePicker}: a globe `Dropdown` of links, one per language. */
 function LanguageMenu(
