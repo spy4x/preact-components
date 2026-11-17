@@ -236,12 +236,14 @@ specs that many times, four at once as always, and records each run as its own c
 A text that matches no spec, or `--grep` with `--only` or `--except`, is a failed check.
 
 This is also the repository's browser test path, and CI runs it. `.woodpecker/woodpecker.yml` runs
-`deno task check`, `deno task publish:dry`, the build and `verify` on every pull request into
-`main` and on every push to `main`. The build and `verify` run in Playwright's image, which ships
+`deno task check` and `deno task publish:dry` on every ready pull request into `main` and on every
+push to `main`. The build and `verify` run on ready pull requests (unless every changed file is
+Markdown) and on the nightly cron run, which pushes to ntfy when a step fails; a push to `main`
+skips them, because its pull request already ran them. They run in Playwright's image, which ships
 Chromium. `verify` runs there as six steps: `ui`, four shards of `e2e` and the other nine blocks
-(see "Running a full run in parts"). The
-Pages deploy waits for the push build to pass, so a red check, a red publish dry-run or a red part
-of `verify` blocks the publish.
+(see "Running a full run in parts"). The Pages deploy waits for the push build, so a red check or a
+red publish dry-run blocks the publish; a red part of `verify` blocks the pull request's merge
+instead.
 
 ### How long a run may take
 
@@ -556,13 +558,14 @@ is the number to trust, not one typed here.
 
 `.github/workflows/pages.yml` — a GitHub workflow, because Pages can only be deployed by one. It
 deploys and checks nothing: every check, the build and the parts of `verify` run in
-Woodpecker (`.woodpecker/woodpecker.yml`) on every pull request (only `check` while its title
-starts with `[WIP]`) and every push to `main`.
+Woodpecker (`.woodpecker/woodpecker.yml`) on every ready pull request (only `check` while its title
+starts with `[WIP]`) and on the nightly cron run. A push to `main` runs `check` and the publish dry
+run only.
 
 The workflow starts on a `status` event. When Woodpecker's push build of `main` ends, Woodpecker
 posts the commit status `ci/woodpecker/push/woodpecker`; only a `success` for a commit on `main`
-runs the `deploy` job, so a red check, a failed build or a failed part of `verify` blocks the
-publish. The job first asks GitHub for the head of `main` and deploys only when it is still that
+runs the `deploy` job, so a red check or a red publish dry-run blocks the publish. The browser
+checks do not gate the deploy: they already passed on the commit's pull request. The job first asks GitHub for the head of `main` and deploys only when it is still that
 commit, so a build that finishes late never replaces a newer site. It then checks the commit out,
 installs Deno 2.9.7, runs `deno task --cwd pages build`, uploads `pages/dist` with
 `actions/upload-pages-artifact`, and runs `actions/configure-pages` and `actions/deploy-pages`. To
