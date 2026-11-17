@@ -448,7 +448,18 @@ export async function themeChecks(devtools: Devtools): Promise<void> {
         modifiers: 8,
       })
     }
-    await probeFocused(true)
+    // Focus can land before the browser applies the :focus-visible styles, so on a loaded machine
+    // an immediate read saw outline-style none (#1352). Wait for both; on a timeout the read below
+    // still reports which of the two never happened.
+    await poll(
+      () =>
+        devtools.evaluate<boolean>(`(() => {
+          const button = document.getElementById("ink-focus-ring-probe")
+          return document.activeElement === button && button.matches(":focus-visible") &&
+            getComputedStyle(button).outlineStyle !== "none"
+        })()`),
+      3_000,
+    )
     const focusRing = await devtools.evaluate<{
       outlineColor: string
       pageBackground: string
