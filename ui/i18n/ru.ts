@@ -170,6 +170,7 @@ export default {
   "DemoVideo.errorLabel": "Видео не загрузилось.",
   "DemoVideo.openFileLabel": "Открыть видеофайл",
   "DemoVideo.playLabel": "Смотреть видео",
+  "Dock.toggle": "{label}: {count}",
   "DocsNav.label": "Документация",
   "DocsNav.summary": "Руководства: {title}",
   "DocsNav.summaryNone": "Руководства",

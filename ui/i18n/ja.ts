@@ -156,6 +156,7 @@ export default {
   "DemoVideo.errorLabel": "動画を読み込めませんでした。",
   "DemoVideo.openFileLabel": "動画ファイルを開く",
   "DemoVideo.playLabel": "動画を再生",
+  "Dock.toggle": "{label}：{count}",
   "DocsNav.label": "ドキュメント",
   "DocsNav.summary": "ガイド：{title}",
   "DocsNav.summaryNone": "ガイド",
