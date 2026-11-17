@@ -1,11 +1,12 @@
 import { expect } from "@std/expect"
-import { createElement, Fragment } from "preact"
+import { createElement, Fragment, options, type VNode } from "preact"
 import { describe, it } from "@std/testing/bdd"
 import { render } from "preact-render-to-string"
 import {
   CANCEL_LABEL,
   CONFIRM_LABEL,
   ConfirmDialog,
+  type ConfirmDialogSecondaryAction,
   confirmVariant,
   hasQuestion,
   labelOr,
@@ -250,6 +251,136 @@ describe("ConfirmDialog", () => {
 
   it("keeps the danger tone off the default surface", () => {
     expect(render(dialog())).not.toContain("border-red-300")
+  })
+})
+
+/** A three-way panel: cancel "Keep syncing", second "Stop now", confirm "Finish and stop". */
+function threeWay(
+  overrides: Partial<Parameters<typeof ConfirmDialog>[0]> = {},
+  second: Partial<ConfirmDialogSecondaryAction> = {},
+) {
+  return dialog({
+    title: "Stop the sync?",
+    confirmLabel: "Finish and stop",
+    cancelLabel: "Keep syncing",
+    secondaryAction: { label: "Stop now", onClick: () => {}, ...second },
+    ...overrides,
+  })
+}
+
+/** The opening tag and text of the footer button whose `data-e2e` is `hook`, or `""`. */
+function buttonTagged(html: string, hook: string): string {
+  return html.match(new RegExp(`<button [^>]*data-e2e="${hook}"[^>]*>.*?</button>`))?.[0] ?? ""
+}
+
+/** Renders the panel and returns the click handler of each `<button>`, keyed by its `data-e2e`. */
+function clicksOf(panel: VNode): Map<string, (event: MouseEvent) => void> {
+  const clicks = new Map<string, (event: MouseEvent) => void>()
+  const previous = options.vnode
+  options.vnode = (vnode) => {
+    const props = vnode.props as { "data-e2e"?: string; onClick?: (event: MouseEvent) => void }
+    if (vnode.type === "button" && props["data-e2e"] && props.onClick) {
+      clicks.set(props["data-e2e"], props.onClick)
+    }
+    previous?.(vnode)
+  }
+  try {
+    render(panel)
+  } finally {
+    options.vnode = previous
+  }
+  return clicks
+}
+
+describe("ConfirmDialog's second action", () => {
+  it("draws three footer buttons in the order cancel, second, confirm", () => {
+    const html = render(threeWay())
+    const footer = html.slice(html.indexOf("<footer"))
+
+    expect(footer.match(/<button/g)?.length).toBe(3)
+    expect(footer.indexOf(">Keep syncing<")).toBeLessThan(footer.indexOf(">Stop now<"))
+    expect(footer.indexOf(">Stop now<")).toBeLessThan(footer.indexOf(">Finish and stop<"))
+  })
+
+  it("calls only its own port for each of the three buttons", () => {
+    const calls: string[] = []
+    const clicks = clicksOf(threeWay({
+      onConfirm: () => void calls.push("confirm"),
+      onCancel: () => void calls.push("cancel"),
+    }, { onClick: () => void calls.push("second") }))
+    // One entry per click: the ports each click reached, joined.
+    const reached = ["cancel", "secondary", "confirm"].map((hook) => {
+      calls.length = 0
+      clicks.get(`confirm-dialog-${hook}`)?.({} as MouseEvent)
+      return calls.join(", ")
+    })
+
+    expect(reached).toEqual(["cancel", "second", "confirm"])
+  })
+
+  it("stamps a default e2e hook on the second button, and the caller's when given", () => {
+    expect(buttonTagged(render(threeWay()), "confirm-dialog-secondary")).toContain(">Stop now<")
+    expect(buttonTagged(render(threeWay({}, { dataE2E: "stop-now" })), "stop-now"))
+      .toContain(">Stop now<")
+  })
+
+  it("draws the second button in the secondary variant by default, and danger when asked", () => {
+    const plain = buttonTagged(render(threeWay()), "confirm-dialog-secondary")
+    const danger = buttonTagged(
+      render(threeWay({}, { variant: "danger" })),
+      "confirm-dialog-secondary",
+    )
+
+    expect(plain).toContain("bg-hover")
+    expect(plain).not.toContain("bg-danger-fill")
+    expect(danger).toContain("bg-danger-fill")
+  })
+
+  it("draws no second button when its label is blank, leaving the two actions", () => {
+    const html = render(threeWay({}, { label: "   " }))
+    const footer = html.slice(html.indexOf("<footer"))
+
+    expect(footer.match(/<button/g)?.length).toBe(2)
+    expect(html).not.toContain("confirm-dialog-secondary")
+  })
+
+  it("marks the second button busy and disables confirm and cancel when it is the busy one", () => {
+    const html = render(threeWay({ busy: true, busyAction: "secondary", busyLabel: "Stopping…" }))
+    const second = buttonTagged(html, "confirm-dialog-secondary")
+    const confirm = buttonTagged(html, "confirm-dialog-confirm")
+    const cancel = buttonTagged(html, "confirm-dialog-cancel")
+
+    expect(second).toContain('aria-busy="true"')
+    expect(second).toContain("Stopping…")
+    expect(confirm).not.toContain("aria-busy")
+    expect(confirm).toMatch(/\sdisabled[\s=>]/)
+    expect(cancel).toMatch(/\sdisabled[\s=>]/)
+  })
+
+  it("marks confirm busy and disables the second button and cancel by default", () => {
+    const html = render(threeWay({ busy: true }))
+    const second = buttonTagged(html, "confirm-dialog-secondary")
+    const confirm = buttonTagged(html, "confirm-dialog-confirm")
+
+    expect(confirm).toContain('aria-busy="true"')
+    expect(second).not.toContain("aria-busy")
+    expect(second).toMatch(/\sdisabled[\s=>]/)
+    expect(buttonTagged(html, "confirm-dialog-cancel")).toMatch(/\sdisabled[\s=>]/)
+  })
+
+  it("marks confirm busy when the busy second action is not drawn", () => {
+    const html = render(threeWay({ busy: true, busyAction: "secondary" }, { label: "" }))
+    const confirm = buttonTagged(html, "confirm-dialog-confirm")
+
+    expect(confirm).toContain('aria-busy="true"')
+    expect(confirm).not.toMatch(/\sdisabled[\s=>]/)
+  })
+
+  it("leaves the header dismiss control out when the second button has its name", () => {
+    const html = render(threeWay({}, { label: "Close" }))
+
+    expect(html).not.toContain("aria-label=")
+    expect(html.match(/<button/g)?.length).toBe(3)
   })
 })
 
