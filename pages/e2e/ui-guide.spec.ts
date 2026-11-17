@@ -89,8 +89,8 @@ const KNOWN_INCOMPLETE: Record<GuidePageId, Readonly<Record<string, KnownCount>>
   // The header's version pill; seven pieces of the Map card's text that axe finds another element
   // over; and the zoom control's minus sign.
   map: { [OBSCURED]: [1, 1], [OVERLAPPED]: [7, 7], [GLYPH]: [1, 1] },
-  // The header's version pill, seven lines of the `RailShell` demo's scrolling page and a code
-  // block in its scroll region.
+  // The header's version pill, seven pieces of text at the end of the `RailShell` demo's scrolling
+  // page and a code block in its scroll region.
   system: { [OBSCURED]: [9, 9] },
   crud: { [OBSCURED]: [1, 1] },
 }
