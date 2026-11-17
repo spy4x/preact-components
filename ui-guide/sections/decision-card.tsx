@@ -23,7 +23,7 @@ import type { DecisionCardOption } from "@spy4x/preact-ui"
 import { useSignal } from "@preact/signals"
 import type { DemoFragment } from "../registry.ts"
 
-interface QueueItem {
+export interface QueueItem {
   id: string
   kind: string
   title: string
@@ -37,7 +37,7 @@ interface QueueItem {
 }
 
 /** The demo's queue. The recommended option is listed second, so the card's sorting shows. */
-const QUEUE: readonly QueueItem[] = [
+export const QUEUE: readonly QueueItem[] = [
   {
     id: "release",
     kind: "Decision",
