@@ -465,6 +465,7 @@ export {
 } from "./setting-row.tsx"
 export {
   type ComparisonRow,
+  type ComparisonSource,
   ComparisonTable,
   type ComparisonTableLabels,
   type ComparisonTableProps,

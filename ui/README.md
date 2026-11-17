@@ -78,7 +78,7 @@ Each line: the component, its subpath, then its ports and key props.
 - `ColorField` (`color-field`): `value` (`#rrggbb` or `null`), `onChange`, `presets?` (`COLOR_PRESETS`, 16 swatches), `allowNone?`, `noneLabel?`, `legend?`, `hint?`, `error?`, `preview?(color, textColor)`, `labels?` — round swatches on native radios, plus "Custom" with a colour input and a hex field
 - `Combobox` (`combobox`): `items`, `value`, `onChange`, `getLabel?`, `aliasesOf?`, `filter?` (default: `searchEntries` over label and aliases), `groupOf?`, `isGroupLead?`, `onCreate?` (may return a promise), `loading?`, `loadingMessage?`, `ariaLabel?`, `aria-labelledby?`, `id?`, `required?`, `requiredMessage?`, `autoFocus?`
 - `CommandPalette` (`command-palette`): `options` (filtered locally; an option may be a command with `icon`, `kbd`, `state`, `disabledReason`, `run` and `keepOpen`) or `search(query, signal, show?)` (debounced, stale calls aborted; `show(options)` lists an early answer that the final one replaces, keeping the highlighted option), `onSelect(option, { alternative, text? })` (Ctrl/⌘+Enter, a Ctrl/⌘-click or a middle click asks for the alternative, such as a new tab), `onOpenChange?(open)`, `filter?` (default `matchOptions`: typos, word order, the other layout and alphabet, `aliases`), `trigger?` (`"button"`, `"field"`, `"icon"`, or a function drawing a trigger of its own from `CommandPaletteTrigger`), `triggerHref?` (a link until hydration), `defaultQuery?`, `showMatch?`, `matchLabels?`, `recent?` (`{ storageKey, storage }`, the recent picks; `clearCommandPaletteRecent(storageKey, storage)` forgets them), `hotkeys?`, `kbdLabels?`, `debounce?`, `labels?`, `dataE2E?`
-- `ComparisonTable` (`comparison-table`): `caption`, `products` (first is yours, highlighted), `rows` of `{ capability, values, note? }` (`"yes"`, `"partial"`, `"no"`), `checkedOn`, `method`, `fit?`, `locale?`, `timeZone?`, `labels?` — scrolls inside itself, first column held
+- `ComparisonTable` (`comparison-table`): `caption`, `products` (first is yours, highlighted), `rows` of `{ capability, values, note?, source? }` (`"yes"`, `"partial"`, `"no"`; `source` is a `{ label, href }` link under the capability), `checkedOn`, `method`, `fit?`, `locale?`, `timeZone?`, `labels?` — scrolls inside itself, first column held
 - `ConfirmDialog` (`confirm-dialog`): `title`, `message?`, `onConfirm`, `onCancel`, `confirmLabel?`, `cancelLabel?`, `closeLabel?`, `tone?`, `busy?` and `busyLabel?` (no cancel while busy), `confirmDataE2E?`, `cancelDataE2E?`, `secondaryAction?` (a third button between cancel and confirm; a blank label draws none) and `busyAction?` (`"confirm"` or `"secondary"`: which button is busy)
 - `CopyBlock` (`copy-block`): `text`, `singleLine?`, `textLabel?` (names `singleLine` text that overflows), `copy?` (clipboard port), `copyLabel?`, `copiedLabel?`, `failedLabel?` — built on `CopyButton`
 - `CopyButton` (`copy-button`): `textToCopy` (string, or function read on click), `text?` (visible text; without it, the icon alone; deprecated `title`), `copy?` (port; `false` or a throw is a failure), `variant?` (`"outline"` or `"primary"`, for a button with `text`), `copiedLabel?`, `failedLabel?`, `data-*`, `hotkey?`
@@ -3016,6 +3016,10 @@ components and tests means exactly that: nothing outside this package should bui
 - `defaultComparisonTableLabels` holds the English words of a `ComparisonTable`: the three value
   labels and what each means in the legend, the column and "Ours" words, the method and fit terms
   and the "Checked on" sentence. A translation replaces any of them through `labels`.
+- `ComparisonSource` is a row's optional `source`: `{ label, href }`, the page its facts were
+  checked against. It is linked under the capability and its note, underlined, in the same tab;
+  `label` is the link's whole text, so name whose page it is and when it was read. A row without
+  one renders as before.
 
 ### ConfirmDialog (`./confirm-dialog`)
 
