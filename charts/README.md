@@ -182,7 +182,7 @@ keeps both names for its existing importers. `niceScale` takes its tick loop fro
 takes the rounded bounds and ticks from `@spy4x/platform/universal/axis`'s `stepAxis`
 (spy4x/preact-components#306), which carries the same iteration cap as `ticks`. Moving onto it
 changed five things. Every tick of a step with more than one significant digit now lands on the
-step (`niceScale(0, 10, { target: 4 })` starts at `-2.5`, not `-2`). A padded domain that
+step (`niceScale(-1, 10, { target: 4 })` starts at `-2.5`, not `-2`). A padded domain that
 overflows to `±Infinity` has no ticks instead of `[a, Infinity]`. `Infinity` is never a tick, and a
 finite domain near the largest double no longer rounds its `max` up to `Infinity`. An absurd target
 on a huge value (`niceScale(1e18, 1e18 + 100, { target: 1e300 })`) keeps finite bounds.

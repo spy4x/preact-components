@@ -151,11 +151,27 @@ describe("extent", () => {
 
 describe("paddedDomain", () => {
   it("pads a span by 10% on both sides by default", () => {
-    assertEquals(paddedDomain(0, 100), { min: -10, max: 110 })
+    assertEquals(paddedDomain(-50, 50), { min: -60, max: 60 })
+  })
+
+  it("never pads below zero when the smallest value is zero or more", () => {
+    assertEquals(paddedDomain(0, 100), { min: 0, max: 110 })
+    assertEquals(paddedDomain(5, 100), { min: 0, max: 109.5 })
+    assertEquals(paddedDomain(50, 100), { min: 45, max: 105 })
+  })
+
+  it("never pads above zero when the largest value is zero or less", () => {
+    assertEquals(paddedDomain(-100, 0), { min: -110, max: 0 })
+    assertEquals(paddedDomain(-100, -5), { min: -109.5, max: 0 })
+    assertEquals(paddedDomain(-100, -50), { min: -105, max: -45 })
+  })
+
+  it("pads mixed-sign data across zero on both sides", () => {
+    assertEquals(paddedDomain(-10, 90), { min: -20, max: 100 })
   })
 
   it("honours the pad ratio and rejects a negative one", () => {
-    assertEquals(paddedDomain(0, 100, 0.5), { min: -50, max: 150 })
+    assertEquals(paddedDomain(-50, 50, 0.5), { min: -100, max: 100 })
     assertEquals(paddedDomain(0, 100, 0), { min: 0, max: 100 })
     assertEquals(paddedDomain(0, 100, -1), { min: 0, max: 100 })
   })
@@ -163,7 +179,7 @@ describe("paddedDomain", () => {
   it("expands a degenerate domain around the value", () => {
     assertEquals(paddedDomain(5, 5), { min: 4.5, max: 5.5 })
     assertEquals(paddedDomain(-5, -5), { min: -5.5, max: -4.5 })
-    assertEquals(paddedDomain(0, 0), { min: -1, max: 1 })
+    assertEquals(paddedDomain(0, 0), { min: 0, max: 1 })
   })
 
   it("falls back to a plottable domain for non-finite input", () => {
@@ -187,9 +203,33 @@ describe("niceScale", () => {
     const scale = niceScale(0, 100)
 
     assertEquals(scale.step, 20)
-    assertEquals(scale.min, -20)
+    assertEquals(scale.min, 0)
     assertEquals(scale.max, 120)
-    assertEquals(scale.ticks, [-20, 0, 20, 40, 60, 80, 100, 120])
+    assertEquals(scale.ticks, [0, 20, 40, 60, 80, 100, 120])
+  })
+
+  it("gives zero-minimum data no negative tick", () => {
+    for (const [min, max] of [[0, 100], [0, 1], [3, 97], [0, 1e-12]]) {
+      const scale = niceScale(min, max)
+
+      assert(scale.min >= 0, `min ${scale.min} below zero for [${min}, ${max}]`)
+      assert(scale.ticks.every((tick) => tick >= 0), `negative tick in ${scale.ticks}`)
+    }
+  })
+
+  it("gives all-negative data no positive tick", () => {
+    for (const [min, max] of [[-100, 0], [-1, 0], [-97, -3]]) {
+      const scale = niceScale(min, max)
+
+      assert(scale.max <= 0, `max ${scale.max} above zero for [${min}, ${max}]`)
+      assert(scale.ticks.every((tick) => tick <= 0), `positive tick in ${scale.ticks}`)
+    }
+  })
+
+  it("pads mixed-sign data below and above", () => {
+    const scale = niceScale(-3, 7)
+
+    assertEquals(scale.ticks, [-4, -2, 0, 2, 4, 6, 8])
   })
 
   it("produces a usable domain for a single-value series", () => {
@@ -203,9 +243,9 @@ describe("niceScale", () => {
   it("produces a usable domain for an all-zero series", () => {
     const scale = niceScale(0, 0)
 
-    assertEquals(scale.min, -1.2)
-    assertEquals(scale.max, 1.2)
-    assertEquals(scale.ticks.includes(0), true)
+    assertEquals(scale.min, 0)
+    assertEquals(scale.max, 1)
+    assertEquals(scale.ticks, [0, 0.2, 0.4, 0.6, 0.8, 1])
   })
 
   it("keeps every tick inside the bounds and on the step", () => {
@@ -227,13 +267,13 @@ describe("niceScale", () => {
     const scale = niceScale(0, 1)
 
     assertEquals(scale.max, 1.2)
-    assertEquals(scale.min, -0.2)
-    assertEquals(scale.ticks, [-0.2, 0, 0.2, 0.4, 0.6, 0.8, 1, 1.2])
+    assertEquals(scale.min, 0)
+    assertEquals(scale.ticks, [0, 0.2, 0.4, 0.6, 0.8, 1, 1.2])
   })
 
   it("honours a requested tick target", () => {
-    assertEquals(niceScale(0, 100, { target: 10 }).ticks.length, 13)
-    assertEquals(niceScale(0, 100, { target: 2 }).ticks.length, 5)
+    assertEquals(niceScale(0, 100, { target: 10 }).ticks.length, 12)
+    assertEquals(niceScale(0, 100, { target: 2 }).ticks.length, 4)
   })
 
   it("does not shrink a data range with a zero pad ratio", () => {
@@ -254,7 +294,7 @@ describe("niceScale", () => {
   // The five cases below are where `niceScale` changed when it moved onto ts-libs' `stepAxis`
   // (spy4x/preact-components#306). Its own loop rounded ticks to the step's leading digit only.
   it("lands every tick on a step with more than one significant digit", () => {
-    const scale = niceScale(0, 10, { target: 4 })
+    const scale = niceScale(-1, 10, { target: 4 })
 
     assertEquals(scale.step, 2.5)
     assertEquals(scale.min, -2.5)
@@ -294,9 +334,9 @@ describe("niceScale", () => {
   it("handles a tiny span", () => {
     const scale = niceScale(0, 1e-12)
 
-    assertEquals(scale.ticks.length, 8)
-    assertEquals(new Set(scale.ticks).size, 8)
-    assertAlmostEquals(scale.min, -2e-13, 1e-26)
+    assertEquals(scale.ticks.length, 7)
+    assertEquals(new Set(scale.ticks).size, 7)
+    assertEquals(scale.min, 0)
     assertAlmostEquals(scale.max, 1.2e-12, 1e-25)
   })
 })
