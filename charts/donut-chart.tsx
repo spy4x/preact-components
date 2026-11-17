@@ -20,7 +20,25 @@ export interface DonutDatum {
   value: number
   /** Overrides the palette entry for this slice. */
   color?: string
+  /**
+   * Makes the legend row a link. Only a relative URL, a `#fragment`, or an `http:`, `https:` or
+   * `mailto:` URL is linked; any other scheme, such as `javascript:` or `data:`, leaves the row as
+   * plain text.
+   */
   href?: string
+}
+
+/** Schemes a legend row may link to; a relative URL resolves against an `https:` base. */
+const SAFE_PROTOCOLS = new Set(["http:", "https:", "mailto:"])
+
+/** Whether `href` is a relative URL or uses an allowed scheme, so it can go into a link. */
+function isSafeHref(href: string | undefined): href is string {
+  if (!href) return false
+  try {
+    return SAFE_PROTOCOLS.has(new URL(href, "https://example.invalid").protocol)
+  } catch {
+    return false
+  }
 }
 
 /** One slice as `donutGeometry` lays it out: its colour, its share and its arc on the ring. */
@@ -302,14 +320,12 @@ export function DonutChart({
                 </>
               )
 
+              const href = data[index].href
               return (
                 <li key={`${segment.label}-${index}`} class="flex items-center gap-2">
-                  {data[index].href
+                  {isSafeHref(href)
                     ? (
-                      <a
-                        class="flex flex-1 items-center gap-2 hover:underline"
-                        href={data[index].href}
-                      >
+                      <a class="flex flex-1 items-center gap-2 hover:underline" href={href}>
                         {body}
                       </a>
                     )

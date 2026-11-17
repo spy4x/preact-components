@@ -46,7 +46,14 @@ export function extent(values: readonly number[]): readonly [number, number] | n
   return min <= max ? [min, max] : null
 }
 
-/** Pad a domain by a fraction of its span, so points never sit on the axis frame. */
+/**
+ * Pad a domain by a fraction of its span, so points never sit on the axis frame.
+ *
+ * Padding never crosses zero: data whose smallest value is zero or more is not padded below zero,
+ * and data whose largest value is zero or less is not padded above zero, so a revenue axis never
+ * shows a negative tick. A series of zeros still gets a span, upward: `paddedDomain(0, 0)` is
+ * `{ min: 0, max: 1 }`.
+ */
 export function paddedDomain(
   min: number,
   max: number,
@@ -62,6 +69,8 @@ export function paddedDomain(
   // A single value has no span to pad, so it falls back to 10% of its own magnitude (or 1).
   const pad = span > 0 ? span * ratio : Math.abs(high) * ratio || 1
 
+  if (low >= 0) return { min: Math.max(0, low - pad), max: high + pad }
+  if (high <= 0) return { min: low - pad, max: Math.min(0, high + pad) }
   return { min: low - pad, max: high + pad }
 }
 
@@ -72,11 +81,12 @@ export function paddedDomain(
  * domain whose bounds are multiples of {@link NiceScale.step} together with the matching ticks. A
  * single-value series still produces a usable, non-degenerate domain.
  *
- * Rounding and ticks come from `stepAxis`, so they follow its rules: every tick is an exact multiple
- * of the step, even a step like `2.5` (`niceScale(0, 10, { target: 4 })` starts at `-2.5`); a padded
- * domain that overflows to `±Infinity` has no ticks; `Infinity` is never a tick or a bound that a
- * finite domain rounds up to; and a step too fine for the domain leaves the bounds unrounded
- * instead of turning them into `Infinity`. A step `niceStep` cannot produce falls back to `1`.
+ * Like {@link paddedDomain}, it never pads across zero: `niceScale(0, 100)` starts at `0`, not
+ * `-20`. Rounding and ticks come from `stepAxis`, so they follow its rules: every tick is an exact
+ * multiple of the step, even a step like `2.5` (`niceScale(-1, 10, { target: 4 })` starts at
+ * `-2.5`); a padded domain that overflows to `±Infinity` has no ticks; `Infinity` is never a tick
+ * or a bound that a finite domain rounds up to; and a step too fine for the domain leaves the bounds
+ * unrounded instead of turning them into `Infinity`. A step `niceStep` cannot produce falls back to `1`.
  */
 export function niceScale(min: number, max: number, options: NiceScaleOptions = {}): NiceScale {
   const padded = paddedDomain(min, max, options.padRatio)
