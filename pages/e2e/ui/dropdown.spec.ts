@@ -294,6 +294,41 @@ export const specs: readonly Spec[] = [
   ...dangerItemContrastSpecs(),
   {
     name:
+      "DropdownItem: in a menu capped at 240 px a 30-character label wraps onto a second line " +
+      "and its two-key hint stays whole inside the menu",
+    pageId: "ui",
+    run: async (page) => {
+      const card = page.locator("#demo-DropdownItem")
+      await card.locator(`[data-e2e="dropdown-long-label-trigger"]`).click()
+      const menu = card.getByRole("menu", { name: "Long label", exact: true })
+      const item = menu.locator(`[data-e2e="dropdown-long-label-item"]`)
+      await item.waitFor()
+      const seen = await item.evaluate((element) => {
+        const box = (node: Element) => node.getBoundingClientRect().toJSON() as DOMRect
+        const hint = element.querySelector("[data-hotkey-hint]")
+        const lineHeight = parseFloat(getComputedStyle(element).lineHeight)
+        return {
+          panel: box(element.closest('[role="menu"]')!),
+          hint: hint === null ? null : box(hint),
+          hintText: hint?.textContent,
+          item: box(element),
+          lineHeight,
+        }
+      })
+      const { panel, hint, item: row, lineHeight } = seen
+      const inside = hint !== null && hint.width > 0 && hint.left >= panel.left &&
+        hint.right <= panel.right && hint.top >= panel.top && hint.bottom <= panel.bottom
+      // One line of text plus the row's padding is under two line heights; a wrapped label is over.
+      const wrapped = row.height > 2 * lineHeight
+      if (Math.round(panel.width) !== 240 || !inside || !wrapped) {
+        throw new Error(`menu, hint and item boxes: ${JSON.stringify(seen)}`)
+      }
+      return `hint "${seen.hintText}" ends ${Math.round(panel.right - hint.right)} px inside ` +
+        `the menu; item ${Math.round(row.height)} px tall`
+    },
+  },
+  {
+    name:
       "DropdownItem: the arrow keys reach an unchecked group of a switcher, Enter chooses it, " +
       "the check moves to it and the menu closes with focus on its trigger",
     pageId: "ui",

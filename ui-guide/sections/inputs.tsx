@@ -390,7 +390,32 @@ function DropdownItemDemo() {
       </span>
       <DropdownItemHotkeyDemo />
       <DropdownItemCheckedDemo />
+      <DropdownItemLongLabelDemo />
     </Stack>
+  )
+}
+
+/**
+ * A long label in a menu capped at 240 px: the label wraps onto a second line and the key hint
+ * stays whole at the item's end (#1381). `pages/e2e/ui/dropdown.spec.ts` measures both.
+ */
+function DropdownItemLongLabelDemo() {
+  return (
+    <DropdownRow title="Long label, capped menu">
+      <Dropdown
+        trigger="Long label"
+        triggerNamedByContent
+        triggerClasses="rounded-md px-3 py-2 text-sm ring-1 ring-subtle"
+        triggerDataE2E="dropdown-long-label-trigger"
+        menuLabel="Long label"
+        panelClasses="w-60"
+      >
+        <DropdownItem keyshortcuts={["g e"]} dataE2E="dropdown-long-label-item">
+          Export all transactions as CSV
+        </DropdownItem>
+        <DropdownItem keyshortcuts={["g d"]}>Duplicate</DropdownItem>
+      </Dropdown>
+    </DropdownRow>
   )
 }
 
