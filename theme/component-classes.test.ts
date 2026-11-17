@@ -64,7 +64,7 @@ describe("colour classes in ui/", () => {
     const written = new Set<string>()
     const directory = new URL("../ui/", import.meta.url)
     for await (const entry of Deno.readDir(directory)) {
-      if (!entry.name.endsWith(".tsx") || entry.name.endsWith(".test.tsx")) continue
+      if (!/\.tsx?$/.test(entry.name) || /\.test\.tsx?$/.test(entry.name)) continue
       const source = await Deno.readTextFile(new URL(entry.name, directory))
       for (
         const match of source.matchAll(
