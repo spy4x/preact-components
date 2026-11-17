@@ -217,7 +217,7 @@ function languagePickerSpecs(): Spec[] {
     },
     {
       name:
-        'LanguagePicker menu: the globe is named "Language: English"; Enter opens it on the first language, checked, Escape closes it and returns focus to the globe, a press outside closes it; rows are 44 px on a phone',
+        'LanguagePicker menu: the globe is named "Language: English"; Enter opens it on the first language, checked, Escape closes it and returns focus to the globe, a press outside closes it; rows are 44 px and the menu spans its ancestor less 16 px a side on a phone',
       pageId: "ui",
       run: async (page) => {
         await page.setViewportSize({ width: 390, height: 900 })
@@ -234,6 +234,15 @@ function languagePickerSpecs(): Spec[] {
         await menu.getByRole("menuitemradio", { name: "العربية", checked: false }).waitFor()
         const row = await english.boundingBox()
         if (!row || row.height < 44) throw new Error(`row is ${row?.height} px tall, under 44`)
+        // On a phone the panel spans its positioned ancestor 16 px in from each side, never
+        // shrinking to its text.
+        const span = await menu.evaluate((panel) => ({
+          panel: panel.getBoundingClientRect().width,
+          ancestor: (panel as HTMLElement).offsetParent?.getBoundingClientRect().width ?? 0,
+        }))
+        if (Math.abs(span.panel - (span.ancestor - 32)) > 1) {
+          throw new Error(`panel is ${span.panel} px wide in a ${span.ancestor} px ancestor`)
+        }
 
         await page.keyboard.press("Escape")
         await menu.waitFor({ state: "hidden" })
@@ -243,7 +252,8 @@ function languagePickerSpecs(): Spec[] {
         await menu.waitFor()
         await page.mouse.click(5, 5)
         await menu.waitFor({ state: "hidden" })
-        return `Escape back to the globe, outside press closed it, rows ${row.height} px`
+        return `Escape back to the globe, outside press closed it, rows ${row.height} px, ` +
+          `menu ${span.panel} px in ${span.ancestor} px`
       },
     },
     ...(["light", "dark"] as const).map((colorScheme): Spec => ({
