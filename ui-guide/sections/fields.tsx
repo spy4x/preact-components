@@ -985,12 +985,13 @@ function RadioChipsDemo() {
 
 /**
  * A multi-select tag filter, tags in colours of their own, and a single-select status filter, the
- * first and last echoing their value.
+ * first and last echoing their value, then seven weekday chips that must fit one phone-wide row.
  */
 function ToggleChipsDemo() {
   const tags = useSignal<string[]>(["work"])
   const colored = useSignal<string[]>(["urgent"])
   const status = useSignal<string | null>("open")
+  const days = useSignal<string[]>(["mon", "wed", "fri"])
   return (
     <Stack gap="md">
       <ToggleChips
@@ -1029,6 +1030,15 @@ function ToggleChipsDemo() {
       <p class="text-xs text-muted" data-e2e="toggle-chips-value">
         tags: {tags.value.join(", ") || "(none)"} · status: {status.value ?? "(none)"}
       </p>
+      <ToggleChips
+        ariaLabel="Repeat on"
+        options={["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"].map((label) => ({
+          value: label.toLowerCase(),
+          label,
+        }))}
+        value={days.value}
+        onChange={(next) => days.value = next}
+      />
     </Stack>
   )
 }
