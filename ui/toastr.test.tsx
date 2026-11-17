@@ -111,7 +111,7 @@ describe("Toastr", () => {
     )
   })
 
-  it("puts the stack a gutter from its corner's two edges and lets the far side go", () => {
+  it("puts the stack a gutter from its corner's two edges, a bottom one above the tab bar and dock", () => {
     for (const corner of ["top-left", "top-right", "bottom-left", "bottom-right"] as const) {
       const classes = stackClasses(
         render(<Toastr toasts={[]} onDismiss={() => {}} corner={corner} />),
