@@ -48,6 +48,16 @@ describe("the [WIP] pull request workflows", () => {
     expect(missing).toEqual([])
   })
 
+  it("runs no browser step on a push to main", () => {
+    const browser = Object.entries(full.steps)
+      .filter(([name]) => name === "pages-build" || name.startsWith("verify-"))
+    expect(browser.length).toBe(7)
+    const onPush = browser.filter(([, step]) =>
+      !step.when || [step.when].flat().some((w) => !w.event || events(w).includes("push"))
+    ).map(([name]) => name)
+    expect(onPush).toEqual([])
+  })
+
   it("keeps wip.yml's check step equal to woodpecker.yml's", () => {
     expect(Object.keys(wip.steps)).toEqual(["check"])
     expect(wip.steps.check).toEqual(full.steps.check)
