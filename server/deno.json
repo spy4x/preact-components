@@ -1,6 +1,6 @@
 {
   "name": "@spy4x/preact-server",
-  "version": "16.1.1",
+  "version": "16.2.0",
   "exports": {
     // The server: the app, routes, page rendering and static files.
     ".": "./+index.ts",
