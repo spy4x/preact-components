@@ -435,7 +435,7 @@ export function Rail(props: RailProps): JSX.Element {
     <main
       id={contentId}
       tabindex={-1}
-      class="min-w-0 flex-1 focus:outline-none"
+      class="min-w-0 flex-1 pb-[var(--pc-dock-height,0px)] focus:outline-none"
       data-e2e="rail-shell-content"
     >
       {children}
