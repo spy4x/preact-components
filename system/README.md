@@ -25,31 +25,31 @@ Extracted from earlier source applications.
 
 ## Components
 
-| Component             | Subpath                 | Ports / key props                                                                                                                                                                                        |
-| --------------------- | ----------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `AccountMenu`         | `account-menu`          | `user`, `items?`, `language?`, `theme?`, `onThemeChange?`, `signOut?`, `display?`, `tag?`, `header?`, `vertical?`, `horizontal?`, `navigate?`, `triggerClasses?`, `panelClasses?`, `dataE2E?`, `labels?` |
-| `AccountTag`          | `account-menu`          | `tag` — the neutral role badge `AccountMenu` and `AppShell` draw for `tag`                                                                                                                               |
-| `AppShell`            | `app-shell`             | `items`, `account`, `currentKey?`, `currentPath?`, `navigate?`, `switcher?`, `notifications?`, `connection?`, `banner?`, `width?`, `children`, `labels?`, `class?`                                       |
-| `AuthForm`            | `auth-form`             | `mode`, `step`, `onModeChange?`, `modeHrefs?`, `onSignIn?`, `onSignUp?`, `onOneTimeCode?`, `busy?`, `error?`, `labels?`, `names?`, `action?`, `passkeyAutofill?`, `footer?`                              |
-| `MailedCodeStep`      | `mailed-code-step`      | `sentence`, `minutes?`, `onSubmit`, `onResend`, `onChangeEmail`, `busy?`, `error?`, `pattern?`, `readyAt?`, `resending?`, `headingLevel?`, `labels?`, `class?`                                           |
-| `SEOHead`             | `seo-head`              | `title`, `description`, `canonical`, `alternates?`, `crumbs?`, `ogImage?`, `imageAlt?`, `imageWidth?`, `imageHeight?`, `jsonLd?`, `noindex?`, `twitterCard?`, `twitterCreator?`                          |
-| `SWUpdater`           | `sw-updater`            | `scriptUrl?`, `container?`, `updateMessage?`, `reload?`, `onUpdate?`                                                                                                                                     |
-| `Calendar`            | `calendar`              | `monthAnchor`, `minDate`, `maxDate`, `availableByDate`, `onSelectDate?`                                                                                                                                  |
-| `SiteHeader`          | `site-header`           | `links?`, `currentPath?`, `brand`, `actions?`, `labels?`                                                                                                                                                 |
-| `SiteFooter`          | `site-footer`           | `groups`, `brand?`, `aside?`, `bottom?`, `class?`                                                                                                                                                        |
-| `Shell`               | `shell`                 | `navItems`, `currentPath?`, `brand`, `user`, `userMenuItems?`, `status?`, `navigate?`, `sidebarTop?`, `sidebarBottom?`, `collapsed?`, `onCollapsedChange?`, `children`, `labels?`, `class?`              |
-| `StateInit`           | `state-init`            | `data`, `id?` — paired with `readStateInit(id?, source?)`                                                                                                                                                |
-| `Rail`                | `rail`                  | `variant?`, `items`, `currentKey?`, `currentPath?`, `primary?`, `navigate?`, `navigateLink?`, `top?`, `bottom?`, `moreTab?`, `tabBarNotice?`, `children`, `footer?`, `labels?`, `class?`                 |
-| `RailCell`            | `rail`                  | `tip`, `children`, `dataE2E?` — a slot's control with the rail's tooltip; `railFocusRing` is its ring                                                                                                    |
-| `RailEntry`           | `rail`                  | `item`, `place`, `variant?`, `current?`, `navigate?`, `navigateLink?`, `counterWords?` — a slot's link drawn exactly as a rail entry                                                                     |
-| `RailShell`           | `rail-shell`            | `items`, `currentKey?`, `currentPath?`, `primary?`, `navigate?`, `navigateLink?`, `sidebarTop?`, `sidebarBottom?`, `moreTab?`, `children`, `labels?`, `class?`                                           |
-| `SyncStatus`          | `sync-status`           | `online`, `pending`, `syncing?`, `failed?`, `onRetry?`, `labels?`, `class?`                                                                                                                              |
-| `SavedCopyNotice`     | `saved-copy-notice`     | `savedAt`, `formatTime?`, `labels?`, `class?`, other `<div>` attributes                                                                                                                                  |
-| `ConflictChooser`     | `conflict-chooser`      | `conflicts`, `onKeepMine`, `onUseTheirs`, `labels?`, `headingLevel?`, `class?`                                                                                                                           |
-| `UnsentChangesDialog` | `unsent-changes-dialog` | `unsent`, `conflicts?`, `sent?`, `state?`, `onSend`, `onSignOut`, `onCancel`, `onReview`, `labels?`, `class?`                                                                                            |
-| `InstallPrompt`       | `install-prompt`        | `mode`, `onInstall`, `onDismiss`, `returnFocus?`, `labels?`, `class?`                                                                                                                                    |
-| `PushSettings`        | `push-settings`         | `status`, `busy?`, `failed?`, `sent?`, `onEnable`, `onDisable`, `onTest?`, `labels?`, `class?`                                                                                                           |
-| `SettingsLayout`      | `settings-layout`       | `title`, `href`, `sections`, `current`, `defaultSection?`, `navigate?`, `headingLevel?`, `intro?`, `children?`, `labels?`                                                                                |
+| Component             | Subpath                 | Ports / key props                                                                                                                                                                                                                              |
+| --------------------- | ----------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `AccountMenu`         | `account-menu`          | `user`, `items?`, `language?`, `theme?`, `onThemeChange?`, `signOut?`, `display?`, `tag?`, `header?`, `headerHref?`, `headerKeyshortcuts?`, `vertical?`, `horizontal?`, `navigate?`, `triggerClasses?`, `panelClasses?`, `dataE2E?`, `labels?` |
+| `AccountTag`          | `account-menu`          | `tag` — the neutral role badge `AccountMenu` and `AppShell` draw for `tag`                                                                                                                                                                     |
+| `AppShell`            | `app-shell`             | `items`, `account`, `currentKey?`, `currentPath?`, `navigate?`, `switcher?`, `notifications?`, `connection?`, `banner?`, `width?`, `children`, `labels?`, `class?`                                                                             |
+| `AuthForm`            | `auth-form`             | `mode`, `step`, `onModeChange?`, `modeHrefs?`, `onSignIn?`, `onSignUp?`, `onOneTimeCode?`, `busy?`, `error?`, `labels?`, `names?`, `action?`, `passkeyAutofill?`, `footer?`                                                                    |
+| `MailedCodeStep`      | `mailed-code-step`      | `sentence`, `minutes?`, `onSubmit`, `onResend`, `onChangeEmail`, `busy?`, `error?`, `pattern?`, `readyAt?`, `resending?`, `headingLevel?`, `labels?`, `class?`                                                                                 |
+| `SEOHead`             | `seo-head`              | `title`, `description`, `canonical`, `alternates?`, `crumbs?`, `ogImage?`, `imageAlt?`, `imageWidth?`, `imageHeight?`, `jsonLd?`, `noindex?`, `twitterCard?`, `twitterCreator?`                                                                |
+| `SWUpdater`           | `sw-updater`            | `scriptUrl?`, `container?`, `updateMessage?`, `reload?`, `onUpdate?`                                                                                                                                                                           |
+| `Calendar`            | `calendar`              | `monthAnchor`, `minDate`, `maxDate`, `availableByDate`, `onSelectDate?`                                                                                                                                                                        |
+| `SiteHeader`          | `site-header`           | `links?`, `currentPath?`, `brand`, `actions?`, `labels?`                                                                                                                                                                                       |
+| `SiteFooter`          | `site-footer`           | `groups`, `brand?`, `aside?`, `bottom?`, `class?`                                                                                                                                                                                              |
+| `Shell`               | `shell`                 | `navItems`, `currentPath?`, `brand`, `user`, `userMenuItems?`, `status?`, `navigate?`, `sidebarTop?`, `sidebarBottom?`, `collapsed?`, `onCollapsedChange?`, `children`, `labels?`, `class?`                                                    |
+| `StateInit`           | `state-init`            | `data`, `id?` — paired with `readStateInit(id?, source?)`                                                                                                                                                                                      |
+| `Rail`                | `rail`                  | `variant?`, `items`, `currentKey?`, `currentPath?`, `primary?`, `navigate?`, `navigateLink?`, `top?`, `bottom?`, `moreTab?`, `tabBarNotice?`, `children`, `footer?`, `labels?`, `class?`                                                       |
+| `RailCell`            | `rail`                  | `tip`, `children`, `dataE2E?` — a slot's control with the rail's tooltip; `railFocusRing` is its ring                                                                                                                                          |
+| `RailEntry`           | `rail`                  | `item`, `place`, `variant?`, `current?`, `navigate?`, `navigateLink?`, `counterWords?` — a slot's link drawn exactly as a rail entry                                                                                                           |
+| `RailShell`           | `rail-shell`            | `items`, `currentKey?`, `currentPath?`, `primary?`, `navigate?`, `navigateLink?`, `sidebarTop?`, `sidebarBottom?`, `moreTab?`, `children`, `labels?`, `class?`                                                                                 |
+| `SyncStatus`          | `sync-status`           | `online`, `pending`, `syncing?`, `failed?`, `onRetry?`, `labels?`, `class?`                                                                                                                                                                    |
+| `SavedCopyNotice`     | `saved-copy-notice`     | `savedAt`, `formatTime?`, `labels?`, `class?`, other `<div>` attributes                                                                                                                                                                        |
+| `ConflictChooser`     | `conflict-chooser`      | `conflicts`, `onKeepMine`, `onUseTheirs`, `labels?`, `headingLevel?`, `class?`                                                                                                                                                                 |
+| `UnsentChangesDialog` | `unsent-changes-dialog` | `unsent`, `conflicts?`, `sent?`, `state?`, `onSend`, `onSignOut`, `onCancel`, `onReview`, `labels?`, `class?`                                                                                                                                  |
+| `InstallPrompt`       | `install-prompt`        | `mode`, `onInstall`, `onDismiss`, `returnFocus?`, `labels?`, `class?`                                                                                                                                                                          |
+| `PushSettings`        | `push-settings`         | `status`, `busy?`, `failed?`, `sent?`, `onEnable`, `onDisable`, `onTest?`, `labels?`, `class?`                                                                                                                                                 |
+| `SettingsLayout`      | `settings-layout`       | `title`, `href`, `sections`, `current`, `defaultSection?`, `navigate?`, `headingLevel?`, `intro?`, `children?`, `labels?`                                                                                                                      |
 
 `head.ts` exports `createHeadStore`, a factory that builds a fresh signal-backed store on every
 call — see below. The pure address and breadcrumb helpers `SEOHead` runs (`normalizeCanonical`,
@@ -934,6 +934,12 @@ signed in reads as a way to their settings. Given, the row is the menu's first i
 or not `header` is set, named by its text and followed through `navigate` like the other link
 items. `AppShell` passes `account.headerHref` on, and links its phone sheet's header row the same
 way. Without it the row stays hidden from assistive technology and does nothing.
+`headerKeyshortcuts`, such as `["g p"]`, names the keys the app binds to that link: the row shows
+the first with `Kbd` where the pointer is fine ("G then P"), announces each single press in
+`aria-keyshortcuts`, as an item's `keyshortcuts` does, and binds none. A sequence is shown but not
+announced: the attribute has no syntax for one. `AppShell` takes it as
+`account.headerKeyshortcuts` and shows the hint in its sheet's header row too, before the chevron.
+Without `headerHref` it is ignored.
 
 **The panel sits at `z-30`,** above `Shell`'s drawer (`z-20`) and `Rail`'s tab bar (`z-10`).
 Inside an `overflow` container, such as the phone overlay, the panel can be clipped; a caller that
@@ -1435,12 +1441,14 @@ the same fill, hover, focus ring and `aria-current`. `current` is the caller's a
 The `Icon` may draw any element, such as a site's portrait photo. In the sheet, a `RailEntry` with
 no `href` carries `data-rail-close`, so choosing it closes the sheet.
 
-**Key shortcuts.** An item's `keyshortcuts`, such as `["mod+k", "/"]`, names the combinations the
-app binds to what the entry does, written the way `useHotkeys` takes them. The rail binds nothing:
-the entry announces every combination in `aria-keyshortcuts`, in every place, and the icons
-variant's tooltip shows the first after the label as the platform writes it, "Search (Ctrl K)" or
-"Search (⌘K)". `labels.kbd` overrides the words, such as "Ctrl". The phone's tab and sheet row show
-no hint.
+**Key shortcuts.** An item's `keyshortcuts`, such as `["mod+k", "/"]` or `["g x"]`, names the
+combinations or sequences the app binds to what the entry does, written the way `useHotkeys` takes
+them. The rail binds nothing: the entry announces every combination in `aria-keyshortcuts`, in
+every place, and the icons variant's tooltip shows the first after the label as the platform writes
+it, "Search (Ctrl K)" or "Search (⌘K)", with a space between a sequence's presses, "Transactions
+(G X)". A sequence is shown but not announced, since the attribute has no syntax for one; an entry
+with only sequences has no `aria-keyshortcuts`. `labels.kbd` overrides the words, such as "Ctrl".
+The phone's tab and sheet row show no hint.
 
 **Sheet-only items.** An item with `sheetOnly: true` is drawn only as a row of the phone sheet,
 never in the column or as a tab, such as a site's Home, which the column reaches through the
@@ -1537,7 +1545,9 @@ the connection and the page. It is `Rail`'s icons variant with the bottom zone f
 draws no brand mark and no top bar: the page starts with its own `PageHeader`.
 
 - **The bottom zone,** in order: the connection while it is news (`"idle"`, `"closed"` or `"reconnecting"`), a
-  warning cell with a tooltip; the bell, a link named with its count ("Notifications, 3 unread");
+  warning cell with a tooltip; the bell, a link named with its count ("Notifications, 3 unread"),
+  with `notifications.keyshortcuts` treated like an item's `keyshortcuts`: announced in the rail
+  and the sheet, the first in its tooltip ("Notifications (G I)"), never bound;
   and the account, `AccountMenu` drawn as the avatar with its `header` row, opening beside the
   column. While `account.user` is unknown, a plain placeholder stands in its place and no menu is
   drawn; it fades in only after 300 ms, so a fast load shows nothing.
@@ -1563,7 +1573,7 @@ draws no brand mark and no top bar: the page starts with its own `PageHeader`.
 - **Ports:** `navigate(href)` receives a plain click on any shell link, the destinations, the bell
   and the account's links. Every label has an English default and an override in `labels`.
 
-`app-shell.test.tsx` proves the bell's name, the account's name with and without a tag, the badge's
+`app-shell.test.tsx` proves the bell's name, the bell's and the header row's keys, the account's name with and without a tag, the badge's
 neutral colour in the column, the tab and the sheet, the one live region, the connection cell and
 strip, the bottom zone's order, the column widths and the banner, the phone split and the sheet's
 order, the language row in the menu and the sheet, the theme buttons, the placeholder, the absence of a top bar, and every label's override.

@@ -769,4 +769,28 @@ describe("Rail for a site: RailEntry, sheet-only items, footer", () => {
     )
     expect(html).toMatch(/data-e2e="rail-shell-tooltip"><span[^>]*>Find \(Strg K\)</)
   })
+
+  it("shows a key sequence in the tooltip and leaves it out of aria-keyshortcuts", () => {
+    const html = render(
+      <Rail
+        items={[{
+          key: "tx",
+          label: "Transactions",
+          href: "/tx",
+          Icon: IconHome,
+          keyshortcuts: ["g x"],
+        }]}
+      >
+        page
+      </Rail>,
+    )
+    expect(html).toMatch(/data-e2e="rail-shell-tooltip"><span[^>]*>Transactions \(G X\)</)
+    expect(html).not.toContain("aria-keyshortcuts")
+    // Presses are spaced on Apple platforms too; the keys of one press are not.
+    expect(entryTip("Transactions", ["g x"], true)).toBe("Transactions (G X)")
+    expect(entryTip("Settings", ["mod+g s"], true)).toBe("Settings (⌘G S)")
+    expect(entryTip("Settings", ["mod+g s"], false)).toBe("Settings (Ctrl G S)")
+    expect(entryKeyShortcuts(["mod+k", "g s"], false)).toBe("Control+K")
+    expect(entryKeyShortcuts(["g s"], false)).toBeUndefined()
+  })
 })

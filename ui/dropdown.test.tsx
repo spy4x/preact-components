@@ -421,6 +421,16 @@ describe("DropdownItem", () => {
     expect(both).toMatch(/data-hotkey-hint[^>]*><kbd[^>]*><kbd[^>]*>Ctrl<\/kbd>/)
   })
 
+  it("shows a key sequence as its hint and announces none of it", () => {
+    const html = render(<DropdownItem href="/profile" keyshortcuts={["g p"]}>Profile</DropdownItem>)
+    expect(html).not.toContain("aria-keyshortcuts")
+    expect(html).toMatch(
+      /Profile<span aria-hidden="true" data-hotkey-hint[^>]*><kbd class="text-xs text-muted"><kbd[^>]*>G<\/kbd> then <kbd[^>]*>P<\/kbd><\/kbd><\/span>/,
+    )
+    const mixed = render(<DropdownItem keyshortcuts={["mod+k", "g s"]}>Search</DropdownItem>)
+    expect(attrOf(mixed, /<button\b[^>]*>/, "aria-keyshortcuts")).toBe("Control+K")
+  })
+
   it("has no hint and no aria-keyshortcuts without a hotkey", () => {
     const html = render(<DropdownItem onClick={() => {}}>Edit</DropdownItem>)
     expect(html).not.toContain("aria-keyshortcuts")

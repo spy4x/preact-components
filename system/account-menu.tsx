@@ -59,7 +59,8 @@ export interface AccountMenuItem {
   /**
    * The keys the app binds to the same action, such as `["?"]` for "Keyboard shortcuts". The item
    * announces them all in `aria-keyshortcuts` and shows the first with `Kbd` at its right, where
-   * the pointer is fine; it binds none of them, as `RailItem.keyshortcuts` does not.
+   * the pointer is fine; it binds none of them, as `RailItem.keyshortcuts` does not. A sequence
+   * such as `"g x"` is shown, "G then X", but not announced: the attribute has no syntax for one.
    */
   keyshortcuts?: readonly string[]
   /** `data-e2e` on the rendered menu item, for an app's end-to-end tests. */
@@ -154,6 +155,14 @@ export interface AccountMenuProps {
    * stays the hidden row {@link header} describes.
    */
   headerHref?: string
+  /**
+   * The keys the app binds to the header row's link, such as `["g p"]` for the profile. The row
+   * shows the first with `Kbd` at its right, where the pointer is fine, and announces each single
+   * press in `aria-keyshortcuts`, as {@link AccountMenuItem.keyshortcuts} does: a sequence is
+   * shown, not announced. It binds none of them.
+   * Ignored without {@link headerHref}, as the row is then no item to reach.
+   */
+  headerKeyshortcuts?: readonly string[]
   /** Utilities merged over the trigger's own, such as a rail cell's shape. */
   triggerClasses?: string
   /** Utilities merged over the open menu's own, such as a placement beside a rail. */
@@ -202,6 +211,7 @@ export function AccountMenu(props: AccountMenuProps): JSX.Element {
     tag,
     header = false,
     headerHref,
+    headerKeyshortcuts,
     triggerClasses,
     panelClasses,
     labels,
@@ -250,12 +260,15 @@ export function AccountMenu(props: AccountMenuProps): JSX.Element {
         menuLabel={labels?.menu ?? translate(translator, "AccountMenu.menu", "Account menu")}
         vertical={vertical}
         horizontal={horizontal}
-        panelClasses={cn("z-30", full && "min-w-full", panelClasses)}
+        // At most 20 rem wide, so a long name truncates before a key hint pushes the menu off a
+        // narrow window's edge.
+        panelClasses={cn("z-30 max-w-80", full && "min-w-full", panelClasses)}
       >
         {headerHref !== undefined && (
           <DropdownItem
             href={headerHref}
             navigate={navigate}
+            keyshortcuts={headerKeyshortcuts}
             class="mb-1 gap-3 border-b border-subtle"
             dataE2E="account-menu-header"
           >

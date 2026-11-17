@@ -9,11 +9,12 @@ import {
   type KbdLabels,
   KEY_CLASS,
   keyFaces,
+  SEQUENCE_CLASS,
   sequenceSteps,
 } from "./kbd-keys.tsx"
 import { useLabels } from "./i18n.tsx"
 
-export { KBD_LABELS, type KbdLabels, type KeyFace, keyFaces } from "./kbd-keys.tsx"
+export { KBD_LABELS, type KbdLabels, type KeyFace, keyFaces, sequenceSteps } from "./kbd-keys.tsx"
 
 /** Props of {@link Kbd}. Pass `keys` or `children`. */
 export interface KbdProps {
@@ -80,6 +81,3 @@ export function Kbd({ keys, children, apple, labels, class: className }: KbdProp
     </kbd>
   )
 }
-
-/** The classes of the outer `<kbd>` around a sequence of presses. */
-const SEQUENCE_CLASS = "text-xs text-muted"

@@ -198,6 +198,11 @@ export const specs: readonly Spec[] = [
       if (await first.getAttribute("data-e2e") !== "account-menu-header") {
         throw new Error("the header is not the menu's first item")
       }
+      // The demo's "g p" is a sequence: shown on a fine pointer, never announced.
+      const keys = await header.getAttribute("aria-keyshortcuts")
+      if (keys !== null) throw new Error(`the header announces the sequence "g p" as "${keys}"`)
+      const hint = await header.locator("[data-hotkey-hint]").textContent()
+      if (hint !== "G then P") throw new Error(`the header's hint reads "${hint}", not "G then P"`)
       const before = page.url()
       await header.click()
       await card.locator(`[data-e2e="account-menu-demo-route"]`)

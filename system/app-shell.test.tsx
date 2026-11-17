@@ -202,6 +202,70 @@ describe("AppShell", () => {
     expect(sheet).toMatch(/<a href="\/profile"(?![^>]*aria-keyshortcuts)[^>]*>Profile<\/a>/)
   })
 
+  it("shows an account item's key sequence in the menu and the sheet and announces none of it", () => {
+    const html = shell({
+      account: { user, items: [{ label: "Transactions", href: "/tx", keyshortcuts: ["g x"] }] },
+    })
+    expect(html).not.toContain("aria-keyshortcuts")
+    const sheet = whole(html, "app-shell-sheet-account", "dialog")
+    expect(sheet).toMatch(
+      /Transactions<span aria-hidden="true" data-account-key-hint[^>]*><kbd[^>]*><kbd[^>]*>G<\/kbd> then <kbd[^>]*>X<\/kbd>/,
+    )
+    expect(html).toMatch(
+      /Transactions<span aria-hidden="true" data-hotkey-hint[^>]*><kbd[^>]*><kbd[^>]*>G<\/kbd> then <kbd[^>]*>X<\/kbd>/,
+    )
+  })
+
+  it("announces the bell's single keys in the rail and the sheet and shows its first key in the tooltip", () => {
+    const html = shell({
+      notifications: { href: "/notifications", keyshortcuts: ["g i", "mod+i"] },
+    })
+    const column = whole(html, "rail-shell-column", "aside")
+    expect(column).toMatch(/<a href="\/notifications"[^>]*aria-keyshortcuts="Control\+I"/)
+    expect(column).toContain(">Notifications (G I)<")
+    const sequence = shell({ notifications: { href: "/notifications", keyshortcuts: ["g i"] } })
+    expect(sequence).not.toContain("aria-keyshortcuts")
+    expect(sequence).toContain(">Notifications (G I)<")
+    const relabelled = shell({
+      notifications: { href: "/notifications", keyshortcuts: ["shift+i"] },
+      labels: { kbd: { shift: "Umschalt" } },
+    })
+    expect(relabelled).toContain(">Notifications (Umschalt I)<")
+    const sheet = whole(html, "rail-shell-dialog", "dialog")
+    expect(sheet).toMatch(/<a href="\/notifications"[^>]*aria-keyshortcuts="Control\+I"/)
+    const plain = shell()
+    expect(plain).not.toContain("aria-keyshortcuts")
+    expect(whole(plain, "rail-shell-column", "aside")).toContain(">Notifications<")
+  })
+
+  it("announces the header's single keys in the menu and the sheet and shows its first key before the chevron", () => {
+    const html = shell({
+      account: { user, headerHref: "/profile", headerKeyshortcuts: ["g p", "mod+p"] },
+    })
+    expect(html).toMatch(
+      /<a [^>]*href="\/profile"[^>]*aria-keyshortcuts="Control\+P"[^>]*data-e2e="account-menu-header"/,
+    )
+    expect(region(html, "account-menu-header", "a")).toMatch(
+      /data-hotkey-hint[^>]*><kbd[^>]*><kbd[^>]*>G<\/kbd> then <kbd[^>]*>P<\/kbd>/,
+    )
+    const header = region(html, "app-shell-sheet-account-header", "a")
+    expect(html).toMatch(
+      /<a href="\/profile"[^>]*aria-keyshortcuts="Control\+P"[^>]*data-e2e="app-shell-sheet-account-header"/,
+    )
+    expect(header).toMatch(
+      /data-account-key-hint class="ms-auto hidden pointer-fine:inline-flex"><kbd[^>]*><kbd[^>]*>G<\/kbd> then <kbd[^>]*>P<\/kbd><\/kbd><\/span><svg[^>]*><path d="m9 18 6-6-6-6"/,
+    )
+    const sequence = shell({
+      account: { user, headerHref: "/profile", headerKeyshortcuts: ["g p"] },
+    })
+    expect(sequence).not.toContain("aria-keyshortcuts")
+    expect(region(sequence, "account-menu-header", "a")).toContain("data-hotkey-hint")
+    const plain = shell({ account: { user, headerHref: "/profile" } })
+    expect(plain).not.toContain("aria-keyshortcuts")
+    expect(plain).not.toContain("data-account-key-hint")
+    expect(region(plain, "account-menu-header", "a")).not.toContain("data-hotkey-hint")
+  })
+
   it("draws a plain placeholder and no menu while the person is unknown", () => {
     const html = shell({ account: {} })
     expect(html).toContain('data-e2e="app-shell-account-pending"')
