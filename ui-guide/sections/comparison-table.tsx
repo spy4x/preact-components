@@ -5,7 +5,8 @@
  * with its first column held in place, and the highlight and the three value labels read in light
  * and dark — is driven by `pages/checks/ui.ts`. That at 390 px the two-product table fits whole,
  * and the four-product one shows a shadow at its right edge until it is scrolled to the end, is
- * driven by `pages/e2e/ui.spec.ts`.
+ * driven by `pages/e2e/ui.spec.ts`. That Tab reaches a row's source link, which shows the focus
+ * ring and starts its line on the right in a right-to-left page, is driven there too.
  */
 
 import { type ComparisonRow, ComparisonTable } from "@spy4x/preact-ui"
@@ -18,10 +19,15 @@ import type { DemoFragment } from "../registry.ts"
 const PRODUCTS = ["Our app", "Product A", "Product B", "Product C"] as const
 
 const ROWS: ComparisonRow[] = [
-  { capability: "Works offline", values: ["yes", "partial", "no", "yes"] },
+  {
+    capability: "Works offline",
+    values: ["yes", "partial", "no", "yes"],
+    source: { label: "Product A help page, read 1 October 2026", href: "https://a.example/help" },
+  },
   {
     capability: "Export to CSV",
     note: "every field, not a summary",
+    source: { label: "Product B pricing, read 1 October 2026", href: "https://b.example/pricing" },
     values: ["yes", "yes", "partial", "no"],
   },
   { capability: "Shared budgets", values: ["partial", "no", "yes", "yes"] },
@@ -39,6 +45,7 @@ const PAIR_ROWS: ComparisonRow[] = [
   {
     capability: "Imports bank statements and sorts every line into a category",
     note: "Rules you write once apply to every later import.",
+    source: { label: "Spreadsheet import guide", href: "https://sheets.example/import" },
     values: ["yes", "partial"],
   },
   {
@@ -83,8 +90,10 @@ export const comparisonTableDemos: DemoFragment = {
       },
       {
         name: "rows",
-        type: `{ capability, values: ("yes" | "partial" | "no")[], note? }[]`,
-        description: "One row per capability, with one value per product.",
+        type:
+          `{ capability, values: ("yes" | "partial" | "no")[], note?, source?: { label, href } }[]`,
+        description:
+          "One row per capability, with one value per product; `source` links the page its facts come from.",
       },
       { name: "caption", type: "ComponentChildren", description: "The table's name." },
       {
@@ -117,7 +126,12 @@ export const comparisonTableDemos: DemoFragment = {
   products={["Our app", "Product A", "Product B", "Product C"]}
   rows={[
     { capability: "Works offline", values: ["yes", "partial", "no", "yes"] },
-    { capability: "Export to CSV", note: "every field", values: ["yes", "yes", "partial", "no"] },
+    {
+      capability: "Export to CSV",
+      note: "every field",
+      values: ["yes", "yes", "partial", "no"],
+      source: { label: "Product A export docs, read 1 October 2026", href: "https://a.example/export" },
+    },
   ]}
   checkedOn={new Date("2026-10-01")}
   method="We read each product's official feature, pricing and help pages."

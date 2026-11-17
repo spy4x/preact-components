@@ -1,5 +1,6 @@
 import type { Locator, Page } from "playwright-core"
 import type { Spec } from "../runner.ts"
+import { axeCleanIn } from "../axe-clean.ts"
 
 /** The scrolling box of the guide's `ComparisonTable` card: 0 compares four products, 1 two. */
 function comparisonScroller(page: Page, index: 0 | 1): Locator {
@@ -124,6 +125,72 @@ function comparisonTablePhoneSpecs(): Spec[] {
   ]
 }
 
+/**
+ * A row's source link (#1387): Tab reaches it from the scrolling box, it shows the focus ring and
+ * is at least 24 px tall, axe passes, and in a right-to-left page it starts its line on the right.
+ */
+function comparisonTableSourceSpecs(): Spec[] {
+  return [
+    ...(["light", "dark"] as const).map((colorScheme): Spec => ({
+      name: `ComparisonTable, ${colorScheme}: Tab goes from the scrolling box to the first row's ` +
+        "source link, which shows a focus ring; every source link is at least 24px tall; axe passes",
+      pageId: "ui",
+      colorScheme,
+      run: async (page) => {
+        const box = comparisonScroller(page, 0)
+        const link = box.getByRole("link", { name: "Product A help page, read 1 October 2026" })
+        await box.focus()
+        await page.keyboard.press("Tab")
+        await link.and(page.locator(":focus")).waitFor()
+        const look = await link.evaluate((element) => {
+          const style = getComputedStyle(element)
+          // The shortest link of the card, one line of small text, must still be 24 px tall.
+          const heights = [...document.querySelectorAll("#demo-ComparisonTable tbody th a")]
+            .map((node) => node.getBoundingClientRect().height)
+          return {
+            ring: style.boxShadow,
+            underline: style.textDecorationLine,
+            height: Math.min(...heights),
+          }
+        })
+        // Tailwind lists transparent shadows even with no ring, so only a coloured one counts.
+        const ring = look.ring.split(/,(?![^(]*\))/).map((part) => part.trim())
+          .filter((part) => !part.startsWith("rgba(0, 0, 0, 0)") && /0px [1-9]\d*px$/.test(part))
+        if (ring.length === 0) {
+          throw new Error(`the focused source link shows no focus ring: ${look.ring}`)
+        }
+        if (!look.underline.includes("underline")) throw new Error("the link is not underlined")
+        if (look.height < 24) throw new Error(`a link is ${look.height}px tall, under 24`)
+        const axe = await axeCleanIn(page, "#demo-ComparisonTable")
+        return `ring ${ring.join(", ")}, shortest link ${look.height}px, axe ${axe}`
+      },
+    })),
+    {
+      name: "ComparisonTable: in a right-to-left page a row's source link starts on the right, " +
+        "under its capability",
+      pageId: "ui",
+      run: async (page) => {
+        const card = page.locator("#demo-ComparisonTable")
+        await card.evaluate((element) => element.setAttribute("dir", "rtl"))
+        const header = comparisonScroller(page, 0).locator(`tbody th:has(a)`).first()
+        await header.scrollIntoViewIfNeeded()
+        const gap = await header.evaluate((cell) => {
+          const link = cell.querySelector("a")
+          if (link === null) return Number.NaN
+          const inner = cell.getBoundingClientRect().right -
+            parseFloat(getComputedStyle(cell).paddingRight)
+          return Math.round(inner - link.getBoundingClientRect().right)
+        })
+        if (!(Math.abs(gap) <= 1)) {
+          throw new Error(`the link ends ${gap}px from the cell's right content edge`)
+        }
+        return `the link ends ${gap}px from the cell's right content edge`
+      },
+    },
+  ]
+}
+
 export const specs: readonly Spec[] = [
   ...comparisonTablePhoneSpecs(),
+  ...comparisonTableSourceSpecs(),
 ]
