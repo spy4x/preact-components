@@ -196,9 +196,9 @@ holds.
 
 Woodpecker (`.woodpecker/woodpecker.yml`) runs `deno task check`, which is exactly `fmt:check`, `lint`,
 `ts:check` and `test`, then `deno task publish:dry`, `deno task --cwd pages build` and
-`deno task --cwd pages verify` as their own steps, on every pull request into `main` and every push
-to `main`. The GitHub workflow (`.github/workflows/pages.yml`) only builds and deploys the demo once
-that push build is green. Not one of those looks at a dependency: `publish:dry` simulates a JSR
+`deno task --cwd pages verify` as their own steps, on every ready pull request into `main` and on
+the nightly cron run; a push to `main` runs only `check` and `publish:dry`. The GitHub workflow
+(`.github/workflows/pages.yml`) only builds and deploys the demo once that push build is green. Not one of those looks at a dependency: `publish:dry` simulates a JSR
 publish and fails on a malformed package, not a disallowed one, and `verify` drives the built demo
 in a browser and asserts what the page does, never what it was built from. There is no
 dependency-allowlist test, no audit script, no a11y gate and no git hook anywhere in this
