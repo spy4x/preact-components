@@ -140,8 +140,9 @@ describe("guardFiles", () => {
       .rejects.toThrow("given no directory to walk in /repo")
   })
 
-  it("rejects a symbolic link with a wanted name, and passes over one with another name", async () => {
+  describe("a symbolic link", () => {
     const fs = memoryFs({ "/repo/apps/app.tsx": "" })
+    /** `fs` with a link named `name` in `/repo/apps`: neither a file nor a directory. */
     const withLink = (name: string): GuardFileSystem => ({
       ...fs,
       readDir: async (path) => [
@@ -149,13 +150,33 @@ describe("guardFiles", () => {
         ...(path === "/repo/apps" ? [{ name, isDirectory: false, isFile: false }] : []),
       ],
     })
-    const walk = (name: string) =>
-      guardFiles({ root: ROOT, directories: ["apps"], extensions: [".tsx"], fs: withLink(name) })
-    await expect(walk("linked.tsx")).rejects.toThrow(
-      "cannot read apps/linked.tsx in /repo: it is a symbolic link",
-    )
-    expect(await walk("linked.md")).toEqual(["apps/app.tsx"])
-    expect(await walk("linked.test.tsx")).toEqual(["apps/app.tsx"])
+    const walk = (name: string, skipDirectories?: string[]) =>
+      guardFiles({
+        root: ROOT,
+        directories: ["apps"],
+        extensions: [".tsx"],
+        skipDirectories,
+        fs: withLink(name),
+      })
+
+    it("rejects a linked directory, whose name has no checked extension", async () => {
+      await expect(walk("ui")).rejects.toThrow(
+        `cannot walk apps/ui in /repo: it is a symbolic link or another special file, which the ` +
+          `guard does not follow. Put the real directory or file there, or list "ui" in ` +
+          `skipDirectories.`,
+      )
+    })
+
+    it("rejects a linked file whatever its name", async () => {
+      for (const name of ["linked.tsx", "linked.md", "linked.test.tsx"]) {
+        await expect(walk(name)).rejects.toThrow(`cannot walk apps/${name} in /repo`)
+      }
+    })
+
+    it("passes over a link whose name is in skipDirectories", async () => {
+      expect(await walk("ui", ["ui"])).toEqual(["apps/app.tsx"])
+      expect(await walk("node_modules")).toEqual(["apps/app.tsx"])
+    })
   })
 
   it("rejects when a required file was not walked", async () => {

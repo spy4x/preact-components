@@ -149,7 +149,11 @@ with its line, column and reason:
 - every spacing class off the scale or with an arbitrary value (`p-5`, `sm:-mt-7`, `p-[13px]`);
 - every arbitrary property that sets padding, margin, a gap or their scroll forms
   (`[padding:13px]`, `md:[margin-top:1rem]`);
-- every `--spacing()` call whose argument is not a numeric step (`--spacing(5)`).
+- every `--spacing()` call whose argument, without its sign, is not a numeric step
+  (`--spacing(5)`, `--spacing(-5)`).
+
+Variants are read with one level of nested brackets, so `has-[[data-x]]:mt-[13px]` and
+`[&_[data-open]]:p-5` are reported like `sm:p-5`.
 
 It does not see a raw CSS declaration (`padding: 10px` in a stylesheet), an inline `style`, a class
 name built at run time (`` `p-${n}` ``), Tailwind's legacy `theme()` function, or an arbitrary
