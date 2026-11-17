@@ -192,9 +192,15 @@ const DropdownTrigger = createContext<RefObject<HTMLButtonElement> | null>(null)
 /**
  * A disabled item is dimmed the way a disabled `Button` is, and takes no hover, so it cannot look
  * pressable.
+ *
+ * `whitespace-normal` undoes the menu panel's `whitespace-nowrap` for the item's text, so a label
+ * too long for a capped menu wraps onto a second line instead of pushing the key hint past the
+ * menu's edge (#1381). An uncapped menu still takes its width from the unwrapped text.
  */
 const itemClasses =
-  "flex w-full items-center gap-2 px-4 py-2 text-start text-sm text-foreground hover:bg-hover focus:bg-hover disabled:pointer-events-none disabled:opacity-50"
+  "flex w-full items-center gap-2 whitespace-normal px-4 py-2 text-start text-sm text-foreground hover:bg-hover focus:bg-hover disabled:pointer-events-none disabled:opacity-50"
+/** The key hint keeps its width and stays on one line, so a wrapping label never squeezes it. */
+const hintClasses = "ms-auto shrink-0 whitespace-nowrap ps-4"
 /**
  * Text colour of a {@link DropdownItemProps.danger} item, in both themes. A disabled item leaves it
  * out, so a disabled destructive action looks like any other disabled item rather than a live one.
@@ -343,7 +349,7 @@ export function DropdownItem(
   const announced = hotkey === undefined ? keyshortcuts : [hotkey, ...keyshortcuts]
   const shortcuts = ariaKeyShortcutList(announced, apple)
   const hint = announced.length > 0 && hotkeyHint
-    ? <HotkeyHint keys={announced[0]} apple={apple} labels={kbdLabels} class="ms-auto ps-4" />
+    ? <HotkeyHint keys={announced[0]} apple={apple} labels={kbdLabels} class={hintClasses} />
     : null
 
   // `disabled` disables the button form only, so only there does it take the red away.
