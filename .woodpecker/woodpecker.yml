@@ -158,8 +158,8 @@ steps:
 
   # A red nightly run blocks nothing, so this pushes the pipeline's link to ntfy instead. It runs
   # only on the nightly cron and only when an earlier step failed; a skipped step still counts as
-  # finished for `depends_on`. The repository's `ntfy_url` and `ntfy_topic` secrets must allow the
-  # `cron` event. `$$` stops Woodpecker substituting the variables itself.
+  # finished for `depends_on`. The repository's `ntfy_url`, `ntfy_topic` and `ntfy_token` secrets must
+  # allow the `cron` event. `$$` stops Woodpecker substituting the variables itself.
   notify-nightly:
     image: denoland/deno:2.9.7@sha256:fa335acdf6b72106eda2cb6a8cb5f4187e7630e357467489db4b2e7352d5e432
     depends_on: [publish-dry, verify-e2e-3, verify-e2e-4]
@@ -172,11 +172,13 @@ steps:
         from_secret: ntfy_url
       NTFY_TOPIC:
         from_secret: ntfy_topic
+      NTFY_TOKEN:
+        from_secret: ntfy_token
     commands:
       - >-
           deno eval 'const e = (k) => Deno.env.get(k);
-          const r = await fetch(e("NTFY_URL").replace(/\/$$/, "") + "/" + e("NTFY_TOPIC"),
-          { method: "POST", headers: { Title: "preact-components: nightly CI failed" },
+          const r = await fetch(e("NTFY_URL").replace(/[/]$$/, "") + "/" + e("NTFY_TOPIC"),
+          { method: "POST", headers: { Title: "preact-components: nightly CI failed", Authorization: "Bearer " + e("NTFY_TOKEN") },
           body: e("CI_PIPELINE_URL") });
           if (!r.ok) throw new Error(r.status + " " + r.statusText)'
 
