@@ -291,7 +291,7 @@ PlaywrightBaseConfig	type	@spy4x/preact-playwright	What `playwrightBaseConfig` r
 PlaywrightBaseOptions	type	@spy4x/preact-playwright	What an app tells `playwrightBaseConfig`.
 PlaywrightBaseUse	type	@spy4x/preact-playwright	The `use` options `playwrightBaseConfig` sets for every app.
 PlaywrightReporter	type	@spy4x/preact-playwright	One reporter: its name, then its options when it takes any.
-expectFitsInLanguages	helper	@spy4x/preact-playwright	Check that an element fits on a phone in every language: at 390 px wide it must stay inside its container and the viewport's width, and its own text must not be clipped.
+expectFitsInLanguages	helper	@spy4x/preact-playwright	Check that an element fits on a phone in every language: at 390 px wide it must stay inside its container and the viewport's width, no text in it may be clipped, and its content must not spill out of it.
 expectNotCovered	helper	@spy4x/preact-playwright	Check that a person can reach an element: scroll it to the middle of the viewport, then fail unless the element or something inside it is what the browser hits at its centre and just inside its four corners.
 playwrightBaseConfig	helper	@spy4x/preact-playwright	Build the Playwright configuration every app shares.
 App	helper	@spy4x/preact-server	The app: middleware, routes and an app wrapper, as Fresh's `App`.

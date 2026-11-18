@@ -218,6 +218,52 @@ const notCoveredSpecs: Spec[] = [
       await failureOf(() => expectNotCovered(page.locator("#under")), "covered by div#shade")
     },
   ),
+  spec(
+    "expectNotCovered fails on a pill under a fixed bar inside an overflow: hidden shell",
+    `<div id="shell" style="height:100vh;overflow:hidden">
+       <div style="height:560px"></div>
+       <button id="pill" style="display:block;width:120px;height:32px;border-radius:9999px">Go</button>
+       <div style="height:1000px"></div>
+     </div>
+     <div id="bar" style="position:fixed;bottom:0;left:0;right:0;height:60px;background:#222"></div>`,
+    (page) =>
+      failureOf(
+        () => expectNotCovered(page.locator("#pill")),
+        "button#pill cannot be reached",
+        "covered by div#bar",
+      ).then(() => undefined),
+  ),
+  spec(
+    "expectNotCovered fails on a button past the fold of an overflow: hidden panel",
+    `<div id="panel" style="height:200px;overflow:hidden">
+       <div style="height:400px"></div>
+       <button id="save" style="display:block;width:120px;height:40px">Save</button>
+     </div>`,
+    (page) =>
+      failureOf(
+        () => expectNotCovered(page.locator("#save")),
+        "button#save cannot be reached at 5 of 5 points",
+      ).then(() => undefined),
+  ),
+  spec(
+    "expectNotCovered fails on a button past the edge of a page that hides sideways overflow",
+    `<style>body{overflow-x:hidden}</style>
+     <button id="save" style="position:absolute;top:100px;left:900px;width:120px;height:40px">Save</button>`,
+    (page) =>
+      failureOf(
+        () => expectNotCovered(page.locator("#save")),
+        "at 5 of 5 points",
+        "outside the viewport",
+      ).then(() => undefined),
+  ),
+  spec(
+    "expectNotCovered still passes on a button a person can scroll to in an overflow: auto panel",
+    `<div id="panel" style="height:200px;overflow:auto">
+       <div style="height:400px"></div>
+       <button id="save" style="display:block;width:120px;height:40px">Save</button>
+     </div>`,
+    (page) => expectNotCovered(page.locator("#save")),
+  ),
 ]
 
 const fitsSpecs: Spec[] = [
@@ -628,6 +674,59 @@ five</textarea></div>`,
       throw new Error(`the viewport stayed at ${after?.width} by ${after?.height}`)
     }
   }),
+  spec(
+    "expectFitsInLanguages fails on a menu item whose inner name is truncated",
+    `<div style="width:300px"><a id="item" href="#" style="display:flex;gap:8px;width:120px">
+       <span style="flex:none;width:24px;height:24px"></span>
+       <span class="name" style="min-width:0;overflow:hidden;white-space:nowrap;text-overflow:ellipsis">Notification settings</span>
+       <span class="sr-only" style="position:absolute;width:1px;height:1px;overflow:hidden">Opens a new page</span>
+     </a></div>`,
+    async (page) => {
+      const message = await failureOf(
+        () => expectFitsInLanguages(page, one((page) => page.locator("#item"))),
+        "- en: the text of span.name is clipped: it needs",
+        "the box has 88 px",
+      )
+      assertAbsent(message, "span.sr-only", "spills out")
+    },
+  ),
+  spec(
+    "expectFitsInLanguages fails on a panel whose content spills out",
+    `<section id="panel" style="width:300px"><div style="width:600px;height:20px"></div></section>`,
+    (page) =>
+      failureOf(
+        () => expectFitsInLanguages(page, one((page) => page.locator("#panel"))),
+        "- en: its content spills out: it needs 600 px of width, the box has 300 px",
+      ).then(() => undefined),
+  ),
+  spec(
+    "expectFitsInLanguages passes on the last tab of a scrolling strip",
+    `<nav id="strip" style="display:flex;width:300px;overflow-x:auto">
+       <a style="flex:none;width:200px">One</a>
+       <a style="flex:none;width:200px">Two</a>
+       <a id="last" style="flex:none;width:200px">Three</a>
+     </nav>`,
+    (page) => expectFitsInLanguages(page, one((page) => page.locator("#last"))),
+  ),
+  spec(
+    "expectFitsInLanguages passes on a row below the fold of a scrolling list",
+    `<div id="list" style="width:300px;height:200px;overflow-y:auto">
+       <div style="height:300px"></div>
+       <div id="row" style="height:40px">Row</div>
+     </div>`,
+    (page) => expectFitsInLanguages(page, one((page) => page.locator("#row"))),
+  ),
+  spec(
+    "expectFitsInLanguages still fails on a label wider than its row inside a scrolling list",
+    `<div id="list" style="width:300px;height:200px;overflow-y:auto">
+       <div id="row" style="width:200px"><span id="label" style="display:block;width:260px">Label</span></div>
+     </div>`,
+    (page) =>
+      failureOf(
+        () => expectFitsInLanguages(page, one((page) => page.locator("#label"))),
+        "- en: passes its container by 60 px on the right",
+      ).then(() => undefined),
+  ),
 ]
 
 /** Every layout check, passing and failing. */

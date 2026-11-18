@@ -44,18 +44,22 @@ Each check throws an `Error` that says what to fix.
 - `expectNotCovered(locator)` scrolls the element to the middle of the viewport, then fails unless
   the element or something inside it is what the browser hits at its centre and just inside its four
   corners. Playwright's `toBeInViewport` is true for a button under a fixed bar; this check is not.
-  The corner points follow the border radius, so a pill or a circle is tested on its own surface,
-  and the check works inside a shadow root. The error names each failing point and what covers it,
-  or says it is outside the viewport. An overlay with `pointer-events: none` lets taps through, so
-  it does not count as cover.
+  A box that hides its overflow, the page included, stays where it is, because a person cannot
+  scroll it. The corner points follow the border radius, so a pill or a circle is tested on its own
+  surface, and the check works inside a shadow root. The error names each failing point and what
+  covers it, or says it is outside the viewport. An overlay with `pointer-events: none` lets taps
+  through, so it does not count as cover.
 - `expectFitsInLanguages(page, options)` sets the viewport to 390 px wide (`width` changes that) and
   calls `open(language)` for each of `languages`. In each one the element from `target(page)` must
   stay inside its container, which is `container(page)` or else its parent, and inside the
-  viewport's width, and its own text must not be clipped. Text counts as clipped when an element
-  that hides overflow has more content than room, or when an `<input>` or `<textarea>` has a value
-  or placeholder wider or taller than its content box. One pixel of rounding is allowed. Every
-  language is checked before the error lists each failure with its pixels, and the original viewport
-  always comes back. An empty `languages` list throws, and so does a page with no viewport size.
+  viewport's width. Inside a box a person can scroll, a position past that box's edge is no overflow
+  on that axis. No text in the element may be clipped: text counts as clipped when the element or
+  something inside it hides overflow and has more content than room, or when an `<input>` or
+  `<textarea>` has a value or placeholder wider or taller than its content box. Content must not
+  spill out of an element with `overflow: visible` either; `auto` and `scroll` are exempt, because a
+  person can scroll them. One pixel of rounding is allowed. Every language is checked before the
+  error lists each failure with its pixels, and the original viewport always comes back. An empty
+  `languages` list throws, and so does a page with no viewport size.
 - `LayoutPage`, `LayoutLocator` and `FitsInLanguagesOptions` type the arguments. A real Playwright
   `Page` and `Locator` satisfy them.
 

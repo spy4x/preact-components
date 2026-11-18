@@ -155,7 +155,8 @@ export interface FitsInLanguagesOptions<Page extends LayoutPage> {
  * Check that a person can reach an element: scroll it to the middle of the viewport, then fail
  * unless the element or something inside it is what the browser hits at its centre and just inside
  * its four corners. Playwright's `toBeInViewport` is true for an element under a fixed bar; this is
- * not. Corners follow the element's border radius, so a pill or a circle is tested on its own
+ * not. A box that hides its overflow, the page included, stays where it is, because a person cannot
+ * scroll it. Corners follow the element's border radius, so a pill or a circle is tested on its own
  * surface. An overlay with `pointer-events: none` lets taps through, so it does not count as cover.
  *
  * @example
@@ -178,9 +179,10 @@ export async function expectNotCovered(locator: LayoutLocator): Promise<void> {
 
 /**
  * Check that an element fits on a phone in every language: at 390 px wide it must stay inside its
- * container and the viewport's width, and its own text must not be clipped. Every language is
- * checked before the check fails, and the original viewport is restored either way. One pixel of
- * rounding is allowed.
+ * container and the viewport's width, no text in it may be clipped, and its content must not spill
+ * out of it. A position past the edge of a box a person can scroll is no overflow on that axis.
+ * Every language is checked before the check fails, and the original viewport is restored either
+ * way. One pixel of rounding is allowed.
  *
  * @example
  * ```ts
@@ -249,17 +251,37 @@ async function findFitProblems<Page extends LayoutPage>(
     await target.waitFor()
     const fit = await target.evaluate(measureFit)
     const container = options.container
-      ? (await options.container(page).evaluate(measureFit)).edges
+      ? await options.container(page).evaluate(measureFit)
       : fit.parent
-    const viewport = { left: 0, right: width, top: -Infinity, bottom: Infinity }
+    // A scrolling box outside the container says nothing about the target leaving the container.
+    const containerEdges = withoutEdges(
+      container.edges,
+      fit.scrollDepth.x >= container.depth,
+      fit.scrollDepth.y >= container.depth,
+    )
+    const viewport = withoutEdges(
+      { left: 0, right: width, top: 0, bottom: 0 },
+      fit.scrollDepth.x >= 0,
+      true,
+    )
     return [
-      ...describeOverflow(fit.edges, container, "its container"),
+      ...describeOverflow(fit.edges, containerEdges, "its container"),
       ...describeOverflow(fit.edges, viewport, "the viewport"),
       ...fit.clipped,
     ]
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error)
     return [`could not be checked: ${message.split("\n")[0]}`]
+  }
+}
+
+/** The same edges, with no limit on each axis that is left open. */
+function withoutEdges(edges: Edges, openX: boolean, openY: boolean): Edges {
+  return {
+    left: openX ? -Infinity : edges.left,
+    right: openX ? Infinity : edges.right,
+    top: openY ? -Infinity : edges.top,
+    bottom: openY ? Infinity : edges.bottom,
   }
 }
 
@@ -276,14 +298,51 @@ function describeOverflow(inner: Edges, outer: Edges, outerName: string): string
   )
 }
 
+/** A box's edges and how many ancestors it has in the flattened tree. */
+interface MeasuredBox {
+  edges: Edges
+  depth: number
+}
+
+/** What {@link measureFit} reports about one element. */
+interface Fit extends MeasuredBox {
+  /** The element's parent. */
+  parent: MeasuredBox
+  /** The depth of the nearest ancestor a person can scroll on each axis; -1 when there is none. */
+  scrollDepth: { x: number; y: number }
+  /** A sentence for each way text is clipped or content spills out. */
+  clipped: string[]
+}
+
 /**
- * Runs in the browser, so it uses nothing from this module: the element's edges, its parent's, and
- * a sentence for each way its own text is clipped.
+ * Runs in the browser, so it uses nothing from this module: the element's edges, its parent's, the
+ * nearest ancestors that scroll, and a sentence for each way its text is clipped or its content
+ * spills out.
  */
-function measureFit(element: HTMLElement): { edges: Edges; parent: Edges; clipped: string[] } {
+function measureFit(element: HTMLElement): Fit {
   const edgesOf = (of: Element): Edges => {
     const { left, right, top, bottom } = of.getBoundingClientRect()
     return { left, right, top, bottom }
+  }
+  const parentOf = (of: Element): Element | null =>
+    of.assignedSlot ?? of.parentElement ?? (of.getRootNode() as ShadowRoot).host ?? null
+  const depthOf = (of: Element) => {
+    let depth = 0
+    for (let node = parentOf(of); node; node = parentOf(node)) depth++
+    return depth
+  }
+  const scrolls = (overflow: string) => overflow === "auto" || overflow === "scroll"
+  // The page's own scrolling is what the viewport check is about, and `<body>` hands its overflow
+  // to the page unless `<html>` sets its own.
+  const html = document.documentElement
+  const isPage = (of: Element) =>
+    of === html || (of === document.body && getComputedStyle(html).overflow === "visible")
+  const scrollDepth = { x: -1, y: -1 }
+  for (let node = parentOf(element); node; node = parentOf(node)) {
+    if (isPage(node)) continue
+    const { overflowX, overflowY } = getComputedStyle(node)
+    if (scrollDepth.x < 0 && scrolls(overflowX)) scrollDepth.x = depthOf(node)
+    if (scrollDepth.y < 0 && scrolls(overflowY)) scrollDepth.y = depthOf(node)
   }
   const pixels = (value: number) => Math.round(value * 10) / 10
   const clipped: string[] = []
@@ -332,36 +391,68 @@ function measureFit(element: HTMLElement): { edges: Edges; parent: Edges; clippe
       }
     }
   } else {
-    const hides = (overflow: string) => overflow === "hidden" || overflow === "clip"
-    if (hides(style.overflowX) && element.scrollWidth > element.clientWidth + 1) {
-      clipped.push(
-        `its text is clipped: it needs ${element.scrollWidth} px of width, ` +
-          `the box has ${element.clientWidth} px`,
+    // Each axis on which a box holds more than it shows and a person cannot scroll to the rest.
+    const overflowsOf = (box: HTMLElement) => {
+      const boxStyle = getComputedStyle(box)
+      // A line height tighter than the font counts the font's unused room below the line as
+      // overflow, though no letter is cut off, so that room is allowed.
+      useFont(boxStyle)
+      const { fontBoundingBoxAscent: ascent, fontBoundingBoxDescent: descent } = canvas.measureText(
+        "",
       )
+      const lineHeight = parseFloat(boxStyle.lineHeight)
+      const fontRoom = lineHeight ? Math.max(0, (ascent + descent - lineHeight) / 2) : 0
+      return [
+        {
+          axis: "width",
+          overflow: boxStyle.overflowX,
+          needs: box.scrollWidth,
+          has: box.clientWidth,
+          allowed: 1,
+        },
+        {
+          axis: "height",
+          overflow: boxStyle.overflowY,
+          needs: box.scrollHeight,
+          has: box.clientHeight,
+          allowed: 1 + fontRoom,
+        },
+      ].filter(({ overflow, needs, has, allowed }) => !scrolls(overflow) && needs > has + allowed)
     }
-    // A line height tighter than the font counts the font's unused room below the line as overflow,
-    // though no letter is cut off, so that room is allowed.
-    useFont(style)
-    const { fontBoundingBoxAscent: ascent, fontBoundingBoxDescent: descent } = canvas.measureText(
-      "",
-    )
-    const lineHeight = parseFloat(style.lineHeight)
-    const fontRoom = lineHeight ? Math.max(0, (ascent + descent - lineHeight) / 2) : 0
-    if (hides(style.overflowY) && element.scrollHeight > element.clientHeight + 1 + fontRoom) {
-      clipped.push(
-        `its text is clipped: it needs ${element.scrollHeight} px of height, ` +
-          `the box has ${element.clientHeight} px`,
-      )
+    for (const { axis, overflow, needs, has } of overflowsOf(element)) {
+      const problem = overflow === "visible" ? "its content spills out" : "its text is clipped"
+      clipped.push(`${problem}: it needs ${needs} px of ${axis}, the box has ${has} px`)
+    }
+    for (const inner of Array.from(element.querySelectorAll("*"))) {
+      // A box of a pixel or less shows nothing: a closed panel, or a label for screen readers only.
+      if (!(inner instanceof HTMLElement) || !inner.textContent?.trim()) continue
+      if (inner.clientWidth <= 1 || inner.clientHeight <= 1) continue
+      for (const { axis, overflow, needs, has } of overflowsOf(inner)) {
+        if (overflow === "visible") continue
+        const name = inner.tagName.toLowerCase() +
+          (inner.id ? `#${inner.id}` : inner.classList[0] ? `.${inner.classList[0]}` : "")
+        clipped.push(
+          `the text of ${name} is clipped: it needs ${needs} px of ${axis}, ` +
+            `the box has ${has} px`,
+        )
+      }
     }
   }
 
   const parent = element.parentElement ?? (element.getRootNode() as ShadowRoot).host
-  return { edges: edgesOf(element), parent: edgesOf(parent), clipped }
+  return {
+    edges: edgesOf(element),
+    depth: depthOf(element),
+    parent: { edges: edgesOf(parent), depth: depthOf(parent) },
+    scrollDepth,
+    clipped,
+  }
 }
 
 /**
  * Runs in the browser, so it uses nothing from this module: scroll the element to the middle of the
- * viewport and describe each of its five points that something else answers for.
+ * viewport, as far as a person could, and describe each of its five points that something else
+ * answers for.
  */
 function findCoveredPoints(element: HTMLElement): { target: string; failures: string[] } {
   const describe = (of: Element) => {
@@ -372,16 +463,36 @@ function findCoveredPoints(element: HTMLElement): { target: string; failures: st
     return of.classList[0] ? `${tag}.${of.classList[0]}` : tag
   }
   // Walks the flattened tree, so a child slotted into the element counts as inside it.
+  const parentOf = (node: Node): Node | null =>
+    (node as Element).assignedSlot ?? node.parentNode ?? (node as ShadowRoot).host ?? null
   const isInside = (hit: Element) => {
     let node: Node | null = hit
-    while (node && node !== element) {
-      node = (node as Element).assignedSlot ?? node.parentNode ?? (node as ShadowRoot).host ?? null
-    }
+    while (node && node !== element) node = parentOf(node)
     return node === element
+  }
+
+  // `scrollIntoView` also moves a box that hides its overflow, which a person cannot scroll, so each
+  // such box goes back on that axis. The page takes its overflow from `<body>` unless `<html>` sets
+  // its own.
+  const hides = (overflow: string) => overflow === "hidden" || overflow === "clip"
+  const html = document.documentElement
+  const htmlStyle = getComputedStyle(html)
+  const pageStyle = htmlStyle.overflow === "visible" ? getComputedStyle(document.body) : htmlStyle
+  const held: { of: Element; left?: number; top?: number }[] = []
+  for (let node = parentOf(element); node; node = parentOf(node)) {
+    if (node.nodeType !== Node.ELEMENT_NODE) continue
+    const of = node as Element
+    const { overflowX, overflowY } = of === html ? pageStyle : getComputedStyle(of)
+    held.push({
+      of,
+      left: hides(overflowX) ? of.scrollLeft : undefined,
+      top: hides(overflowY) ? of.scrollTop : undefined,
+    })
   }
 
   // Instant, because `scroll-behavior: smooth` would leave the element still moving when measured.
   element.scrollIntoView({ block: "center", inline: "center", behavior: "instant" })
+  for (const { of, left, top } of held) of.scrollTo({ left, top, behavior: "instant" })
   const box = element.getBoundingClientRect()
   const style = getComputedStyle(element)
   // How far in from both edges a corner's curve passes, for a radius of `rx` by `ry` (1 - cos 45°),
