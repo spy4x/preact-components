@@ -259,4 +259,22 @@ describe("PageAction hotkey", () => {
       expect(html).toContain("data-hotkey-hint")
     }
   })
+
+  it("passes keyshortcuts to the button form", () => {
+    const html = render(
+      <PageAction label="New task" Icon={IconPlus} onClick={() => {}} keyshortcuts={["n"]} />,
+    )
+
+    expect(html).toContain('aria-keyshortcuts="N"')
+    expect(html).toContain("data-hotkey-hint")
+  })
+
+  it("passes keyshortcuts to the link form", () => {
+    const html = render(
+      <PageAction label="New task" Icon={IconPlus} href="/new" keyshortcuts={["n"]} />,
+    )
+
+    expect(html).toContain('aria-keyshortcuts="N"')
+    expect(html).toContain("data-hotkey-hint")
+  })
 })

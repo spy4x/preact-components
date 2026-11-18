@@ -91,6 +91,7 @@ function PageHeaderDemo() {
 
 function PageActionDemo() {
   const presses = useSignal(0)
+  const shown = useSignal(0)
   return (
     <Stack>
       <div class="flex items-center gap-2">
@@ -111,6 +112,28 @@ function PageActionDemo() {
       </div>
       <DemoNote e2e="page-action-presses">
         Pressed {presses.value} times; P presses New task. On a phone each shows its icon alone.
+      </DemoNote>
+      <div class="flex items-center gap-2">
+        <PageAction
+          label="New project"
+          Icon={IconPlus}
+          onClick={() => shown.value++}
+          keyshortcuts={["a"]}
+          variant="secondary"
+          dataE2E="page-action-shown-key"
+        />
+        <PageAction
+          label="Import"
+          Icon={IconDownload}
+          href="#import"
+          navigate={() => shown.value++}
+          keyshortcuts={["e"]}
+          variant="secondary"
+          dataE2E="page-action-shown-key-link"
+        />
+      </div>
+      <DemoNote e2e="page-action-shown-presses">
+        Clicked {shown.value} times. The app binds A and E, so pressing them here does nothing.
       </DemoNote>
     </Stack>
   )
@@ -238,9 +261,15 @@ export const pageHeaderDemos = {
         type: "string",
         description: "A key that presses the action, shown in a hint, as `Button`'s does.",
       },
+      {
+        name: "keyshortcuts",
+        type: "readonly string[]",
+        description: "Keys the app binds itself: shown and announced, never bound, as on `Button`.",
+      },
     ],
     snippet: `<PageAction label="New task" Icon={IconPlus} onClick={addTask} hotkey="p" />
-<PageAction label="Export" Icon={IconDownload} href="/export" variant="secondary" />`,
+<PageAction label="Export" Icon={IconDownload} href="/export" variant="secondary" />
+<PageAction label="New note" Icon={IconPlus} onClick={openNewNote} keyshortcuts={["n"]} />`,
     render: () => <PageActionDemo />,
   },
   MoreMenu: {

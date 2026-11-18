@@ -201,6 +201,8 @@ export interface PageActionProps extends HotkeyProps {
   disabled?: boolean
   /** `data-e2e` of the link or button. */
   dataE2E?: string
+  /** Keys the app binds itself, shown and announced only; see `ButtonProps.keyshortcuts`. */
+  keyshortcuts?: readonly string[]
 }
 
 /**
@@ -223,9 +225,10 @@ export function PageAction(
     hotkey,
     hotkeyHint,
     kbdLabels,
+    keyshortcuts,
   }: PageActionProps,
 ): JSX.Element {
-  const keys = { hotkey, hotkeyHint, kbdLabels }
+  const keys = { hotkey, hotkeyHint, kbdLabels, keyshortcuts }
   const content = (
     <>
       <Icon class="size-5" aria-hidden="true" />
