@@ -200,8 +200,12 @@ async function measureAccountMenu(page: Page): Promise<AccountMenuWidths> {
   }, LONG_NAME)
 }
 
-/** Close the open account menu with Escape and wait for focus back on the account button. */
+/**
+ * Close the open account menu with Escape and wait for focus back on the account button. Waits for
+ * focus to enter the menu first, as an Escape before that loses focus (#1399).
+ */
 async function closeAccountMenu(page: Page): Promise<void> {
+  await page.locator(`${APP} [role="menu"] :focus`).waitFor()
   await page.keyboard.press("Escape")
   await inCard(page, APP, "account-menu-header").waitFor({ state: "hidden" })
   await inCard(page, APP, "account-menu-button").and(page.locator(":focus")).waitFor()
