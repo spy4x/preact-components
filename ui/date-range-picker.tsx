@@ -3,6 +3,9 @@ import { useSignal } from "@preact/signals"
 import type { JSX } from "preact"
 import { useEffect, useId, useRef } from "preact/hooks"
 import { Button, buttonClasses } from "./button.tsx"
+import { HotkeyHint } from "./hotkey-hint.tsx"
+import { ariaKeyShortcutList, useApplePlatform } from "./hotkeys.ts"
+import type { KbdLabels } from "./kbd-keys.tsx"
 import { useDismiss } from "./use-dismiss.ts"
 import { type DateRange, isValidDateRange } from "@spy4x/time/date"
 import {
@@ -126,6 +129,15 @@ interface DateRangePickerSharedProps {
   class?: string
   /** Sets `data-e2e` on the trigger. */
   dataE2E?: string
+  /**
+   * Combinations the app binds itself that also open this picker, such as `["d"]`. They are
+   * announced in the trigger's `aria-keyshortcuts` and the first shows as a hint before its arrow,
+   * but the picker binds none of them. A sequence such as `"g d"` is shown, "G then D", but not
+   * announced: the attribute has no syntax for one.
+   */
+  keyshortcuts?: readonly string[]
+  /** The words the hint shows for a key; see `KBD_LABELS`. */
+  kbdLabels?: Partial<KbdLabels>
 }
 
 /**
@@ -294,7 +306,8 @@ function rangeText<R extends { from: string; to: string }>(
  * @param props See {@link AnyDateRangePickerProps}.
  */
 export function DateRangePicker(props: AnyDateRangePickerProps): JSX.Element {
-  const { timeZone, labels, now, class: className, dataE2E } = props
+  const { timeZone, labels, now, class: className, dataE2E, keyshortcuts = [], kbdLabels } = props
+  const apple = useApplePlatform()
   const isOpen = useSignal(false)
   const usingCustom = useSignal(false)
   const draftFrom = useSignal(props.range?.from ?? "")
@@ -560,9 +573,19 @@ export function DateRangePicker(props: AnyDateRangePickerProps): JSX.Element {
         onClick={togglePanel}
         aria-expanded={isOpen.value}
         aria-controls={panelId}
+        aria-keyshortcuts={ariaKeyShortcutList(keyshortcuts, apple)}
         data-e2e={dataE2E}
       >
-        <span>{triggerText}</span>
+        {/* Only the text gives way in a narrow column, so the hint and the arrow stay visible. */}
+        <span class={keyshortcuts.length > 0 ? "min-w-0 truncate" : undefined}>{triggerText}</span>
+        {keyshortcuts.length > 0 && (
+          <HotkeyHint
+            keys={keyshortcuts[0]}
+            apple={apple}
+            labels={kbdLabels}
+            class="ms-auto shrink-0"
+          />
+        )}
         <span aria-hidden="true">▾</span>
       </button>
       <div
