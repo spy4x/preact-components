@@ -366,8 +366,8 @@ export function AppShell(props: AppShellProps): JSX.Element {
       )
   const themeId = useId()
   const languageOpen = useSignal(false)
-  // The menu draws the keys only on a linked header row. Up to 384 px, a long name keeps at least
-  // the room it has in the 240 px menu without keys.
+  // The menu draws the keys only on a linked header row. Up to 384 px, a long name beside a
+  // two-press hint such as `g p` keeps at least the room it has in the 240 px menu without keys.
   const headerShowsKeys = account.headerHref !== undefined &&
     (account.headerKeyshortcuts?.length ?? 0) > 0
 

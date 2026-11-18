@@ -3652,9 +3652,10 @@ the first with `Kbd` where the pointer is fine ("G then P"), announces each sing
 `aria-keyshortcuts`, as an item's `keyshortcuts` does, and binds none. A sequence is shown but not
 announced: the attribute has no syntax for one. `AppShell` takes it as
 `account.headerKeyshortcuts` and shows the hint in its sheet's header row too, before the chevron.
-Without `headerHref` it is ignored. `AppShell`'s menu beside the rail is 240 px wide; when the
-header row shows keys it grows with a long name, up to 384 px, so the name keeps at least the room
-it has without them.
+Without `headerHref` it is ignored. `AppShell`'s menu beside the rail is 240 px wide. Given keys, it
+grows to fit its widest row, up to 384 px, so a long name beside a two-press hint such as `g p`
+keeps at least the room it has without keys. A longer hint, such as `mod+shift+p`, takes more of
+that room.
 
 **The panel sits at `z-30`,** above `Shell`'s drawer (`z-20`) and `Rail`'s tab bar (`z-10`).
 Inside an `overflow` container, such as the phone overlay, the panel can be clipped; a caller that
