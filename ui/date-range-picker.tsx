@@ -308,6 +308,7 @@ function rangeText<R extends { from: string; to: string }>(
 export function DateRangePicker(props: AnyDateRangePickerProps): JSX.Element {
   const { timeZone, labels, now, class: className, dataE2E, keyshortcuts = [], kbdLabels } = props
   const apple = useApplePlatform()
+  const showsKey = keyshortcuts.length > 0
   const isOpen = useSignal(false)
   const usingCustom = useSignal(false)
   const draftFrom = useSignal(props.range?.from ?? "")
@@ -561,7 +562,7 @@ export function DateRangePicker(props: AnyDateRangePickerProps): JSX.Element {
 
   return (
     <div
-      class={cn("relative inline-flex text-start", className)}
+      class={cn("relative inline-flex text-start", showsKey && "max-w-full", className)}
       ref={rootRef}
       onFocusOut={handleFocusOut}
       onKeyDown={handleKeyDown}
@@ -577,8 +578,8 @@ export function DateRangePicker(props: AnyDateRangePickerProps): JSX.Element {
         data-e2e={dataE2E}
       >
         {/* Only the text gives way in a narrow column, so the hint and the arrow stay visible. */}
-        <span class={keyshortcuts.length > 0 ? "min-w-0 truncate" : undefined}>{triggerText}</span>
-        {keyshortcuts.length > 0 && (
+        <span class={showsKey ? "min-w-0 truncate" : undefined}>{triggerText}</span>
+        {showsKey && (
           <HotkeyHint
             keys={keyshortcuts[0]}
             apple={apple}

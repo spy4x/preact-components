@@ -437,6 +437,7 @@ describe("DateRangePicker keyshortcuts", () => {
 
     expect(trigger).toContain(`<span class="min-w-0 truncate">${labels.placeholder}</span>`)
     expect(trigger).toMatch(/data-hotkey-hint class="[^"]*\bshrink-0\b/)
+    expect(renderPicker({ keyshortcuts: ["d"] })).toMatch(/^<div class="[^"]*\bmax-w-full\b/)
   })
 
   it("shows a sequence but leaves it out of the announcement", () => {
