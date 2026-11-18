@@ -2058,6 +2058,8 @@ const appShellConnections: readonly AppShellConnection[] = [
  * either way. Every link goes through `navigate`, which moves the current marker. The button opens
  * a page inside the second section, whose entry then reads as the current section, not the page.
  * The account's Language row, in the menu and the phone sheet, switches the whole card's language.
+ * The product's account header links to the account and shows its keys, so its menu grows to fit
+ * them; the admin's header is plain, so its menu stays 240 px wide.
  */
 function AppShellDemo() {
   const app = useSignal<"product" | "admin">("product")
@@ -2087,6 +2089,8 @@ function AppShellDemo() {
           account={{
             user: railShellUser,
             tag: admin ? "Admin" : undefined,
+            headerHref: admin ? undefined : "#app-account",
+            headerKeyshortcuts: admin ? undefined : ["g p"],
             items: [{ label: "Profile", href: "#app-profile" }],
             theme: theme.value,
             onThemeChange: (value) => theme.value = value,
