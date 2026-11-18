@@ -73,8 +73,8 @@ const KNOWN_INCOMPLETE: Record<GuidePageId, Readonly<Record<string, KnownCount>>
     // The header's version pill, the install command in its scroll region, three captions of a
     // scroll-snap row, and the last column of the `Prose` demo's wide table in its scroll region.
     [OBSCURED]: [9, 9],
-    // Key symbols in `Kbd` (Command, Shift, Option, the arrows) and four disclosure chevrons.
-    [GLYPH]: [10, 10],
+    // Key symbols in `Kbd` (Command, Shift, Option, the arrows) and five disclosure chevrons.
+    [GLYPH]: [11, 11],
     // A one-character `Kbd` key that axe measured below the ratio and left undecided.
     [SHORT]: [1, 1],
     // The `LoopVideo` card's silent loop, which has no `<track kind="captions">`: a clip with no
@@ -361,8 +361,8 @@ function axeSpec(pageId: GuidePageId, colorScheme: "light" | "dark", share: Rule
 const KNOWN_HOVER_INCOMPLETE: Partial<
   Record<GuidePageId, Readonly<Record<string, readonly [light: number, dark: number, ink: number]>>>
 > = {
-  // The four disclosure chevrons, as on the page scan.
-  ui: { nonBmp: [4, 4, 4] },
+  // The five disclosure chevrons, as on the page scan.
+  ui: { nonBmp: [5, 5, 5] },
 }
 
 /** What a pointer can rest on: an element with a hover background, and every table body row. */
