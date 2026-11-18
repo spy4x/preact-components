@@ -111,6 +111,38 @@ function pressSpec(shown: ShownKey): Spec {
   }
 }
 
+/** The long range gives way on a phone-sized screen, so the hint and the arrow stay visible. */
+const truncationSpec: Spec = {
+  name:
+    "keyshortcuts: at 360 px a long range truncates, with the hint and the arrow in the trigger",
+  pageId: "ui",
+  run: async (page) => {
+    await page.setViewportSize({ width: 360, height: 800 })
+    const trigger = page.locator(`[data-e2e="guide-date-range-shown-key"]`)
+    await trigger.scrollIntoViewIfNeeded()
+    const drawn = await trigger.evaluate((button) => {
+      const box = button.getBoundingClientRect()
+      const inside = (element: Element | null) => {
+        const part = element?.getBoundingClientRect()
+        return part !== undefined && part.width > 0 && part.left >= box.left - 0.5 &&
+          part.right <= box.right + 0.5
+      }
+      const text = button.firstElementChild as HTMLElement
+      return {
+        cut: text.scrollWidth > text.clientWidth,
+        hint: inside(button.querySelector("[data-hotkey-hint]")),
+        arrow: inside(button.lastElementChild),
+        onScreen: box.right <= innerWidth,
+      }
+    })
+    if (!drawn.cut) throw new Error("the long range is not cut, so the spec proves nothing")
+    if (!drawn.hint) throw new Error("the hint is outside the trigger")
+    if (!drawn.arrow) throw new Error("the arrow is outside the trigger")
+    if (!drawn.onScreen) throw new Error("the trigger runs past the screen")
+    return "the text is cut; the hint and the arrow are inside the trigger"
+  },
+}
+
 /** One axe spec per palette, over the cards that hold the demos. */
 function axeSpecs(): Spec[] {
   return (["light", "dark"] as const).map((colorScheme) => ({
@@ -131,4 +163,8 @@ function axeSpecs(): Spec[] {
   }))
 }
 
-export const specs: readonly Spec[] = [...SHOWN_KEYS.map(pressSpec), ...axeSpecs()]
+export const specs: readonly Spec[] = [
+  ...SHOWN_KEYS.map(pressSpec),
+  truncationSpec,
+  ...axeSpecs(),
+]
