@@ -940,8 +940,8 @@ the first with `Kbd` where the pointer is fine ("G then P"), announces each sing
 announced: the attribute has no syntax for one. `AppShell` takes it as
 `account.headerKeyshortcuts` and shows the hint in its sheet's header row too, before the chevron.
 Without `headerHref` it is ignored. `AppShell`'s menu beside the rail is 240 px wide; when the
-header row shows keys it grows with a long name, up to 320 px, to leave the name room beside the
-hint.
+header row shows keys it grows with a long name, up to 384 px, so the name keeps at least the room
+it has without them.
 
 **The panel sits at `z-30`,** above `Shell`'s drawer (`z-20`) and `Rail`'s tab bar (`z-10`).
 Inside an `overflow` container, such as the phone overlay, the panel can be clipped; a caller that

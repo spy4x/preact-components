@@ -277,6 +277,8 @@ describe("AppShell", () => {
   it("lets the account menu grow past 240 px when the linked header row shows keys", () => {
     const panel = accountPanelClasses({ headerHref: "/profile", headerKeyshortcuts: ["g p"] })
     expect(panel).toContain("min-w-60")
+    expect(panel).toContain("max-w-96")
+    expect(panel).not.toContain("max-w-80")
     expect(panel).not.toContain(" w-60")
   })
 

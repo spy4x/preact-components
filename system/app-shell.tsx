@@ -366,7 +366,8 @@ export function AppShell(props: AppShellProps): JSX.Element {
       )
   const themeId = useId()
   const languageOpen = useSignal(false)
-  // The menu draws the keys only on a linked header row. They need the room past 240 px.
+  // The menu draws the keys only on a linked header row. Up to 384 px, a long name keeps at least
+  // the room it has in the 240 px menu without keys.
   const headerShowsKeys = account.headerHref !== undefined &&
     (account.headerKeyshortcuts?.length ?? 0) > 0
 
@@ -430,7 +431,7 @@ export function AppShell(props: AppShellProps): JSX.Element {
               header
               navigate={navigate}
               triggerClasses={cn(accountTrigger, tag && "h-auto min-h-14 py-2")}
-              panelClasses={cn(accountPanel, headerShowsKeys ? "min-w-60" : "w-60")}
+              panelClasses={cn(accountPanel, headerShowsKeys ? "min-w-60 max-w-96" : "w-60")}
               labels={{ ...labels?.accountMenu, trigger: triggerName }}
             />
           </RailCell>

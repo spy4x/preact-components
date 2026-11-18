@@ -1876,8 +1876,9 @@ export const specs: readonly Spec[] = [
     },
   },
   {
-    name: "AppShell at 1440 px: header keys grow the account menu to 320 px for a long name, in " +
-      "English and Arabic; the menu without keys stays 240 px; axe passes on the menu with keys",
+    name: "AppShell at 1440 px: header keys grow the account menu to 384 px, so a long name has " +
+      "at least its room without keys, in English and Arabic; the menu without keys stays 240 " +
+      "px; axe passes on the menu with keys",
     pageId: "system",
     run: async (page) => {
       await page.setViewportSize({ width: 1440, height: 900 })
@@ -1907,7 +1908,8 @@ export const specs: readonly Spec[] = [
         if (!keys.truncated || !plain.truncated) throw new Error(`the name fits. ${seen}`)
         if (!keys.contained || !plain.contained) throw new Error(`something overflows. ${seen}`)
         if (plain.panel !== 240) throw new Error(`the plain menu is not 240 px. ${seen}`)
-        if (keys.panel !== 320) throw new Error(`the menu with keys is not 320 px. ${seen}`)
+        if (keys.panel !== 384) throw new Error(`the menu with keys is not 384 px. ${seen}`)
+        if (keys.name < plain.name) throw new Error(`the keys cost the name room. ${seen}`)
         results.push(seen)
       }
       return results.join(" | ")
