@@ -15,6 +15,18 @@ export interface ComparisonRow {
   values: readonly ComparisonValue[]
   /** A short qualifier shown under the capability's name. */
   note?: string
+  /** Where the row's facts can be checked, linked under the capability's name and its note. */
+  source?: ComparisonSource
+}
+
+/** The page a {@link ComparisonRow}'s facts come from, such as a product's own pricing page. */
+export interface ComparisonSource {
+  /**
+   * The link's text, the whole of its accessible name: say whose page it is, and when it was read.
+   */
+  label: string
+  /** The page's address. It opens in the same tab. */
+  href: string
 }
 
 /** Every English word a {@link ComparisonTable} draws, each one replaceable. */
@@ -141,6 +153,13 @@ const HINT_COVER =
  * darker notch out of it; so the band is left off in dark.
  */
 const HEADER_HINT_COVER = `${HINT_COVER} dark:shadow-none`
+/**
+ * A row's source link: small and muted like the note, always underlined so it reads as a link, on
+ * its own line, 44 px tall on a phone and 36 px from `sm` for a finger, with the library's focus
+ * ring.
+ */
+const SOURCE_LINK =
+  "flex min-h-11 sm:min-h-9 w-fit items-center rounded-sm text-xs font-normal text-muted hover:text-foreground underline underline-offset-2 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2 focus-visible:ring-offset-focus"
 
 /**
  * A comparison of capabilities across products, for a public page: a legend, a real `<table>`
@@ -150,11 +169,12 @@ const HEADER_HINT_COVER = `${HINT_COVER} dark:shadow-none`
  * the table's visually hidden caption. The table has a column header per product (`scope="col"`)
  * and a row header per capability (`scope="row"`). Every cell shows an icon and a visible "Yes",
  * "Partial" or "No", so colour is never the only signal, and the caller's own column says "Ours"
- * under its name besides being tinted. It renders on the server and needs no JavaScript. Product
- * names wrap below the `sm` breakpoint, so two products fit beside their capabilities at 390 px.
- * A table wider than its screen scrolls sideways inside its own focusable container with the
- * capability column held in place and a shadow at the right edge while more lies that way; the
- * page itself never scrolls sideways.
+ * under its name besides being tinted. A row with a `source` links it under the capability, in the
+ * same tab, so every claim names the page it was checked against. It renders on the server and
+ * needs no JavaScript. Product names wrap below the `sm` breakpoint, so two products fit beside
+ * their capabilities at 390 px. A table wider than its screen scrolls sideways inside its own
+ * focusable container with the capability column held in place and a shadow at the right edge
+ * while more lies that way; the page itself never scrolls sideways.
  *
  * @throws When a row's `values` and `products` differ in length: a missing value would shift every
  * later cell under the wrong product.
@@ -256,6 +276,9 @@ export function ComparisonTable(
                 <th scope="row" class={cn(CELL, STICKY, "min-w-28 font-medium text-foreground")}>
                   {row.capability}
                   {row.note && <span class="block text-xs font-normal text-muted">{row.note}</span>}
+                  {row.source && (
+                    <a href={row.source.href} class={SOURCE_LINK}>{row.source.label}</a>
+                  )}
                 </th>
                 {row.values.map((value, index) => (
                   <td

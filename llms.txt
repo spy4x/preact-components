@@ -700,6 +700,7 @@ CommandPaletteOption	type	@spy4x/preact-ui	One result the palette lists.
 CommandPaletteRecent	type	@spy4x/preact-ui	Where a `CommandPalette` keeps its recent picks: its `recent` prop.
 CommandPaletteRemoteProps	type	@spy4x/preact-ui	The remote data mode: the palette asks `search` for the options of each query.
 ComparisonRow	type	@spy4x/preact-ui	One capability of a `ComparisonTable`: a row, with one value per product.
+ComparisonSource	type	@spy4x/preact-ui	The page a `ComparisonRow`'s facts come from, such as a product's own pricing page.
 ComparisonTable	component	@spy4x/preact-ui	A comparison of capabilities across products, for a public page: a legend, a real `<table>` and the method and fit that make it trustworthy.
 ComparisonValue	type	@spy4x/preact-ui	How far a product covers one capability.
 ConfirmDialog	component	@spy4x/preact-ui	Confirmation panel: a title, one question, and two labelled actions, or three with `ConfirmDialogProps.secondaryAction`.

@@ -98,6 +98,32 @@ describe("ComparisonTable", () => {
     expect(table({ fit: undefined })).not.toContain(">Fit</dt>")
   })
 
+  it("links a row's source under its capability and its note, and no row without one", () => {
+    const sourced: ComparisonRow[] = [
+      rows[0],
+      {
+        ...rows[1],
+        source: { label: "Product A export page, read 1 October", href: "https://a.example/x" },
+      },
+      {
+        capability: "Shared budgets",
+        values: ["yes", "no", "no"],
+        source: { label: "Product B pricing", href: "https://b.example/pricing" },
+      },
+    ]
+    const headers = [...table({ rows: sourced }).matchAll(/<th scope="row"[^>]*>(.*?)<\/th>/g)]
+      .map((match) => match[1])
+    expect(headers[0]).toBe("Offline mode")
+    expect(headers[1]).toMatch(
+      /^Export to CSV<span [^>]*>all fields<\/span><a href="https:\/\/a\.example\/x" class="[^"]*underline[^"]*">Product A export page, read 1 October<\/a>$/,
+    )
+    expect(headers[2]).toMatch(
+      /^Shared budgets<a href="https:\/\/b\.example\/pricing" class="[^"]*">Product B pricing<\/a>$/,
+    )
+    expect(table({ rows: sourced })).not.toContain("target=")
+    expect(table()).not.toContain("<a ")
+  })
+
   it("replaces every English word through labels", () => {
     const html = table({
       labels: {
