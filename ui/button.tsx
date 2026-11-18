@@ -5,7 +5,12 @@ import type { ComponentChildren, JSX, Ref, RefObject, VNode } from "preact"
 import { useCallback } from "preact/hooks"
 import { forwardRef } from "./forward-ref.ts"
 import { HotkeyHint } from "./hotkey-hint.tsx"
-import { ariaKeyShortcuts, type HotkeyProps, useApplePlatform, useHotkeyClick } from "./hotkeys.ts"
+import {
+  ariaKeyShortcutList,
+  type HotkeyProps,
+  useApplePlatform,
+  useHotkeyClick,
+} from "./hotkeys.ts"
 import { followLinkClick } from "./link.tsx"
 
 export type { ButtonSize, ButtonVariant } from "./button-classes.ts"
@@ -32,6 +37,14 @@ export interface ButtonProps
   busy?: boolean
   /** Shown instead of `children` while `busy`, such as "Saving…". Left out, the children stay. */
   busyLabel?: ComponentChildren
+  /**
+   * Combinations the app binds itself that also press this button, such as `["n"]` for a key that
+   * opens the same dialog from any page. They are announced in `aria-keyshortcuts` and the first
+   * shows as the hint, but the button binds none of them. With `hotkey` too, `hotkey` comes first
+   * in both. A sequence such as `"g p"` is shown, "G then P", but not announced: the attribute has
+   * no syntax for one. `hotkeyHint` and `kbdLabels` apply as they do to `hotkey`.
+   */
+  keyshortcuts?: readonly string[]
 }
 
 /**
@@ -79,6 +92,8 @@ export interface ButtonLinkProps extends
   /** Utilities merged into the button's own; see {@link ButtonProps.class}. */
   class?: string
   children?: ComponentChildren
+  /** Keys the app binds itself, shown and announced only; see {@link ButtonProps.keyshortcuts}. */
+  keyshortcuts?: readonly string[]
 }
 
 /**
@@ -116,15 +131,15 @@ function isLinkProps(props: ButtonProps | ButtonLinkProps): props is ButtonLinkP
 /** A disabled link's dimming: `:disabled` never matches an `<a>`, so it is written out. */
 const disabledLinkClasses = "pointer-events-none opacity-50"
 
-/** What a {@link Button} with a `hotkey` adds to its element: the announcement and the hint. */
+/** What a {@link Button} with a key adds to its element: the announcement and the hint. */
 interface HotkeyParts {
-  /** The `aria-keyshortcuts` value, or `undefined` without a hotkey. */
+  /** The `aria-keyshortcuts` value, or `undefined` when no key can be announced. */
   shortcuts: string | undefined
   /** The `Kbd` hint, or `null`. */
   hint: VNode | null
 }
 
-/** The {@link HotkeyParts} of a button without a hotkey. */
+/** The {@link HotkeyParts} of a button without a key. */
 const NO_HOTKEY: HotkeyParts = { shortcuts: undefined, hint: null }
 
 /** The `<a>` a {@link Button} renders when it is given `href`. */
@@ -133,6 +148,7 @@ function renderLink(
     hotkey: _hotkey,
     hotkeyHint: _hotkeyHint,
     kbdLabels: _kbdLabels,
+    keyshortcuts: _keyshortcuts,
     variant = "primary",
     size = "md",
     class: className,
@@ -189,6 +205,7 @@ function renderButton(
     hotkey: _hotkey,
     hotkeyHint: _hotkeyHint,
     kbdLabels: _kbdLabels,
+    keyshortcuts: _keyshortcuts,
     variant = "primary",
     size = "md",
     class: className,
@@ -273,7 +290,9 @@ export const Button: ButtonOverloads = forwardRef<
   HTMLButtonElement | HTMLAnchorElement,
   ButtonProps | ButtonLinkProps
 >("Button", function Button(props, ref) {
-  if (props.hotkey !== undefined) return <HotkeyButton {...props} forwardedRef={ref} />
+  if (props.hotkey !== undefined || props.keyshortcuts?.length) {
+    return <HotkeyButton {...props} forwardedRef={ref} />
+  }
   return isLinkProps(props)
     ? renderLink(props, ref as Ref<HTMLAnchorElement> | null, NO_HOTKEY)
     : renderButton(props, ref as Ref<HTMLButtonElement> | null, NO_HOTKEY)
@@ -297,16 +316,16 @@ function useMergedRef<Node>(
 }
 
 /**
- * A {@link Button} with a `hotkey`: its own component, so a button without one runs no hook and
- * renders exactly the element it always has. Turning `hotkey` on or off therefore remounts the
- * element.
+ * A {@link Button} with a `hotkey` or `keyshortcuts`: its own component, so a button with neither
+ * runs no hook and renders exactly the element it always has. Going from neither to either
+ * therefore remounts the element. Only `hotkey` is bound.
  */
 function HotkeyButton(
   { forwardedRef, ...props }: (ButtonProps | ButtonLinkProps) & {
     forwardedRef: Ref<HTMLButtonElement | HTMLAnchorElement> | null
   },
 ): VNode {
-  const { hotkey, hotkeyHint, kbdLabels, variant } = props
+  const { hotkey, hotkeyHint, kbdLabels, keyshortcuts = [], variant } = props
   const link = isLinkProps(props)
   // A disabled or busy button binds nothing. A `disabled` given as a signal still binds, and
   // `clickByHotkey` refuses the press then, as it does for a disabled `<fieldset>` around it.
@@ -314,10 +333,11 @@ function HotkeyButton(
   const own = useHotkeyClick<HTMLButtonElement | HTMLAnchorElement>(hotkey, { enabled: idle })
   const apple = useApplePlatform()
   const ref = useMergedRef(own, forwardedRef)
+  const announced = hotkey === undefined ? keyshortcuts : [hotkey, ...keyshortcuts]
   const parts: HotkeyParts = {
-    shortcuts: hotkey === undefined ? undefined : ariaKeyShortcuts(hotkey, apple),
-    hint: hotkey !== undefined && (hotkeyHint ?? variant !== "icon")
-      ? <HotkeyHint keys={hotkey} apple={apple} labels={kbdLabels} />
+    shortcuts: ariaKeyShortcutList(announced, apple),
+    hint: announced.length > 0 && (hotkeyHint ?? variant !== "icon")
+      ? <HotkeyHint keys={announced[0]} apple={apple} labels={kbdLabels} />
       : null,
   }
   return link

@@ -283,6 +283,43 @@ function HotkeyButtonDemo() {
 }
 
 /**
+ * `keyshortcuts`: each control shows a key the app binds elsewhere and binds nothing itself, so
+ * pressing B or L here leaves the count alone. `pages/e2e/ui/keyshortcuts.spec.ts` presses them.
+ */
+function ShownKeyButtonDemo() {
+  const presses = useSignal(0)
+  return (
+    <Cluster>
+      <Button
+        keyshortcuts={["b"]}
+        variant="secondary"
+        data-e2e="shown-key-button"
+        onClick={() => presses.value += 1}
+      >
+        Open board
+      </Button>
+      <Button
+        href="#shown-key"
+        keyshortcuts={["l"]}
+        variant="secondary"
+        data-e2e="shown-key-link"
+        navigate={() => presses.value += 1}
+      >
+        Open list
+      </Button>
+      <Button keyshortcuts={["g b"]} variant="secondary" data-e2e="shown-key-sequence">
+        Go to board
+      </Button>
+      <DemoNote e2e="shown-key-count">
+        Clicked {presses.value}{" "}
+        {presses.value === 1 ? "time" : "times"}. The app binds these keys, so pressing them here
+        does nothing.
+      </DemoNote>
+    </Cluster>
+  )
+}
+
+/**
  * A busy submit button inside a form: Enter in the field submits once, and the busy button then
  * cancels every later press, including the one the browser makes on it when Enter is pressed in
  * the field again. The submit count proves the form was not sent twice.
@@ -482,6 +519,12 @@ export const buttonDemos = {
           'A key such as `"n"` or `"mod+enter"` that clicks the button while it is shown and enabled. A plain key never fires while you type in a field; a combination holding Control, Command or `mod` does, except the editing chords a field keeps, such as `mod+z`. Sets `aria-keyshortcuts`.',
       },
       {
+        name: "keyshortcuts",
+        type: "readonly string[]",
+        description:
+          'Keys the app binds itself. Announced in `aria-keyshortcuts`, the first shown as the hint, none bound by the button. `hotkey` comes first in both. A sequence such as `"g p"` is shown but not announced.',
+      },
+      {
         name: "hotkeyHint",
         type: "boolean",
         default: "true, false on an icon button",
@@ -513,6 +556,7 @@ export const buttonDemos = {
 <Button href="/book" size="none" class="px-6 py-3">Book a call</Button>
 <Button hotkey="n" onClick={addNote}>New note</Button>
 <Button hotkey="mod+enter" onClick={send}>Send</Button>
+<Button keyshortcuts={["n"]} onClick={openNewNote}>New note</Button> // the app binds N itself
 useSucceeded(saving.value, error.value, closeDialog) // once a save ends well`,
     render: () => (
       <Stack gap="lg">
@@ -523,6 +567,7 @@ useSucceeded(saving.value, error.value, closeDialog) // once a save ends well`,
         <BusySubmitDemo />
         <ButtonLinkDemo />
         <HotkeyButtonDemo />
+        <ShownKeyButtonDemo />
       </Stack>
     ),
   },
