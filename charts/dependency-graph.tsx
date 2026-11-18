@@ -514,6 +514,8 @@ export function DependencyGraph({
                         {node.label}
                       </span>
                     </div>
+                    {/* A space, so the link's text reads "Label Badge", which its name contains. */}
+                    {node.badge && " "}
                     {node.badge && (
                       <span class="truncate ps-4 text-xs text-muted">{node.badge}</span>
                     )}

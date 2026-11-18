@@ -410,6 +410,55 @@ describe("DateRangePicker", () => {
   )
 })
 
+describe("DateRangePicker keyshortcuts", () => {
+  /** The trigger's markup: everything up to its closing tag. */
+  const triggerOf = (html: string) => html.slice(0, html.indexOf("</button>"))
+
+  it("announces every key on the trigger", () => {
+    expect(triggerOf(renderPicker({ keyshortcuts: ["d", "mod+d"] })))
+      .toContain('aria-keyshortcuts="D Control+D"')
+  })
+
+  it("shows the first key between the range text and the arrow", () => {
+    const trigger = triggerOf(renderPicker({ keyshortcuts: ["d", "x"] }))
+    const text = trigger.indexOf(labels.placeholder!)
+    const hint = trigger.indexOf("data-hotkey-hint")
+    const arrow = trigger.indexOf("▾")
+
+    expect(text).toBeGreaterThan(-1)
+    expect(hint).toBeGreaterThan(text)
+    expect(arrow).toBeGreaterThan(hint)
+    expect(trigger).toContain(">D</kbd>")
+    expect(trigger).not.toContain(">X</kbd>")
+  })
+
+  it("lets only the range text give way when the trigger is narrow", () => {
+    const trigger = triggerOf(renderPicker({ keyshortcuts: ["d"] }))
+
+    expect(trigger).toContain(`<span class="min-w-0 truncate">${labels.placeholder}</span>`)
+    expect(trigger).toMatch(/data-hotkey-hint class="[^"]*\bshrink-0\b/)
+    expect(renderPicker({ keyshortcuts: ["d"] })).toMatch(/^<div class="[^"]*\bmax-w-full\b/)
+  })
+
+  it("shows a sequence but leaves it out of the announcement", () => {
+    const trigger = triggerOf(renderPicker({ keyshortcuts: ["g d"] }))
+
+    expect(trigger).not.toContain("aria-keyshortcuts")
+    expect(trigger).toContain("then")
+  })
+
+  it("writes the hint with kbdLabels", () => {
+    expect(triggerOf(renderPicker({ keyshortcuts: ["ctrl+d"], kbdLabels: { ctrl: "Strg" } })))
+      .toContain("Strg")
+  })
+
+  it("renders an empty list exactly as if the prop were left out", () => {
+    const withoutIds = (html: string) => html.replace(/P\d+-\d+/g, "ID")
+
+    expect(withoutIds(renderPicker({ keyshortcuts: [] }))).toBe(withoutIds(renderPicker()))
+  })
+})
+
 describe("DateRangePicker, withTime", () => {
   it("renders From and To as datetime-local fields, not date fields", () => {
     const html = renderTimePicker()

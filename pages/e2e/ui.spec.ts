@@ -77,10 +77,12 @@ import { specs as inlineEdit } from "./ui/inline-edit.spec.ts"
 import { specs as copyButton } from "./ui/copy-button.spec.ts"
 import { specs as helpPopover } from "./ui/help-popover.spec.ts"
 import { specs as enhancedForm } from "./ui/enhanced-form.spec.ts"
+import { specs as keyshortcuts } from "./ui/keyshortcuts.spec.ts"
 
 /** Each file's specs, by its name under `e2e/ui/` without `.spec.ts`. */
 export const specsByFile: Readonly<Record<string, readonly Spec[]>> = {
   "dialog-row": dialogRow,
+  keyshortcuts,
   "filter-bar": filterBar,
   dropdown,
   dashboard,

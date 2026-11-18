@@ -1,5 +1,6 @@
 import type { Locator, Page } from "playwright-core"
 import type { Spec } from "../runner.ts"
+import { axeCleanIn } from "../axe-clean.ts"
 
 /** The scrolling box of the guide's `ComparisonTable` card: 0 compares four products, 1 two. */
 function comparisonScroller(page: Page, index: 0 | 1): Locator {
@@ -124,6 +125,86 @@ function comparisonTablePhoneSpecs(): Spec[] {
   ]
 }
 
+/**
+ * A row's source link (#1387): Tab reaches it from the scrolling box, it shows the focus ring and
+ * is 44 px tall on a phone and 36 px from `sm`, axe passes, and in a right-to-left page it starts
+ * its line on the right.
+ */
+function comparisonTableSourceSpecs(): Spec[] {
+  return [
+    ...(["light", "dark"] as const).map((colorScheme): Spec => ({
+      name: `ComparisonTable, ${colorScheme}: Tab goes from the scrolling box to the first row's ` +
+        "source link, which shows a focus ring; every source link is 44px tall at 390px and 36px at 1280px; axe passes",
+      pageId: "ui",
+      colorScheme,
+      run: async (page) => {
+        const box = comparisonScroller(page, 0)
+        const link = box.getByRole("link", { name: "Product A help page, read 1 October 2026" })
+        await box.focus()
+        await page.keyboard.press("Tab")
+        await link.and(page.locator(":focus")).waitFor()
+        const look = await link.evaluate((element) => ({
+          ring: getComputedStyle(element).boxShadow,
+          underline: getComputedStyle(element).textDecorationLine,
+        }))
+        // The shortest link of the card, one line of small text, is a full touch target: 44 px on
+        // a 390 px phone, 36 px from `sm`.
+        const shortest = (): Promise<number> =>
+          page.evaluate(() =>
+            Math.min(
+              ...[...document.querySelectorAll("#demo-ComparisonTable tbody th a")]
+                .map((node) => node.getBoundingClientRect().height),
+            )
+          )
+        await page.setViewportSize({ width: 390, height: 900 })
+        const phone = await shortest()
+        await page.setViewportSize({ width: 1280, height: 900 })
+        const wide = await shortest()
+        // Tailwind lists transparent shadows even with no ring, so only a coloured one counts.
+        const ring = look.ring.split(/,(?![^(]*\))/).map((part) => part.trim())
+          .filter((part) => !part.startsWith("rgba(0, 0, 0, 0)") && /0px [1-9]\d*px$/.test(part))
+        if (ring.length === 0) {
+          throw new Error(`the focused source link shows no focus ring: ${look.ring}`)
+        }
+        if (!look.underline.includes("underline")) throw new Error("the link is not underlined")
+        if (phone < 44) throw new Error(`at 390px a link is ${phone}px tall, under 44`)
+        if (wide < 36) throw new Error(`at 1280px a link is ${wide}px tall, under 36`)
+        const axe = await axeCleanIn(page, "#demo-ComparisonTable")
+        return `ring ${
+          ring.join(", ")
+        }, shortest link ${phone}px at 390, ${wide}px at 1280, axe ${axe}`
+      },
+    })),
+    {
+      name: "ComparisonTable: in a right-to-left page a row's source link starts on the right, " +
+        "under its capability",
+      pageId: "ui",
+      run: async (page) => {
+        const card = page.locator("#demo-ComparisonTable")
+        await card.evaluate((element) => element.setAttribute("dir", "rtl"))
+        await card.scrollIntoViewIfNeeded()
+        // A link that wraps fills its cell and proves nothing, so only the narrower ones count.
+        const gaps = await card.evaluate((element) =>
+          [...element.querySelectorAll("tbody th:has(a)")].flatMap((cell) => {
+            const link = cell.querySelector("a")!.getBoundingClientRect()
+            const style = getComputedStyle(cell)
+            const box = cell.getBoundingClientRect()
+            const right = box.right - parseFloat(style.paddingRight)
+            const width = right - box.left - parseFloat(style.paddingLeft)
+            return width - link.width > 8 ? [Math.round(right - link.right)] : []
+          })
+        )
+        if (gaps.length === 0) throw new Error("every source link fills its cell: nothing to prove")
+        if (gaps.some((gap) => Math.abs(gap) > 1)) {
+          throw new Error(`links end ${gaps.join(", ")}px from their cell's right content edge`)
+        }
+        return `links end ${gaps.join(", ")}px from their cell's right content edge`
+      },
+    },
+  ]
+}
+
 export const specs: readonly Spec[] = [
   ...comparisonTablePhoneSpecs(),
+  ...comparisonTableSourceSpecs(),
 ]

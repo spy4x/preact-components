@@ -154,6 +154,63 @@ async function appShellAdmin(page: Page): Promise<void> {
   await inCard(page, APP, "app-shell-connection").waitFor({ state: "attached" })
 }
 
+/** A name longer than any account menu is wide. */
+const LONG_NAME = "Maximiliana Konstantinopolskaya-Vandenberghe of Northumberland"
+
+/** What {@link measureAccountMenu} reads off the open menu, in CSS pixels. */
+interface AccountMenuWidths {
+  panel: number
+  name: number
+  /** Whether the name is cut off, and so drawn as wide as the row lets it. */
+  truncated: boolean
+  /** Whether the panel lies inside the window, and the key hint, if any, inside the panel. */
+  contained: boolean
+  hint: boolean
+}
+
+/**
+ * Open the `AppShell` card's account menu, print {@link LONG_NAME} in its header and measure it.
+ * The admin's "Admin" badge is hidden first, as it would take room the product's name has.
+ */
+async function measureAccountMenu(page: Page): Promise<AccountMenuWidths> {
+  const trigger = inCard(page, APP, "account-menu-button")
+  await trigger.scrollIntoViewIfNeeded()
+  await trigger.click()
+  const header = inCard(page, APP, "account-menu-header")
+  await header.waitFor({ state: "visible" })
+  return await header.evaluate((row, name) => {
+    const panel = row.closest(`[role="menu"]`)
+    const label = row.querySelector<HTMLElement>("span.truncate")
+    if (panel === null || label === null) throw new Error("the account header is not drawn")
+    label.textContent = name
+    const badge = label.nextElementSibling as HTMLElement | null
+    if (badge !== null) badge.style.display = "none"
+    const box = panel.getBoundingClientRect()
+    const hint = row.querySelector("[data-hotkey-hint]")?.getBoundingClientRect()
+    const inside = (left: number, right: number, start: number, end: number) =>
+      left >= start && right <= end
+    return {
+      panel: box.width,
+      name: label.getBoundingClientRect().width,
+      truncated: label.scrollWidth > label.clientWidth,
+      contained: inside(box.left, box.right, 0, innerWidth) &&
+        (hint === undefined || inside(hint.left, hint.right, box.left, box.right)),
+      hint: hint !== undefined,
+    }
+  }, LONG_NAME)
+}
+
+/**
+ * Close the open account menu with Escape and wait for focus back on the account button. Waits for
+ * focus to enter the menu first, as an Escape before that loses focus (#1399).
+ */
+async function closeAccountMenu(page: Page): Promise<void> {
+  await page.locator(`${APP} [role="menu"] :focus`).waitFor()
+  await page.keyboard.press("Escape")
+  await inCard(page, APP, "account-menu-header").waitFor({ state: "hidden" })
+  await inCard(page, APP, "account-menu-button").and(page.locator(":focus")).waitFor()
+}
+
 /** The four frames {@link frameAxeSpecs} measures: a card, and how its demo is set before. */
 const AXE_FRAMES = [
   { card: RAIL_CARD, label: "Rail labels" },
@@ -1820,6 +1877,46 @@ export const specs: readonly Spec[] = [
       await item.filter({ hasText: "Sprache" }).locator(`[lang="de"]`)
         .filter({ hasText: "Deutsch" }).waitFor()
       return "English → Deutsch from the rail's menu, focus back on the account button"
+    },
+  },
+  {
+    name: "AppShell at 1440 px: header keys grow the account menu to 384 px, so a long name has " +
+      "at least its room without keys, in English and Arabic; the menu without keys stays 240 " +
+      "px; axe passes on the menu with keys",
+    pageId: "system",
+    run: async (page) => {
+      await page.setViewportSize({ width: 1440, height: 900 })
+      const results: string[] = []
+      for (const language of ["English", "Arabic"] as const) {
+        await inCard(page, APP, "app-shell-demo-product").check()
+        if (language === "Arabic") {
+          await inCard(page, APP, "account-menu-button").click()
+          await inCard(page, APP, "account-menu-language").click()
+          const dialog = page.locator(`dialog[data-e2e="language-dialog"]`)
+          await dialog.getByRole("radio", { name: "العربية", exact: true }).click()
+          await dialog.getByRole("heading", { name: "اللغة" }).waitFor()
+          await dialog.locator(`[data-e2e="language-dialog-done"]`).click()
+          await dialog.waitFor({ state: "detached" })
+          await inCard(page, APP, "account-menu-button").and(page.locator(":focus")).waitFor()
+          await page.locator(`${APP} [lang="ar"][dir="rtl"] [data-e2e="app-shell-demo"]`).waitFor()
+        }
+        const keys = await measureAccountMenu(page)
+        const axe = await expectAxeClean(page, `${APP} [role="menu"]`)
+        await closeAccountMenu(page)
+        await inCard(page, APP, "app-shell-demo-admin").check()
+        const plain = await measureAccountMenu(page)
+        await closeAccountMenu(page)
+        const seen = `${language}: panel ${keys.panel} px and name ${keys.name} px with keys, ` +
+          `panel ${plain.panel} px and name ${plain.name} px without; ${axe}`
+        if (!keys.hint || plain.hint) throw new Error(`the key hint is misplaced. ${seen}`)
+        if (!keys.truncated || !plain.truncated) throw new Error(`the name fits. ${seen}`)
+        if (!keys.contained || !plain.contained) throw new Error(`something overflows. ${seen}`)
+        if (plain.panel !== 240) throw new Error(`the plain menu is not 240 px. ${seen}`)
+        if (keys.panel !== 384) throw new Error(`the menu with keys is not 384 px. ${seen}`)
+        if (keys.name < plain.name) throw new Error(`the keys cost the name room. ${seen}`)
+        results.push(seen)
+      }
+      return results.join(" | ")
     },
   },
   {

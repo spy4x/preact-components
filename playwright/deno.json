@@ -1,6 +1,6 @@
 {
   "name": "@spy4x/preact-playwright",
-  "version": "16.3.0",
+  "version": "16.5.0",
   // No `imports` block and no import in any published file: an app that installs this package
   // through npm for its `playwright.config.ts` gains this one package and nothing else.
   "exports": {

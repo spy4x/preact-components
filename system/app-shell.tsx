@@ -223,10 +223,9 @@ const accountTrigger = cn(
 
 /**
  * The account menu beside the rail: its bottom on the avatar's, its start edge 8 px past the rail's
- * border (the cell ends 12 px before it), 240 px wide.
+ * border (the cell ends 12 px before it). `AppShell` sets its width.
  */
-const accountPanel =
-  "bottom-0 start-[calc(100%+1.25rem)] mb-0 w-60 rounded-[var(--radius-card,0.75rem)]"
+const accountPanel = "bottom-0 start-[calc(100%+1.25rem)] mb-0 rounded-[var(--radius-card,0.75rem)]"
 
 /** A row of the sheet's account section. */
 const sheetRow = cn(
@@ -367,6 +366,10 @@ export function AppShell(props: AppShellProps): JSX.Element {
       )
   const themeId = useId()
   const languageOpen = useSignal(false)
+  // The menu draws the keys only on a linked header row. Up to 384 px, a long name beside a
+  // two-press hint such as `g p` keeps at least the room it has in the 240 px menu without keys.
+  const headerShowsKeys = account.headerHref !== undefined &&
+    (account.headerKeyshortcuts?.length ?? 0) > 0
 
   const bell: AppShellItem | undefined = notifications && {
     key: "notifications",
@@ -428,7 +431,7 @@ export function AppShell(props: AppShellProps): JSX.Element {
               header
               navigate={navigate}
               triggerClasses={cn(accountTrigger, tag && "h-auto min-h-14 py-2")}
-              panelClasses={accountPanel}
+              panelClasses={cn(accountPanel, headerShowsKeys ? "min-w-60 max-w-96" : "w-60")}
               labels={{ ...labels?.accountMenu, trigger: triggerName }}
             />
           </RailCell>

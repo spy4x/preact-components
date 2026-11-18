@@ -107,10 +107,14 @@ function PageActionDemo() {
           href="#export"
           navigate={() => presses.value++}
           variant="secondary"
+          keyshortcuts={["e"]}
+          dataE2E="page-action-shown-key"
         />
       </div>
       <DemoNote e2e="page-action-presses">
-        Pressed {presses.value} times; P presses New task. On a phone each shows its icon alone.
+        Pressed {presses.value}{" "}
+        times; P presses New task. Export only shows E, a key the app binds itself. On a phone each
+        shows its icon alone.
       </DemoNote>
     </Stack>
   )
@@ -238,9 +242,15 @@ export const pageHeaderDemos = {
         type: "string",
         description: "A key that presses the action, shown in a hint, as `Button`'s does.",
       },
+      {
+        name: "keyshortcuts",
+        type: "readonly string[]",
+        description: "Keys the app binds itself: shown and announced, never bound, as on `Button`.",
+      },
     ],
     snippet: `<PageAction label="New task" Icon={IconPlus} onClick={addTask} hotkey="p" />
-<PageAction label="Export" Icon={IconDownload} href="/export" variant="secondary" />`,
+<PageAction label="Export" Icon={IconDownload} href="/export" variant="secondary" />
+<PageAction label="New note" Icon={IconPlus} onClick={openNewNote} keyshortcuts={["n"]} />`,
     render: () => <PageActionDemo />,
   },
   MoreMenu: {

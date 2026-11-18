@@ -345,6 +345,115 @@ describe("Button hotkey", () => {
   })
 })
 
+describe("Button keyshortcuts", () => {
+  /** The text of the hint in `html`, with its tags removed. */
+  const hintOf = (html: string) =>
+    /data-hotkey-hint(?: class="[^"]*")?>(.*?)<\/span><\/(?:button|a)>/.exec(html)?.[1].replace(
+      /<[^>]+>/g,
+      "",
+    ) ??
+      "no hint"
+
+  it("announces every key and shows the first as the hint on a button", () => {
+    const html = render(<Button keyshortcuts={["n", "mod+k"]}>New note</Button>)
+
+    expect(html).toContain('aria-keyshortcuts="N Control+K"')
+    expect(hintOf(html)).toBe("N")
+  })
+
+  it("announces every key and shows the first as the hint on a link", () => {
+    const html = render(<Button href="/new" keyshortcuts={["n", "mod+k"]}>New note</Button>)
+
+    expect(html).toContain('aria-keyshortcuts="N Control+K"')
+    expect(hintOf(html)).toBe("N")
+  })
+
+  it("puts hotkey first in the announcement and the hint", () => {
+    const html = render(<Button hotkey="p" keyshortcuts={["n"]}>New note</Button>)
+
+    expect(html).toContain('aria-keyshortcuts="P N"')
+    expect(hintOf(html)).toBe("P")
+  })
+
+  it("shows a sequence but leaves it out of the announcement", () => {
+    const alone = render(<Button keyshortcuts={["g p"]}>Projects</Button>)
+    const mixed = render(<Button keyshortcuts={["g p", "n"]}>Projects</Button>)
+
+    expect(alone).not.toContain("aria-keyshortcuts")
+    expect(hintOf(alone)).toBe("G then P")
+    expect(mixed).toContain('aria-keyshortcuts="N"')
+    expect(hintOf(mixed)).toBe("G then P")
+  })
+
+  it("draws a sequence's then in the button's own text colour", () => {
+    const html = render(<Button keyshortcuts={["g p"]}>Projects</Button>)
+
+    expect(html).toContain('<kbd class="text-xs"><kbd')
+    expect(html).not.toContain("text-muted")
+  })
+
+  it("leaves the hint out when hotkeyHint is false, and keeps the announcement", () => {
+    const html = render(<Button keyshortcuts={["n"]} hotkeyHint={false}>New note</Button>)
+
+    expect(html).toContain('aria-keyshortcuts="N"')
+    expect(html).not.toContain("data-hotkey-hint")
+  })
+
+  it("draws no hint on an icon button unless hotkeyHint asks for one", () => {
+    const plain = render(<Button variant="icon" keyshortcuts={["n"]} aria-label="New">+</Button>)
+    const asked = render(
+      <Button variant="icon" keyshortcuts={["n"]} hotkeyHint aria-label="New">+</Button>,
+    )
+
+    expect(plain).toContain('aria-keyshortcuts="N"')
+    expect(plain).not.toContain("data-hotkey-hint")
+    expect(asked).toContain("data-hotkey-hint")
+  })
+
+  it("writes the hint with kbdLabels", () => {
+    const html = render(<Button keyshortcuts={["ctrl+n"]} kbdLabels={{ ctrl: "Strg" }}>Neu</Button>)
+
+    expect(html).toContain("Strg")
+  })
+
+  it("renders an empty list exactly as if the prop were left out", () => {
+    expect(render(<Button keyshortcuts={[]}>Save</Button>)).toBe(render(<Button>Save</Button>))
+    expect(render(<Button href="/a" keyshortcuts={[]}>Save</Button>))
+      .toBe(render(<Button href="/a">Save</Button>))
+  })
+
+  it("runs no hook when there is no key to show", () => {
+    /** What `Button` returns, before Preact renders it: an element, or the component with hooks. */
+    const typeOf = (props: ButtonProps | ButtonLinkProps) =>
+      (Button as unknown as (props: ButtonProps | ButtonLinkProps) => VNode)(props).type
+
+    expect(typeOf({})).toBe("button")
+    expect(typeOf({ keyshortcuts: [] })).toBe("button")
+    expect(typeOf({ href: "/a", keyshortcuts: [] })).toBe("a")
+    expect(typeof typeOf({ keyshortcuts: ["n"] })).toBe("function")
+  })
+
+  it("puts no keyshortcuts attribute on a button or a link", () => {
+    for (
+      const html of [
+        render(<Button keyshortcuts={["n"]}>New</Button>),
+        render(<Button keyshortcuts={[]}>New</Button>),
+        render(<Button href="/new" keyshortcuts={["n"]}>New</Button>),
+        render(<Button href="/new" keyshortcuts={[]}>New</Button>),
+      ]
+    ) {
+      expect(html).not.toMatch(/\skeyshortcuts=/i)
+    }
+  })
+
+  it("lets a caller's own aria-keyshortcuts win", () => {
+    const html = render(<Button keyshortcuts={["n"]} aria-keyshortcuts="Alt+N">New</Button>)
+
+    expect(html).toContain('aria-keyshortcuts="Alt+N"')
+    expect(html).not.toContain('aria-keyshortcuts="N"')
+  })
+})
+
 describe("buttonClasses", () => {
   it("lets a caller's conflicting classes win over its own", () => {
     // Two utilities of the groups the base and the size already set: `cn` drops those (#861).

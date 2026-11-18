@@ -390,7 +390,32 @@ function DropdownItemDemo() {
       </span>
       <DropdownItemHotkeyDemo />
       <DropdownItemCheckedDemo />
+      <DropdownItemLongLabelDemo />
     </Stack>
+  )
+}
+
+/**
+ * A long label in a menu capped at 240 px: the label wraps onto a second line and the key hint
+ * stays whole at the item's end (#1381). `pages/e2e/ui/dropdown.spec.ts` measures both.
+ */
+function DropdownItemLongLabelDemo() {
+  return (
+    <DropdownRow title="Long label, capped menu">
+      <Dropdown
+        trigger="Long label"
+        triggerNamedByContent
+        triggerClasses="rounded-md px-3 py-2 text-sm ring-1 ring-subtle"
+        triggerDataE2E="dropdown-long-label-trigger"
+        menuLabel="Long label"
+        panelClasses="w-60"
+      >
+        <DropdownItem keyshortcuts={["g e"]} dataE2E="dropdown-long-label-item">
+          Export all transactions as CSV
+        </DropdownItem>
+        <DropdownItem keyshortcuts={["g d"]}>Duplicate</DropdownItem>
+      </Dropdown>
+    </DropdownRow>
   )
 }
 
@@ -1654,7 +1679,30 @@ function DateRangePickerWithTimeDemo() {
   )
 }
 
-/** The three pickers side by side: a chosen range, nothing chosen, and `withTime`. */
+/**
+ * `keyshortcuts`: the trigger shows D, which the app binds elsewhere, and binds nothing itself. The
+ * long range shows that the text truncates while the hint and the arrow stay visible.
+ */
+function DateRangePickerShownKeyDemo() {
+  const range = useSignal<DateRange | null>(fixedToday)
+  return (
+    <div class="max-w-64 space-y-3">
+      <DateRangePicker
+        range={range.value}
+        onChange={(next) => range.value = next}
+        timeZone={fixedZone}
+        now={fixedNow}
+        presets={datePresetOptions}
+        formatRange={({ from, to }) => `From the morning of ${from} to the evening of ${to}`}
+        keyshortcuts={["d"]}
+        dataE2E="guide-date-range-shown-key"
+      />
+      <Note>The app binds D, so pressing it here does nothing.</Note>
+    </div>
+  )
+}
+
+/** The pickers side by side: a chosen range, nothing chosen, `withTime` and a shown key. */
 function DateRangePickersDemo() {
   return (
     <Stack gap="lg">
@@ -1676,6 +1724,9 @@ function DateRangePickersDemo() {
         </Variant>
         <Variant title="Weeks from Sunday">
           <DateRangePickerWeekDemo />
+        </Variant>
+        <Variant title="A key the app binds">
+          <DateRangePickerShownKeyDemo />
         </Variant>
       </Grid>
       <Stack gap="xs">
@@ -2362,6 +2413,18 @@ export const inputDemos = {
         default: "English",
         description: "Every word in the panel, one key at a time.",
       },
+      {
+        name: "keyshortcuts",
+        type: "readonly string[]",
+        description:
+          "Keys the app binds itself to open the picker: announced on the trigger, the first shown as a hint before the arrow, none bound.",
+      },
+      {
+        name: "kbdLabels",
+        type: "Partial<KbdLabels>",
+        default: "English",
+        description: "The words the hint shows for a key, such as Ctrl.",
+      },
     ],
     snippet: `<DateRangePicker
   range={range.value}
@@ -2376,6 +2439,9 @@ export const inputDemos = {
 
 // Every label is English by default; override only the ones you need to.
 <DateRangePicker {...props} labels={{ placeholder: "All time" }} />
+
+// Shows D, a key the app binds itself; the picker binds nothing.
+<DateRangePicker {...props} keyshortcuts={["d"]} />
 
 // Week presets: weeks start on Monday unless firstWeekday says otherwise (7 is Sunday).
 <DateRangePicker
