@@ -422,6 +422,17 @@ describe("Button keyshortcuts", () => {
       .toBe(render(<Button href="/a">Save</Button>))
   })
 
+  it("runs no hook when there is no key to show", () => {
+    /** What `Button` returns, before Preact renders it: an element, or the component with hooks. */
+    const typeOf = (props: ButtonProps | ButtonLinkProps) =>
+      (Button as unknown as (props: ButtonProps | ButtonLinkProps) => VNode)(props).type
+
+    expect(typeOf({})).toBe("button")
+    expect(typeOf({ keyshortcuts: [] })).toBe("button")
+    expect(typeOf({ href: "/a", keyshortcuts: [] })).toBe("a")
+    expect(typeof typeOf({ keyshortcuts: ["n"] })).toBe("function")
+  })
+
   it("puts no keyshortcuts attribute on a button or a link", () => {
     for (
       const html of [
