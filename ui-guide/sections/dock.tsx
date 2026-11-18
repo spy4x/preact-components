@@ -117,6 +117,7 @@ export const dockDemos: DemoFragment = {
   Dock: {
     summary:
       "A panel pinned to the bottom-end corner of every page for what waits on the reader, such as decisions: one button with a count when collapsed, never modal.",
+    wide: false,
     props: [
       { name: "open", type: "boolean", description: "Whether the dock is expanded." },
       {
