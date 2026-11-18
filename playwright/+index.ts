@@ -308,7 +308,7 @@ function measureFit(element: HTMLElement): { edges: Edges; parent: Edges; clippe
       parseFloat(style.paddingRight)
     if (isTextArea) {
       // Text wraps here, so it is clipped only when its lines are taller than the box. Counting
-      // by width alone ignores the room word wrapping wastes: this never reports a false clip.
+      // by width alone ignores the room word wrapping wastes, so a small clip can go unreported.
       const height = field.clientHeight - parseFloat(style.paddingTop) -
         parseFloat(style.paddingBottom)
       const lineHeight = parseFloat(textStyle.lineHeight) || parseFloat(textStyle.fontSize) * 1.2
