@@ -6,8 +6,6 @@ import type { Spec } from "../runner.ts"
 interface ShownKey {
   /** The name each spec starts with. */
   name: string
-  /** The card the demo is drawn in. */
-  card: string
   /** The `data-e2e` of the control. */
   e2e: string
   /** The key the control shows. */
@@ -17,29 +15,10 @@ interface ShownKey {
 }
 
 const SHOWN_KEYS: readonly ShownKey[] = [
-  { name: "Button", card: "Button", e2e: "shown-key-button", key: "b", announced: "B" },
-  { name: "Button link", card: "Button", e2e: "shown-key-link", key: "l", announced: "L" },
-  {
-    name: "PageAction",
-    card: "PageAction",
-    e2e: "page-action-shown-key",
-    key: "a",
-    announced: "A",
-  },
-  {
-    name: "PageAction link",
-    card: "PageAction",
-    e2e: "page-action-shown-key-link",
-    key: "e",
-    announced: "E",
-  },
-  {
-    name: "DateRangePicker",
-    card: "DateRangePicker",
-    e2e: "guide-date-range-shown-key",
-    key: "d",
-    announced: "D",
-  },
+  { name: "Button", e2e: "shown-key-button", key: "b", announced: "B" },
+  { name: "Button link", e2e: "shown-key-link", key: "l", announced: "L" },
+  { name: "PageAction link", e2e: "page-action-shown-key", key: "e", announced: "E" },
+  { name: "DateRangePicker", e2e: "guide-date-range-shown-key", key: "d", announced: "D" },
 ]
 
 /** What became of one key press. */

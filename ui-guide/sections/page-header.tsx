@@ -91,7 +91,6 @@ function PageHeaderDemo() {
 
 function PageActionDemo() {
   const presses = useSignal(0)
-  const shown = useSignal(0)
   return (
     <Stack>
       <div class="flex items-center gap-2">
@@ -108,32 +107,14 @@ function PageActionDemo() {
           href="#export"
           navigate={() => presses.value++}
           variant="secondary"
+          keyshortcuts={["e"]}
+          dataE2E="page-action-shown-key"
         />
       </div>
       <DemoNote e2e="page-action-presses">
-        Pressed {presses.value} times; P presses New task. On a phone each shows its icon alone.
-      </DemoNote>
-      <div class="flex items-center gap-2">
-        <PageAction
-          label="New project"
-          Icon={IconPlus}
-          onClick={() => shown.value++}
-          keyshortcuts={["a"]}
-          variant="secondary"
-          dataE2E="page-action-shown-key"
-        />
-        <PageAction
-          label="Import"
-          Icon={IconDownload}
-          href="#import"
-          navigate={() => shown.value++}
-          keyshortcuts={["e"]}
-          variant="secondary"
-          dataE2E="page-action-shown-key-link"
-        />
-      </div>
-      <DemoNote e2e="page-action-shown-presses">
-        Clicked {shown.value} times. The app binds A and E, so pressing them here does nothing.
+        Pressed {presses.value}{" "}
+        times; P presses New task. Export only shows E, a key the app binds itself. On a phone each
+        shows its icon alone.
       </DemoNote>
     </Stack>
   )
