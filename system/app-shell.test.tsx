@@ -49,6 +49,14 @@ function whole(html: string, e2e: string, tag: string): string {
   return html.slice(start, html.lastIndexOf(`</${tag}>`))
 }
 
+/** The class list of the rail's account menu panel, for a person with this header row. */
+function accountPanelClasses(header: Partial<AppShellProps["account"]>): string {
+  const html = shell({ account: { user, ...header } })
+  const panels = [...html.matchAll(/class="([^"]*start-\[calc\(100%\+1\.25rem\)\][^"]*)"/g)]
+  if (panels.length !== 1) throw new Error(`expected one account panel, found ${panels.length}`)
+  return ` ${panels[0][1]} `
+}
+
 describe("AppShell", () => {
   it("names the bell with its unread count and hides the badge", () => {
     const column = whole(shell(), "rail-shell-column", "aside")
@@ -264,6 +272,30 @@ describe("AppShell", () => {
     expect(plain).not.toContain("aria-keyshortcuts")
     expect(plain).not.toContain("data-account-key-hint")
     expect(region(plain, "account-menu-header", "a")).not.toContain("data-hotkey-hint")
+  })
+
+  it("lets the account menu grow past 240 px when the linked header row shows keys", () => {
+    const panel = accountPanelClasses({ headerHref: "/profile", headerKeyshortcuts: ["g p"] })
+    expect(panel).toContain("min-w-60")
+    expect(panel).not.toContain(" w-60")
+  })
+
+  it("keeps the account menu 240 px wide without keys", () => {
+    const panel = accountPanelClasses({})
+    expect(panel).toContain(" w-60")
+    expect(panel).not.toContain("min-w-60")
+  })
+
+  it("keeps the account menu 240 px wide with an empty list of keys", () => {
+    const panel = accountPanelClasses({ headerHref: "/profile", headerKeyshortcuts: [] })
+    expect(panel).toContain(" w-60")
+    expect(panel).not.toContain("min-w-60")
+  })
+
+  it("keeps the account menu 240 px wide when keys have no header link to show them", () => {
+    const panel = accountPanelClasses({ headerKeyshortcuts: ["g p"] })
+    expect(panel).toContain(" w-60")
+    expect(panel).not.toContain("min-w-60")
   })
 
   it("draws a plain placeholder and no menu while the person is unknown", () => {
