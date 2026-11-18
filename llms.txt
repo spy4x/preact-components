@@ -284,10 +284,15 @@ default	helper	@spy4x/preact-map/i18n/ja	The `map` catalog in ja: `createTransla
 default	helper	@spy4x/preact-map/i18n/pt-BR	The `map` catalog in pt-BR: `createTranslator({ catalogs: [{ source: en, translation: this }] })`.
 default	helper	@spy4x/preact-map/i18n/ru	The `map` catalog in ru: `createTranslator({ catalogs: [{ source: en, translation: this }] })`.
 default	helper	@spy4x/preact-map/i18n/zh-CN	The `map` catalog in zh-CN: `createTranslator({ catalogs: [{ source: en, translation: this }] })`.
+FitsInLanguagesOptions	type	@spy4x/preact-playwright	What `expectFitsInLanguages` checks, and how it reaches the screen.
+LayoutLocator	type	@spy4x/preact-playwright	The part of a Playwright `Locator` the layout checks use; a real `Locator` satisfies it.
+LayoutPage	type	@spy4x/preact-playwright	The part of a Playwright `Page` the layout checks use; a real `Page` satisfies it.
 PlaywrightBaseConfig	type	@spy4x/preact-playwright	What `playwrightBaseConfig` returns: a value for Playwright's `defineConfig`.
 PlaywrightBaseOptions	type	@spy4x/preact-playwright	What an app tells `playwrightBaseConfig`.
 PlaywrightBaseUse	type	@spy4x/preact-playwright	The `use` options `playwrightBaseConfig` sets for every app.
 PlaywrightReporter	type	@spy4x/preact-playwright	One reporter: its name, then its options when it takes any.
+expectFitsInLanguages	helper	@spy4x/preact-playwright	Check that an element fits on a phone in every language: at 390 px wide it must stay inside its container and the viewport's width, and its own text must not be clipped.
+expectNotCovered	helper	@spy4x/preact-playwright	Check that a person can reach an element: scroll it to the middle of the viewport, then fail unless the element or something inside it is what the browser hits at its centre and just inside its four corners.
 playwrightBaseConfig	helper	@spy4x/preact-playwright	Build the Playwright configuration every app shares.
 App	helper	@spy4x/preact-server	The app: middleware, routes and an app wrapper, as Fresh's `App`.
 Assets	type	@spy4x/preact-server	What the build tells the renderer: the stylesheets, the client script and the build id.
