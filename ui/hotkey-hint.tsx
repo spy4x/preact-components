@@ -21,6 +21,8 @@ export interface HotkeyHintProps {
   labels?: Partial<KbdLabels>
   /** Utilities added to the hint's own, such as `ms-auto` to push it to the end of a row. */
   class?: string
+  /** Replaces the classes around a sequence's keys, which set the colour of its "then". */
+  sequenceClass?: string
 }
 
 /**
@@ -32,7 +34,7 @@ export interface HotkeyHintProps {
  * mouse or a trackpad: a phone has no keyboard to press it with.
  */
 export function HotkeyHint(
-  { keys, apple, labels, class: className }: HotkeyHintProps,
+  { keys, apple, labels, class: className, sequenceClass = SEQUENCE_CLASS }: HotkeyHintProps,
 ): JSX.Element {
   const words = useLabels("Kbd", KBD_LABELS, labels)
   // Joined by hand rather than with `cn`, which would pull tailwind-merge into island bundles.
@@ -51,7 +53,7 @@ export function HotkeyHint(
     <span aria-hidden="true" data-hotkey-hint="" class={classes}>
       {steps.length === 1 ? steps[0] : (
         // Inline in one `<kbd>`, so the spaces around "then" stay inside this flex row.
-        <kbd class={SEQUENCE_CLASS}>
+        <kbd class={sequenceClass}>
           {steps.map((step, index) => (
             <Fragment key={index}>
               {index > 0 && ` ${words.then} `}

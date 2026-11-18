@@ -348,7 +348,10 @@ describe("Button hotkey", () => {
 describe("Button keyshortcuts", () => {
   /** The text of the hint in `html`, with its tags removed. */
   const hintOf = (html: string) =>
-    /data-hotkey-hint[^>]*>(.*?)<\/span><\/(?:button|a)>/.exec(html)?.[1].replace(/<[^>]+>/g, "") ??
+    /data-hotkey-hint(?: class="[^"]*")?>(.*?)<\/span><\/(?:button|a)>/.exec(html)?.[1].replace(
+      /<[^>]+>/g,
+      "",
+    ) ??
       "no hint"
 
   it("announces every key and shows the first as the hint on a button", () => {
@@ -380,6 +383,13 @@ describe("Button keyshortcuts", () => {
     expect(hintOf(alone)).toBe("G then P")
     expect(mixed).toContain('aria-keyshortcuts="N"')
     expect(hintOf(mixed)).toBe("G then P")
+  })
+
+  it("draws a sequence's then in the button's own text colour", () => {
+    const html = render(<Button keyshortcuts={["g p"]}>Projects</Button>)
+
+    expect(html).toContain('<kbd class="text-xs"><kbd')
+    expect(html).not.toContain("text-muted")
   })
 
   it("leaves the hint out when hotkeyHint is false, and keeps the announcement", () => {

@@ -139,6 +139,12 @@ interface HotkeyParts {
   hint: VNode | null
 }
 
+/**
+ * Gives a sequence's "then" the button's own text colour: the muted colour it has elsewhere is
+ * unreadable on a hovered secondary button in the dark palette, and on a coloured button.
+ */
+const SEQUENCE_HINT_CLASS = "text-xs"
+
 /** The {@link HotkeyParts} of a button without a key. */
 const NO_HOTKEY: HotkeyParts = { shortcuts: undefined, hint: null }
 
@@ -337,7 +343,14 @@ function HotkeyButton(
   const parts: HotkeyParts = {
     shortcuts: ariaKeyShortcutList(announced, apple),
     hint: announced.length > 0 && (hotkeyHint ?? variant !== "icon")
-      ? <HotkeyHint keys={announced[0]} apple={apple} labels={kbdLabels} />
+      ? (
+        <HotkeyHint
+          keys={announced[0]}
+          apple={apple}
+          labels={kbdLabels}
+          sequenceClass={SEQUENCE_HINT_CLASS}
+        />
+      )
       : null,
   }
   return link
