@@ -89,6 +89,12 @@ describe("Rail", () => {
     expect(region(html, "rail-shell-content", "main")).toContain("page body")
   })
 
+  it("pads the page beneath a dock, so its last row scrolls above it", () => {
+    const html = render(<Rail items={itemsOf(3)}>page body</Rail>)
+    const main = html.match(/<main [^>]*>/)?.[0] ?? ""
+    expect(main.match(/class="([^"]*)"/)?.[1].split(" ")).toContain("pb-dock")
+  })
+
   it("marks the item matching currentKey as the current page in the rail and the tab bar", () => {
     const html = render(<Rail items={itemsOf(3)} currentKey="i2">page</Rail>)
     const current = linkTags(html, "/i2")

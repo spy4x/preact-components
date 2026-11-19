@@ -720,6 +720,15 @@
 }
 
 /*
+ * Bottom padding that clears a `Dock`: the height with the gap below it that the dock publishes
+ * as `--pc-dock-height` on the root element, and nothing on a page without one. The height is
+ * measured, not a step, so it gets a name here. `RailShell`'s page carries it.
+ */
+@utility pb-dock {
+  padding-bottom: var(--pc-dock-height, 0px);
+}
+
+/*
  * Inline-start padding that clears a notch or rounded corner on a phone or tablet held sideways:
  * `Rail`'s desktop column pads itself by it, so its 72 px of cells never sit under the cut-out.
  * The start side is the left on a left-to-right page and the right under `dir="rtl"`, so it takes

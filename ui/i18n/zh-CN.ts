@@ -154,6 +154,7 @@ export default {
   "DemoVideo.errorLabel": "视频加载失败。",
   "DemoVideo.openFileLabel": "打开视频文件",
   "DemoVideo.playLabel": "播放视频",
+  "Dock.toggle": "{label}：{count}",
   "DocsNav.label": "文档",
   "DocsNav.summary": "指南：{title}",
   "DocsNav.summaryNone": "指南",

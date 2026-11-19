@@ -204,6 +204,25 @@ describe("createHotkeyListener", () => {
     expect(ran).toEqual(["?"])
   })
 
+  it("runs no single key inside a hotkey scope unless the binding opts in; chords and Escape run", () => {
+    const dock = inside("[data-hotkey-scope]")
+    const { ran, send } = listen([
+      binding("n"),
+      binding("g i"),
+      binding("mod+k"),
+      binding("esc"),
+      binding("?", { inDialogs: true }),
+    ])
+    send({ key: "n", target: dock })
+    send({ key: "g", target: dock })
+    send({ key: "i", target: dock, timeStamp: 100 })
+    send({ key: "k", ctrlKey: true, target: dock })
+    send({ key: "Escape", target: dock })
+    send({ key: "?", target: dock })
+    send({ key: "n" })
+    expect(ran).toEqual(["mod+k", "esc", "?", "n"])
+  })
+
   it("runs nothing while a modal dialog is open unless the binding opts in", () => {
     const own = Object.getOwnPropertyDescriptor(globalThis, "document")
     Object.defineProperty(globalThis, "document", {
@@ -486,6 +505,30 @@ describe("clickByHotkey", () => {
       else Object.defineProperty(globalThis, "document", saved)
     }
     expect([outside.clicks, inside.clicks]).toEqual([0, 1])
+  })
+
+  it("clicks for a typed key only a button in the hotkey scope the press landed in", () => {
+    const dock = {}
+    /** A target or a button whose hotkey scope is `scope`. */
+    const within = <T extends object>(node: T, scope: object | null): T =>
+      Object.assign(node, {
+        closest: (selector: string) => selector === "[data-hotkey-scope]" ? scope : null,
+      })
+    const inDock = fakeButton()
+    const onPage = fakeButton()
+    within(inDock.element, dock)
+    within(onPage.element, null)
+    const press = (target: unknown, key: string, ctrlKey = false) =>
+      Object.assign(keyEvent(target), { key, ctrlKey })
+    const fromDock = within({}, dock)
+    const fromPage = within({}, null)
+    expect(clickByHotkey(inDock.element, press(fromDock, "n"))).toBe(true)
+    expect(clickByHotkey(onPage.element, press(fromDock, "n"))).toBe(false)
+    expect(clickByHotkey(inDock.element, press(fromPage, "n"))).toBe(false)
+    expect(clickByHotkey(onPage.element, press(fromPage, "n"))).toBe(true)
+    // A chord is no typed key, so it reaches the page from inside the scope.
+    expect(clickByHotkey(onPage.element, press(fromDock, "k", true))).toBe(true)
+    expect([inDock.clicks, onPage.clicks]).toEqual([1, 2])
   })
 
   it("does nothing for a button outside the dialog the key was pressed in", () => {

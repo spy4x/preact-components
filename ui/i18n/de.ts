@@ -162,6 +162,7 @@ export default {
   "DemoVideo.errorLabel": "Das Video konnte nicht geladen werden.",
   "DemoVideo.openFileLabel": "Videodatei öffnen",
   "DemoVideo.playLabel": "Video abspielen",
+  "Dock.toggle": "{label}: {count}",
   "DocsNav.label": "Dokumentation",
   "DocsNav.summary": "Anleitungen: {title}",
   "DocsNav.summaryNone": "Anleitungen",

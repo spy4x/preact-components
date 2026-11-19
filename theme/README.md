@@ -355,7 +355,8 @@ classes keep their names: no app writes them as ordinary words.
 - **Map** — `map-marker` inside a `status-on` / `status-off` / `status-unknown` container, used by
   `@spy4x/preact-map`'s `Map` component and its plain-text list of markers.
 - **Spacing** — `pb-safe` (bottom padding that clears a phone's home indicator), `pb-safe-3`
-  (step 3 plus that inset) and `ps-safe` (inline-start padding that clears a landscape phone's notch, from the left or right inset as `dir` says). The inset is the device's, not a step, so it gets a name here instead
+  (step 3 plus that inset), `pb-dock` (bottom padding that clears a `Dock`, by the
+  `--pc-dock-height` it publishes; `RailShell`'s page carries it) and `ps-safe` (inline-start padding that clears a landscape phone's notch, from the left or right inset as `dir` says). The inset is the device's, not a step, so it gets a name here instead
   of an arbitrary value in a component. `pc-scroll-pb-tab-bar`, which `RailShell` puts on the root
   element below `md`, gives the scroll padding that keeps a focused control above its phone tab bar
   and sets the same room as `--pc-tab-bar-room`; anything sticky at the bottom of the window offsets

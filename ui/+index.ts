@@ -181,6 +181,7 @@ export {
 export { LoopVideo, type LoopVideoProps } from "./loop-video.tsx"
 export { YouTubeVideo, type YouTubeVideoProps } from "./youtube-video.tsx"
 export { DialogActions, type DialogActionsProps } from "./dialog-actions.tsx"
+export { Dock, type DockLabels, type DockProps } from "./dock.tsx"
 export {
   type DateRangePreset,
   dateRangePresets,

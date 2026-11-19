@@ -32,6 +32,7 @@
     "./demo-video": "./demo-video.tsx",
     "./docs-nav": "./docs-nav.tsx",
     "./dialog-actions": "./dialog-actions.tsx",
+    "./dock": "./dock.tsx",
     "./dropdown": "./dropdown.tsx",
     "./empty-state": "./empty-state.tsx",
     "./enhanced-form": "./enhanced-form.tsx",

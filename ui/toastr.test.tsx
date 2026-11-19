@@ -111,7 +111,7 @@ describe("Toastr", () => {
     )
   })
 
-  it("puts the stack a gutter from its corner's two edges and lets the far side go", () => {
+  it("puts the stack a gutter from its corner's two edges, a bottom one above the tab bar and dock", () => {
     for (const corner of ["top-left", "top-right", "bottom-left", "bottom-right"] as const) {
       const classes = stackClasses(
         render(<Toastr toasts={[]} onDismiss={() => {}} corner={corner} />),
@@ -126,7 +126,10 @@ describe("Toastr", () => {
 
       expect(classes.filter((name) => /^(top|end|bottom|start)-/.test(name)).sort(), corner)
         .toEqual([
-          `${vertical}-(--toastr-gap)`,
+          vertical === "top"
+            ? "top-(--toastr-gap)"
+            // A bottom corner stands above the phone tab bar and a dock, when the page has them.
+            : "bottom-[calc(var(--toastr-gap)+var(--pc-tab-bar-room,0px)+var(--pc-dock-height,0px))]",
           `${horizontal}-(--toastr-gap)`,
           `${otherHorizontal}-(--toastr-far)`,
         ].sort())

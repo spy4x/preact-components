@@ -179,6 +179,7 @@ export default {
   "DemoVideo.errorLabel": "تعذّر تحميل الفيديو.",
   "DemoVideo.openFileLabel": "فتح ملف الفيديو",
   "DemoVideo.playLabel": "تشغيل الفيديو",
+  "Dock.toggle": "{label}: {count}",
   "DocsNav.label": "التوثيق",
   "DocsNav.summary": "الأدلة: {title}",
   "DocsNav.summaryNone": "الأدلة",
