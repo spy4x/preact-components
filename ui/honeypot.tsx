@@ -29,7 +29,7 @@ export function honeypotField(
   label: string = "Leave this field blank",
 ): JSX.Element {
   return (
-    <div class="absolute h-px w-px overflow-hidden" style="clip: rect(0 0 0 0)" aria-hidden="true">
+    <div class="sr-only" aria-hidden="true">
       <label>
         {label}
         <input type="text" name={name} tabIndex={-1} autocomplete="off" />
