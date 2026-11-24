@@ -38,6 +38,13 @@ describe("honeypotField", () => {
     },
   )
 
+  it("hides itself with a class, never an inline style a strict style-src policy would block", () => {
+    const html = render(honeypotField(HONEYPOT_FIELD_NAME, "Leave this field blank"))
+
+    expect(html).not.toContain("style=")
+    expect(html).toContain('class="sr-only"')
+  })
+
   it("turns autofill off, so a browser's own suggestions cannot fill a field it should never fill", () => {
     const html = render(honeypotField(HONEYPOT_FIELD_NAME, "Leave this field blank"))
 
