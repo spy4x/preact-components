@@ -60,6 +60,8 @@ export default {
   "InstallPrompt.install": "インストール",
   "InstallPrompt.iosAfter": "をタップし、「ホーム画面に追加」を選んでください。",
   "InstallPrompt.iosBefore": "共有ボタン",
+  "InstallPrompt.iosInApp":
+    "まずこのページをSafariで開き、「共有」をタップして「ホーム画面に追加」を選んでください。",
   "InstallPrompt.iosShare": "共有",
   "InstallPrompt.title": "アプリをインストール",
   "MailedCodeStep.changeEmail": "別のアドレスを使う",

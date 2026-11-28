@@ -67,6 +67,8 @@ export default {
   "InstallPrompt.install": "Instalar",
   "InstallPrompt.iosAfter": "e depois em Adicionar à Tela de Início.",
   "InstallPrompt.iosBefore": "Toque em",
+  "InstallPrompt.iosInApp":
+    "Abra esta página no Safari primeiro e depois toque em Compartilhar e em Adicionar à Tela de Início.",
   "InstallPrompt.iosShare": "Compartilhar",
   "InstallPrompt.title": "Instale este app",
   "MailedCodeStep.changeEmail": "Usar outro",

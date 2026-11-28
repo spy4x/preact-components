@@ -60,6 +60,7 @@ export default {
   "InstallPrompt.install": "安装",
   "InstallPrompt.iosAfter": "，然后选择“添加到主屏幕”。",
   "InstallPrompt.iosBefore": "点按",
+  "InstallPrompt.iosInApp": "请先在 Safari 中打开此页面，然后点按“分享”并选择“添加到主屏幕”。",
   "InstallPrompt.iosShare": "分享",
   "InstallPrompt.title": "安装此应用",
   "MailedCodeStep.changeEmail": "换一个邮箱",

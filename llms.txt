@@ -409,6 +409,7 @@ createThemeStore	helper	@spy4x/preact-signals	Create a theme store.
 createToastStore	helper	@spy4x/preact-signals	Create a toast store.
 deleteMapEntry	helper	@spy4x/preact-signals	Return a copy of `map` without `key`.
 isIosDevice	helper	@spy4x/preact-signals	Whether this is an iPhone, iPod or iPad, where no browser fires `beforeinstallprompt`.
+isIosInAppBrowser	helper	@spy4x/preact-signals	Whether this is an in-app browser on an iPhone or iPad, such as the web view inside Instagram, Facebook or Gmail, which has no Add to Home Screen.
 isStandalone	helper	@spy4x/preact-signals	Whether the page runs as an installed app: the display mode is `standalone` or `minimal-ui`, or iOS's own flag says so.
 patchSignal	helper	@spy4x/preact-signals	Merge `patch` into `signal`'s current value and notify subscribers.
 resolveFilterValue	helper	@spy4x/preact-signals	Value a URL parameter implies for one field.

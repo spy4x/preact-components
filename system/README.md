@@ -1180,7 +1180,9 @@ plain values and callbacks, so they work with any outbox and ship on their own.
   `unsent-wait`, `unsent-review`, `unsent-sign-out-anyway`, `unsent-cancel`, `unsent-status`).
 - **`InstallPrompt`** offers to install the app: an Install button where the browser has an
   install dialog (`mode: "prompt"`), and "Tap Share, then Add to Home Screen" on an iPhone or iPad
-  (`mode: "ios"`). It renders nothing for `installed` and `unavailable`. `createInstallPrompt` in
+  (`mode: "ios"`). In an app's own browser on iOS (`mode: "ios-in-app"`), which has no Add to Home
+  Screen, it asks the person to open the page in Safari first (`labels.iosInApp`), with no Install
+  button. It renders nothing for `installed` and `unavailable`. `createInstallPrompt` in
   `@spy4x/preact-signals` supplies the mode and remembers a dismissal through a port. When the card
   leaves while focus is inside it, after "Not now" or an accepted install, focus moves to the
   element `returnFocus` returns, which must be focusable: a button, or an element with

@@ -2390,6 +2390,33 @@ export const specs: readonly Spec[] = [
     },
   },
   {
+    name: "InstallPrompt in an iOS in-app browser asks to open Safari first, with no Share steps " +
+      "or Install button, and Not now hides it and hands focus to returnFocus",
+    pageId: "system",
+    run: async (page) => {
+      const part = page.locator(`${INSTALL_DEMO} [data-e2e="install-ios-in-app"]`)
+      await part.scrollIntoViewIfNeeded()
+      const card = part.getByRole("region", { name: "Install this app" })
+      await card.getByText("Open this page in Safari first", { exact: false }).waitFor()
+      const seen = await card.evaluate((element) => ({
+        share: element.querySelector('[aria-label="Share"]') !== null,
+        buttons: [...element.querySelectorAll("button")].map((button) => button.textContent),
+      }))
+      if (seen.share || seen.buttons.join() !== "Not now") {
+        throw new Error(`in-app card: ${JSON.stringify(seen)}`)
+      }
+      const axe = await axeCleanIn(page, `${INSTALL_DEMO} [data-e2e="install-ios-in-app"] section`)
+      await card.getByRole("button", { name: "Not now" }).press("Enter")
+      await card.waitFor({ state: "detached" })
+      const focused = await page.evaluate(() => document.activeElement?.getAttribute("data-e2e"))
+      const state = await part.locator('[data-e2e="install-mode"]').textContent()
+      if (focused !== "install-mode" || state !== "mode: ios-in-app, dismissed: true") {
+        throw new Error(`after Not now: focus on ${focused}, ${state}`)
+      }
+      return `Safari sentence, Not now only; hidden after Not now, focus on returnFocus; axe: ${axe}`
+    },
+  },
+  {
     name: "ConflictChooser: when the page hands over a new list while Keep mine saves, focus " +
       "still moves to the next conflict once the item leaves",
     pageId: "system",

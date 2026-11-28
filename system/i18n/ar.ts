@@ -75,6 +75,8 @@ export default {
   "InstallPrompt.install": "تثبيت",
   "InstallPrompt.iosAfter": "ثم «إضافة إلى الشاشة الرئيسية».",
   "InstallPrompt.iosBefore": "اضغط على",
+  "InstallPrompt.iosInApp":
+    "افتح هذه الصفحة في Safari أولًا، ثم اضغط على «مشاركة» واختر «إضافة إلى الشاشة الرئيسية».",
   "InstallPrompt.iosShare": "مشاركة",
   "InstallPrompt.title": "ثبّت هذا التطبيق",
   "MailedCodeStep.changeEmail": "استخدم بريدًا آخر",

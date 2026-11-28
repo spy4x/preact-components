@@ -20,6 +20,34 @@ describe("InstallPrompt", () => {
     expect(html).toContain("then Add to Home Screen.")
     expect(html).toMatch(/<svg[^>]*aria-label="Share"/)
     expect(html).not.toMatch(/>Install<\/button>/)
+    expect(html).not.toContain("Open this page in Safari first")
+  })
+
+  it("asks to open the page in Safari in an iOS in-app browser, with no Share steps or Install", () => {
+    const html = render(<InstallPrompt mode="ios-in-app" onInstall={noop} onDismiss={noop} />)
+
+    expect(html).toContain(
+      "Open this page in Safari first, then tap Share and Add to Home Screen.",
+    )
+    expect(html).toContain('data-install-mode="ios-in-app"')
+    expect(html).toMatch(/<button[^>]*>Not now<\/button>/)
+    expect(html).not.toContain('aria-label="Share"')
+    expect(html).not.toContain("then Add to Home Screen.")
+    expect(html).not.toMatch(/>Install<\/button>/)
+  })
+
+  it("uses the caller's words for the in-app browser sentence", () => {
+    const html = render(
+      <InstallPrompt
+        mode="ios-in-app"
+        onInstall={noop}
+        onDismiss={noop}
+        labels={{ iosInApp: "Use Safari to install." }}
+      />,
+    )
+
+    expect(html).toContain("Use Safari to install.")
+    expect(html).not.toContain("Open this page in Safari first")
   })
 
   it("renders nothing once installed or when there is nothing to offer", () => {

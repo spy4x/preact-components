@@ -1,10 +1,11 @@
 /**
  * `InstallPrompt` — a small, dismissible card that offers to install the app: an Install button
  * where the browser has an install dialog, and the Share, then Add to Home Screen steps on an
- * iPhone or iPad, where it has none.
+ * iPhone or iPad, where it has none. In an in-app browser on iOS, which has no Add to Home Screen,
+ * it asks the person to open the page in Safari first.
  *
  * It takes the mode and two callbacks, so it renders from `createInstallPrompt` in
- * `@spy4x/preact-signals` or from anything else that knows the same four modes.
+ * `@spy4x/preact-signals` or from anything else that knows the same five modes.
  */
 
 import { cn } from "@spy4x/preact-cn"
@@ -27,6 +28,8 @@ export interface InstallPromptLabels {
   iosShare: string
   /** The sentence on iPhone and iPad, after the Share icon. */
   iosAfter: string
+  /** The sentence in an in-app browser on iPhone and iPad, which must hand over to Safari. */
+  iosInApp: string
   /** The Install button. Defaults to `"Install"`. */
   install: string
   /** The dismiss button. Defaults to `"Not now"`. */
@@ -42,6 +45,7 @@ export const DEFAULT_INSTALL_PROMPT_LABELS: InstallPromptLabels = {
   iosBefore: "Tap",
   iosShare: "Share",
   iosAfter: "then Add to Home Screen.",
+  iosInApp: "Open this page in Safari first, then tap Share and Add to Home Screen.",
   install: "Install",
   dismiss: "Not now",
   failed: "That didn't work. Try again.",
@@ -49,12 +53,12 @@ export const DEFAULT_INSTALL_PROMPT_LABELS: InstallPromptLabels = {
 
 export interface InstallPromptProps {
   /**
-   * What to offer: `prompt` shows the Install button, `ios` the Share steps, and `installed` or
-   * `unavailable` render nothing, except that a card whose action is running or failed stays on
-   * `unavailable` to show `labels.failed`. `createInstallPrompt().mode` in `@spy4x/preact-signals`
-   * fits.
+   * What to offer: `prompt` shows the Install button, `ios` the Share steps, `ios-in-app` the
+   * sentence asking to open the page in Safari first, and `installed` or `unavailable` render
+   * nothing, except that a card whose action is running or failed stays on `unavailable` to show
+   * `labels.failed`. `createInstallPrompt().mode` in `@spy4x/preact-signals` fits.
    */
-  mode: "prompt" | "ios" | "installed" | "unavailable"
+  mode: "prompt" | "ios" | "ios-in-app" | "installed" | "unavailable"
   /**
    * Opens the browser's install dialog. A returned promise keeps the button busy until it ends; a
    * rejection or a throw is caught here and shows `labels.failed`.
@@ -90,8 +94,8 @@ export function InstallPrompt(
   const [failed, setFailed] = useState(false)
   const card = useRef<HTMLElement>(null)
   /** The last mode that offered something, to draw the card by while it shows a failure. */
-  const offered = useRef<"prompt" | "ios">("prompt")
-  if (mode === "prompt" || mode === "ios") offered.current = mode
+  const offered = useRef<"prompt" | "ios" | "ios-in-app">("prompt")
+  if (mode === "prompt" || mode === "ios" || mode === "ios-in-app") offered.current = mode
   const drawn = offered.current
   // A store ends the offer when the install dialog fails to open, so an `unavailable` card stays
   // while Install runs and while its failure shows: it says what happened instead of vanishing.
@@ -131,6 +135,8 @@ export function InstallPrompt(
           <p class="font-medium">{words.title}</p>
           {drawn === "prompt"
             ? <p class="text-sm text-muted">{words.body}</p>
+            : drawn === "ios-in-app"
+            ? <p class="text-sm text-muted">{words.iosInApp}</p>
             : (
               <p class="text-sm text-muted">
                 {words.iosBefore}{" "}
