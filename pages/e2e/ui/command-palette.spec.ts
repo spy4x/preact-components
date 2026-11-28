@@ -266,6 +266,59 @@ async function openEarlyPalette(page: Page) {
   }
 }
 
+/** One moment the early palette showed "Searching…": the rows listed and the field's description. */
+interface EarlySearching {
+  rows: string
+  describedBy: string | null
+}
+
+/** Where {@link recordEarlySearching} keeps its moments in the page. */
+const EARLY_SEARCHING_KEY = "e2eEarlySearching"
+
+/**
+ * Records, from inside the page, every render in which the early palette's open dialog shows
+ * "Searching…", with its rows and the field's `aria-describedby` then. The label shows only
+ * between the palette's 300 ms slow mark and the notes' answer 1.5 s in, a window the steps of a
+ * spec on a loaded host can outlast, so a locator waiting for it could miss it. Call it before
+ * opening the palette; read the moments with {@link earlySearchingSeen}.
+ */
+async function recordEarlySearching(page: Page): Promise<void> {
+  await page.evaluate((key) => {
+    const seen: EarlySearching[] = []
+    const observer = new MutationObserver(() => {
+      const dialog = document.querySelector(`dialog[data-e2e="palette-early"]`)
+      const searching = dialog?.querySelector(`[data-e2e="palette-early-searching"]`)
+      if (!dialog || !searching?.checkVisibility()) return
+      seen.push({
+        rows: [...dialog.querySelectorAll(`[role="option"]`)]
+          .map((option) => option.querySelector("span span")?.textContent ?? "")
+          .join("|"),
+        describedBy: dialog.querySelector(`[role="combobox"]`)?.getAttribute("aria-describedby") ??
+          null,
+      })
+    })
+    observer.observe(document.documentElement, {
+      subtree: true,
+      childList: true,
+      attributes: true,
+      attributeFilter: ["open", "aria-describedby"],
+    })
+    Object.assign(globalThis, { [key]: { seen, observer } })
+  }, EARLY_SEARCHING_KEY)
+}
+
+/** Stops {@link recordEarlySearching} and returns the moments it recorded, in order. */
+function earlySearchingSeen(page: Page): Promise<EarlySearching[]> {
+  return page.evaluate((key) => {
+    const record = (globalThis as unknown as Record<
+      string,
+      { seen: EarlySearching[]; observer: MutationObserver }
+    >)[key]
+    record.observer.disconnect()
+    return record.seen
+  }, EARLY_SEARCHING_KEY)
+}
+
 /** Specs for early answers that the remote `CommandPalette`'s `search` lists through `show`. */
 function earlyAnswerSpecs(): Spec[] {
   const commands = ["New note", "Open settings", "Sign out"]
@@ -280,17 +333,22 @@ function earlyAnswerSpecs(): Spec[] {
         const before = Number(
           await page.locator(`[data-e2e="palette-early-answered"]`).textContent(),
         )
+        await recordEarlySearching(page)
         const palette = await openEarlyPalette(page)
         await palette.rowsAre(commands)
         const early = await palette.answered()
         if (early !== before) throw new Error(`the commands waited for ${early - before} answers`)
-        // "Searching…" takes the hint's place while the notes load, then the hint comes back.
-        await palette.dialog.locator(`[data-e2e="palette-early-searching"]`).waitFor()
-        const whileSearching = await palette.field.getAttribute("aria-describedby")
-        if (whileSearching !== null) {
-          throw new Error(`while searching, the field is described by ${whileSearching}`)
-        }
         await palette.rowsAre([...notes, ...commands])
+        // "Searching…" takes the hint's place while the notes load, then the hint comes back.
+        const searching = await earlySearchingSeen(page)
+        if (searching.length === 0) throw new Error(`"Searching…" never showed`)
+        if (searching[0].rows !== commands.join("|")) {
+          throw new Error(`"Searching…" first showed over the rows ${searching[0].rows}`)
+        }
+        const hinted = searching.find(({ describedBy }) => describedBy !== null)
+        if (hinted) {
+          throw new Error(`while searching, the field is described by ${hinted.describedBy}`)
+        }
         const hint = await palette.field.getAttribute("aria-describedby")
         const words = hint === null ? "" : await page.locator(`[id="${hint}"]`).textContent()
         if (words !== "> for commands") throw new Error(`the field is described by "${words}"`)
