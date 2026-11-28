@@ -85,16 +85,16 @@ describe("the ink theme", () => {
   })
 
   it("paints no primary or accent of its own, so the app's brand colour shows through", () => {
-    for (const token of ["--color-primary", "--color-primary-foreground", "--color-accent"]) {
+    // #752: --color-primary-muted too; the default dark palette derives it from the accent.
+    const tokens = [
+      "--color-primary",
+      "--color-primary-foreground",
+      "--color-primary-muted",
+      "--color-accent",
+    ]
+    for (const token of tokens) {
       expect(INK_CSS, `ink declares ${token}`).not.toMatch(new RegExp(`${token}:`))
     }
-  })
-
-  it("draws links and headings in the app's accent, below an app's own :root value", async () => {
-    const css = await compileInk(["btn-primary"])
-    expect(css).toMatch(
-      /@layer theme\.preact-tokens \{\s*\.dark\[data-theme="ink"\] \{\s*--color-primary-muted: var\(--color-accent-400\);/,
-    )
   })
 
   it("keeps the focus ring and the nav indicator off the accent", () => {
