@@ -1087,8 +1087,12 @@ export const PRESET_CSS: string = `/*
         background-color: var(--color-surface, oklch(0.278 0.033 256.848));
       }
 
+      /* --color-table-header is defined only by ink, so the default dark palette keeps this fill. */
       & thead {
-        background-color: var(--color-border-subtle, oklch(0.373 0.034 259.733));
+        background-color: var(
+          --color-table-header,
+          var(--color-border-subtle, oklch(0.373 0.034 259.733))
+        );
       }
 
       & th,

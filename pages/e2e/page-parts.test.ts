@@ -90,18 +90,19 @@ Deno.test("the rest of the page leaves out exactly what the parts scan", () => {
 
 Deno.test("the rest of the page keeps the known counts the parts do not take, so the totals hold", () => {
   const page: Record<string, KnownCount> = {
-    "color-contrast": [3, 1],
+    "color-contrast": [3, 1, 2],
     "color-contrast: nonBmp": [9, 9],
   }
   const parts: PagePart[] = [
-    { what: "one", known: { "color-contrast": [1, 0] } },
+    { what: "one", known: { "color-contrast": [1, 0, 1] } },
     { what: "two", known: { "color-contrast": [2, 1], "color-contrast: nonBmp": [3, 3] } },
   ]
+  // An ink count left out is the dark one: part two takes 1 in ink, and the nonBmp rest keeps 6.
   assertEquals(restKnown(page, parts), {
-    "color-contrast": [0, 0],
-    "color-contrast: nonBmp": [6, 6],
+    "color-contrast": [0, 0, 0],
+    "color-contrast: nonBmp": [6, 6, 6],
   })
-  assertEquals(page["color-contrast"], [3, 1])
+  assertEquals(page["color-contrast"], [3, 1, 2])
   assertThrows(
     () => restKnown(page, [...parts, { what: "three", known: { "color-contrast": [1, 0] } }]),
     Error,

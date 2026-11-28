@@ -1,7 +1,7 @@
 /**
- * Playwright specs for the guide as a whole: axe-core on every page, in both palettes, with the
- * contrast rule in a spec of its own; and the contrast rule on every hovered row and item, in the
- * light, dark and ink palettes.
+ * Playwright specs for the guide as a whole: axe-core on every page, in both default palettes, with
+ * the contrast rule in a spec of its own, which runs in the ink palette too; and the contrast rule on
+ * every hovered row and item, in the light, dark and ink palettes.
  *
  * Each page is scanned as it loads, with its hovered rows forced on. Nothing that opens is scanned:
  * no dialog, menu, popover, error state or toast. A green scan says nothing about those; a
@@ -12,7 +12,14 @@
 import { AxeBuilder } from "@axe-core/playwright"
 import type { Page } from "playwright-core"
 import { type GuidePageId, guidePageIds } from "@spy4x/preact-ui-guide/registry"
-import { type KnownCount, partSelectors, restExcludes, restKnown } from "./page-parts.ts"
+import {
+  type KnownCount,
+  knownIn,
+  type Palette,
+  partSelectors,
+  restExcludes,
+  restKnown,
+} from "./page-parts.ts"
 import { CONTRAST, CONTRAST_PARTS, GLYPH, OBSCURED, OVERLAPPED, SHORT } from "./ui-guide-parts.ts"
 import type { Spec } from "./runner.ts"
 
@@ -75,7 +82,8 @@ const KNOWN_INCOMPLETE: Record<GuidePageId, Readonly<Record<string, KnownCount>>
     [OBSCURED]: [9, 9],
     // Key symbols in `Kbd` (Command, Shift, Option, the arrows) and five disclosure chevrons.
     [GLYPH]: [11, 11],
-    // A one-character `Kbd` key that axe measured below the ratio and left undecided.
+    // A one-character `Kbd` key that axe leaves undecided for its short text, with no ratio
+    // measured (#776). Its colours read 18.3:1 in light, 17.0:1 in dark and 16.0:1 in ink.
     [SHORT]: [1, 1],
     // The `LoopVideo` card's silent loop, which has no `<track kind="captions">`: a clip with no
     // sound has nothing to caption, and its `aria-label` is its text alternative.
@@ -241,13 +249,14 @@ function ruleShares(pageId: GuidePageId): readonly RuleShare[] {
  * elements as is known, and on none when the rule is not listed; and axe leaves no more elements
  * undecided, per rule and reason, than `KNOWN_INCOMPLETE` lists for that share.
  */
-function axeSpec(pageId: GuidePageId, colorScheme: "light" | "dark", share: RuleShare): Spec {
+function axeSpec(pageId: GuidePageId, palette: Palette, share: RuleShare): Spec {
   const named = ruleShares(pageId).flatMap((other) => other.rules ?? [])
   const inShare = (rule: string) => share.rules ? share.rules.includes(rule) : !named.includes(rule)
   const contrast = share.rules?.includes(CONTRAST) ?? false
+  const colorScheme = palette === "light" ? "light" : "dark"
   return {
     name: `axe: the ${pageId} page has no new and no fixed ${share.what} and no new undecided ` +
-      `result in the ${colorScheme} palette`,
+      `result in the ${palette} palette`,
     pageId,
     colorScheme,
     run: async (page) => {
@@ -255,6 +264,9 @@ function axeSpec(pageId: GuidePageId, colorScheme: "light" | "dark", share: Rule
       const dark = await page.evaluate(() => document.documentElement.classList.contains("dark"))
       if (dark !== (colorScheme === "dark")) {
         throw new Error(`the page is drawn ${dark ? "dark" : "light"}, not ${colorScheme}`)
+      }
+      if (palette === "ink") {
+        await page.evaluate(() => document.documentElement.setAttribute("data-theme", "ink"))
       }
       await READY[pageId]?.(page)
       await page.addStyleTag({ content: `${STAGE_DOTS} { background-image: none !important; }` })
@@ -272,7 +284,7 @@ function axeSpec(pageId: GuidePageId, colorScheme: "light" | "dark", share: Rule
           inShare(rule) && !rule.includes(": ")
         ),
       )
-      const expected = (rule: string) => known[rule]?.[colorScheme === "light" ? 0 : 1] ?? 0
+      const expected = (rule: string) => knownIn(known[rule], palette)
       const found = new Map(violations.map(({ id, nodes }) => [id, nodes]))
 
       const problems: string[] = []
@@ -298,8 +310,7 @@ function axeSpec(pageId: GuidePageId, colorScheme: "light" | "dark", share: Rule
         Object.entries(share.known ?? KNOWN_INCOMPLETE[pageId])
           .filter(([key]) => key.includes(": ") && inShare(key.slice(0, key.indexOf(": ")))),
       )
-      const expectedUndecided = (key: string) =>
-        knownUndecided[key]?.[colorScheme === "light" ? 0 : 1] ?? 0
+      const expectedUndecided = (key: string) => knownIn(knownUndecided[key], palette)
       const undecided = new Map<string, string[]>()
       for (const { id, nodes } of incomplete) {
         for (const node of nodes) {
@@ -474,10 +485,14 @@ function hoverSpec(pageId: GuidePageId, palette: "light" | "dark" | "ink"): Spec
 }
 
 export const specs: readonly Spec[] = [
-  ...(["light", "dark"] as const).flatMap((colorScheme) =>
+  ...(["light", "dark"] as const).flatMap((palette) =>
     guidePageIds.flatMap((pageId) =>
-      ruleShares(pageId).map((share) => axeSpec(pageId, colorScheme, share))
+      ruleShares(pageId).map((share) => axeSpec(pageId, palette, share))
     )
+  ),
+  // Ink repaints colours only, so its scan runs the contrast shares alone.
+  ...guidePageIds.flatMap((pageId) =>
+    contrastShares(pageId).map((share) => axeSpec(pageId, "ink", share))
   ),
   ...(["light", "dark", "ink"] as const).flatMap((palette) =>
     guidePageIds.map((pageId) => hoverSpec(pageId, palette))
