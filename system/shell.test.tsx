@@ -1,5 +1,6 @@
 import { expect } from "@std/expect"
 import { describe, it } from "@std/testing/bdd"
+import { options } from "preact"
 import { render } from "preact-render-to-string"
 import { IconBars3 } from "@spy4x/preact-icons"
 import { DropdownItem } from "@spy4x/preact-ui/dropdown"
@@ -109,6 +110,37 @@ describe("Shell", () => {
     )
     expect(html).toContain("shell-user-menu-button")
     expect(html).toContain("Ada Lovelace")
+  })
+
+  it("draws the user menu trigger as the avatar alone, without the e-mail", () => {
+    const html = render(<Shell navItems={navItems} brand="Acme" user={user}>page</Shell>)
+    const start = html.indexOf(`data-e2e="shell-user-menu-button"`)
+    const trigger = html.slice(start, html.indexOf(`</button>`, start))
+    expect(start).toBeGreaterThan(-1)
+    expect(trigger).toContain(`AL`)
+    expect(trigger).not.toContain(user.email)
+  })
+
+  it("names the hydrated user menu by labels.userMenu, or Account menu by default", () => {
+    // The name is `Dropdown`'s `menuLabel`, which a string render never prints (#537), so this
+    // reads the prop the menu receives.
+    const menuLabel = (labels?: { userMenu: string }) => {
+      let found: unknown
+      const previous = options.vnode
+      options.vnode = (vnode) => {
+        const props = vnode.props as Record<string, unknown>
+        if (props.triggerDataE2E === `shell-user-menu-button`) found = props.menuLabel
+        previous?.(vnode)
+      }
+      try {
+        render(<Shell navItems={navItems} brand="Acme" user={user} labels={labels}>page</Shell>)
+      } finally {
+        options.vnode = previous
+      }
+      return found
+    }
+    expect(menuLabel()).toBe(`Account menu`)
+    expect(menuLabel({ userMenu: `Menu du compte` })).toBe(`Menu du compte`)
   })
 
   it("renders every user menu item", () => {
