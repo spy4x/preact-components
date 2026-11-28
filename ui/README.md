@@ -2289,10 +2289,11 @@ It takes its results one of two ways, never both:
   each pause in typing (`debounce`, 200 ms by default). A newer query or a close aborts `signal`,
   and the stale answer is ignored even when the function does not listen to it. While a call runs
   the previous results stay listed, so the list does not blink on every keystroke; once the reader
-  has waited 300 ms, "Searching…" shows beside the field (or in the list, when it is empty) and
-  is announced; the rows neither move nor fade. Enter pressed while a call runs
-  waits for its answer and picks the first row it lists, never a row of the previous query. A
-  rejection says the search failed.
+  has waited 300 ms, "Searching…" shows beside the field (on a phone, on the field's lower edge, so
+  the field keeps its width; in the list, when it is empty) and is announced; the rows neither move
+  nor fade. Enter pressed while a call runs waits for its answer and picks the first row it lists,
+  never a row of the previous query; until then the arrow keys, Home, End, PageUp and PageDown do
+  nothing. A rejection says the search failed.
 - `search(query, signal, show)`: `show(options)` lists an early answer for the same query at once,
   such as the commands that match, before the server's results arrive; the promise's answer then
   replaces it. A later answer for the same query keeps the highlighted option, found by its `id`,
