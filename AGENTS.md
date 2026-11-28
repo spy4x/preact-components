@@ -22,6 +22,12 @@ deno task --cwd pages verify --component=<name>   # one ui component's browser c
 
 A few test files need more permissions; the `test` task in `deno.jsonc` lists them.
 
+**Mutations.** Prove each `Mutation:` line with the narrowest run that guards it. A unit-tested
+decision: the one-file command above, no build (about 2 s). A browser-checked one: one `build` per
+mutated source file, then `verify --grep="<spec name>"` or `--component=<name>`, never the full
+`verify`. A mutation in `pages/e2e/`, `pages/checks/`, `pages/verify.ts` or `playwright/` needs no
+rebuild: the build fingerprint skips them. Run the full `deno task check` once, at the end.
+
 ## What belongs here
 
 A component belongs here when a future project can reuse it, even if one app uses it today.
@@ -76,8 +82,9 @@ one `needs-decision` issue, so they do not hold back the rest of their area.
 - **Behaviour needs a browser check.** String-render tests never run an effect, a ref, a key press,
   a focus change or a timer. A new browser check, or one you edit, is a Playwright spec in
   `pages/e2e/<package>.spec.ts` with axe-core; untouched ones stay in `pages/checks/`. Read
-  [`pages/README.md`](./pages/README.md), "Writing a browser check", first. Always `build` before
-  `verify`; `--static` and `--only` are not full runs. On a busy machine run the full run in parts
+  [`pages/README.md`](./pages/README.md), "Writing a browser check", first. `build` before
+  `verify` after any change outside the verify-only files ("Mutations" above); `--static` and
+  `--only` are not full runs. On a busy machine run the full run in parts
   (same file, "Running a full run in parts").
 - CI: Woodpecker runs `check`, `publish:dry`, the build and the browser checks (`e2e` in four
   shards) on every PR and every push to `main`; a PR whose title starts with `[WIP]` runs only
