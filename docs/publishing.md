@@ -45,12 +45,21 @@ minor; a fix alone bumps the patch. The whole set takes the largest bump any of 
 
 ## Steps
 
-1. In one pull request, bump `"version"` to the same new version in every package's `deno.json`
-   — `charts`, `cn`, `crud`, `icons`, `map`, `server`, `signals`, `system`, `theme`, `ui` and
-   `ui-guide` — and merge it. `pages/` has no `name` and is never published. This command lists
-   the versions the packages declare, and must print exactly one line:
+The background lead releases from the recipe in `.ringmaster/release.json`,
+without a model run: it takes the next version after the latest of the first `jsr` package on
+JSR, runs `bump` with it and opens the bump pull request (step 1), runs `checks` on the
+merged commit (steps 2 and 3, with the names file filled in for `{privateNames}`), pushes the
+`tag` (step 4) and waits until JSR shows the version for every package in `jsr`. A change to these
+steps changes the recipe in the same pull request. By hand, the steps are:
+
+1. In one pull request, set the new version in every published package's `deno.json` and merge
+   it. The task writes it into each package in `PUBLISHED_PACKAGES`
+   (`infra/scripts/private-names.ts`), and refuses a version that is not a plain `X.Y.Z` or not
+   greater than the current one. `pages/` has no `name` and is never published. The second command
+   lists the versions the packages declare, and must print exactly one line:
 
    ```bash
+   deno task release:bump 16.7.0
    grep -h '"version"' */deno.json | sort -u
    ```
 
