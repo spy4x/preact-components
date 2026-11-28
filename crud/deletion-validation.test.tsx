@@ -57,6 +57,21 @@ describe("DeletionValidation", () => {
     expect(html).not.toContain("archive this Region")
   })
 
+  it("heads the list with an h3 when the caller names no level", () => {
+    const html = render(<DeletionValidation dependencies={dependencies} model="Region" />)
+
+    expect(html).toMatch(/<h3[^>]*>Archive these first/)
+  })
+
+  it("heads the list at the level the caller asks for", () => {
+    const html = render(
+      <DeletionValidation dependencies={dependencies} model="Region" headingLevel={2} />,
+    )
+
+    expect(html).toMatch(/<h2[^>]*>Archive these first/)
+    expect(html).not.toContain("<h3")
+  })
+
   it("styles the region as the visible card once there are dependencies", () => {
     const html = render(<DeletionValidation dependencies={dependencies} model="Region" />)
     const match = html.match(/<div([^>]*)role="alert"/)
