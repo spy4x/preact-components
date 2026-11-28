@@ -164,9 +164,9 @@ export interface UnsavedGuardProps {
  *   In a browser without it (Safari before 26.2, Firefox before 147), Back and Forward leave at
  *   once and the changes are lost.
  * - After "Stay" chosen with Escape, the toolbar's Back pressed again before any click in the
- *   page skips, in Chromium, the entries the page added without a click, the guard's included,
- *   and goes to the page the tab showed before the app: only `beforeunload` asks then. After a
- *   click on "Stay", the second Back is held and asked again.
+ *   page skips, in Chromium, every entry of the app, the guard's included, and goes to the page
+ *   the tab showed before the app: only `beforeunload` asks then. After a click on "Stay", the
+ *   second Back is held and asked again.
  * - Two forms with changes on one page must share one `leaveGuard`: then one dialog asks for
  *   both. Without it each guard holds the step on its own, and "Leave" in the first dialog is
  *   asked again by the second.
