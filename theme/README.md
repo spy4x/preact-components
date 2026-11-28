@@ -587,6 +587,13 @@ accent `Kpi` and the components' focus rings — from an accent scale, not from 
   An app with a light accent points the `--color-selected-*` tokens (below) at its own text colours,
   and keeps the accent `Badge` for dark accents. For an accent lighter than about 0.5, the tints and
   steps 400 and 500 also come out of order.
+- **Links and form-field rings follow the accent too.** `--color-primary-muted`, the link tone and
+  the ring of a focused form field, is derived from the accent in every palette (#752). In dark it
+  is step 400, as the components' rings are. In light it is step 600 at the lightness a white label
+  takes, whatever label the accent takes, so it reads at 4.5:1 or better on white even for a light
+  accent such as yellow, where step 600 itself is the accent or lighter. With no token set it is
+  purple-600 in light and purple-400 in dark. An app that sets `--color-primary-muted` on `:root`
+  keeps its own.
 - The scale's block in `tokens.css` is written by `accent-scale.ts`, which holds the purple steps,
   the caps and the weights, and fits the cusp itself. `accent-scale.test.ts` fails when
   `tokens.css` differs from its output, and `deno task --cwd theme generate` runs it.
@@ -603,7 +610,7 @@ accent `Kpi` and the components' focus rings — from an accent scale, not from 
   the block, and every step except 900 draws the literal purple fallback `preset.css` carries,
   which is also what an app that skips `tokens.css` gets. Step 900 is declared outside the block,
   so it still follows the accent. In such a browser a blue-branded app gets a blue fill with a
-  purple hover, a purple dark fill and purple dark rings.
+  purple hover, a purple dark fill, purple dark rings and purple links.
 - The components' focus rings read `ring-accent-*`, not `--color-focus-ring`: that token moves the
   preset's own rings (below), and under ink the components' rings keep the accent.
 - Ink sets no accent token, so under ink the components keep the default dark accent, as before.
@@ -860,10 +867,10 @@ Ink applies to an element carrying **both** `.dark` and `data-theme="ink"` — t
 
 Ink paints no brand colour of its own: it leaves `--color-primary`, `--color-primary-foreground` and
 `--color-accent` to the app's `:root` (or, when the app sets none, to the default dark palette), so
-an app on ink keeps its brand hue in dark mode. The one accent token it sets is
-`--color-primary-muted`, the link and heading tone, to `var(--color-accent-400)`: the app's accent at
-step 400, as the default dark palette draws its rings and selected text. That declaration sits in
-the tokens' cascade layer, so an app that sets `--color-primary-muted` on `:root` still wins.
+an app on ink keeps its brand hue in dark mode: ink follows the app's accent. It sets no accent
+token at all. `--color-primary-muted`, the link and heading tone, is the default dark palette's:
+step 400 of the app's accent, derived from the accent as in every palette (#752). So under ink a
+link and a `.btn-primary` render in the same hue.
 
 Beyond repainting `--color-surface`, `--color-canvas` and the rest of the neutral tokens above, ink
 adds a handful its own: a four-step surface scale for a navigation rail
@@ -871,7 +878,8 @@ adds a handful its own: a four-step surface scale for a navigation rail
 a hairline rule colour (`--color-hairline`), two named text tones (`--color-text`,
 `--color-text-muted`), and — the reason ink exists as a second selector rather than a copy of the
 default dark palette — `--color-nav-active` and `--color-focus-ring`, split off `--color-primary`
-so focus states and a rail's current item do not use the accent. `--color-nav-active` is a
+so the preset's own focus rings and a rail's current item do not use the accent (the components'
+rings, `ring-focus`, keep it). `--color-nav-active` is a
 **foreground/indicator** colour: a rail draws its current item's icon or text in it, not its
 background — the background a rail paints behind its current item is `--color-surface-active`
 above, a separate token. A hovered row or ghost button takes that same surface: ink sets
@@ -879,8 +887,8 @@ above, a separate token. A hovered row or ghost button takes that same surface: 
 palette's gray-700 it read 3.58:1). `--color-focus-ring` is read by three focus rules in `preset.css`:
 `.btn`'s ring under any `.dark`, and the `.pc-input`/`.pc-select`/`.pc-textarea` outline. Each falls back to
 the accent, `--color-primary-muted`, where the token is not set, which is everywhere but ink. So the
-form fields draw the rings they drew before, and a focused `.btn` in default dark draws purple-400
-instead of the browser's near-black ring (#297). The default palette's `--color-primary` stays
+form fields draw the rings they drew before, and a focused `.btn` in default dark draws the accent's
+step 400 (purple-400 by default) instead of the browser's near-black ring (#297). The default palette's `--color-primary` stays
 documented as covering buttons, links, focus rings and active nav all at once — ink is the one
 palette that splits focus rings and a rail's active indicator off it, onto their own tokens. Everything else that reads
 `--color-primary` or `--color-primary-muted` in `preset.css` still carries the accent under ink:
