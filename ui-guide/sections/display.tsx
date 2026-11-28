@@ -3008,7 +3008,7 @@ const rows = [
         name: "recent",
         type: "{ storageKey, storage: () => KeyValueStore }",
         description:
-          "Keeps the last 10 top-level picks under `storageKey` in `storage()`, such as `() => localStorage`, and lists up to 5 under “Recent” on the empty query, skipping ids no option has now. Blocked storage only forgets. Call `clearCommandPaletteRecent(storageKey, storage)` on sign-out.",
+          "Keeps the last 10 top-level picks under `storageKey` in `storage()`, such as `() => localStorage`, and lists up to 5 under “Recent” on the empty query, skipping ids no option has now. Blocked storage only forgets. `addCommandPaletteRecent(storageKey, storage, id)` adds a pick made elsewhere. Call `clearCommandPaletteRecent(storageKey, storage)` on sign-out.",
       },
       {
         name: "hotkeys",
@@ -3072,6 +3072,8 @@ const rows = [
 
 const recent = { storageKey: "app-palette", storage: () => localStorage }
 <CommandPalette options={options} recent={recent} onSelect={(option) => run(option.id)} />
+// A record opened from a list outside the palette:
+addCommandPaletteRecent(recent.storageKey, recent.storage, record.id)
 // On sign-out:
 clearCommandPaletteRecent(recent.storageKey, recent.storage)
 

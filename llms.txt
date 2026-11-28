@@ -1017,6 +1017,7 @@ acquireScrollLock	helper	@spy4x/preact-ui	Hold the page's scroll lock until the 
 activeDescendant	helper	@spy4x/preact-ui	`aria-activedescendant` for the combobox input, or `undefined` when nothing is highlighted.
 activeFilterChips	helper	@spy4x/preact-ui	Every active filter as a chip: one per chosen option of each menu, in menu order, then one per pressed toggle.
 activeShortcuts	helper	@spy4x/preact-ui	The shortcuts that work now: all of them, or, while single keys are off, the ones that are not `isSingleKey`.
+addCommandPaletteRecent	helper	@spy4x/preact-ui	Adds `id` to the recent picks a `CommandPalette` keeps under `storageKey`, such as for a record opened from a list outside the palette.
 addTags	helper	@spy4x/preact-ui	Add typed texts to a tag list: each is trimmed, a blank one is skipped, and one the list already holds — compared without regard to case — is left out and reported.
 applyScrollLock	helper	@spy4x/preact-ui	Lock page scrolling without moving the page, and hand back how to undo it.
 ariaKeyShortcutList	helper	@spy4x/preact-ui	The `aria-keyshortcuts` value of a control the app reaches with several keys: each single press through `ariaKeyShortcuts`, separated by spaces, or `undefined` when none is left.
