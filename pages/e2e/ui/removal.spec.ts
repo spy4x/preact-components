@@ -42,9 +42,14 @@ function removalDemo(page: Page) {
       demo.locator(`[data-e2e="removal-settled"]`).getByText(text, { exact: true }).waitFor(),
     /** Waits for the focus to be on one element. */
     focusIsOn: (target: Locator) => target.and(page.locator(":focus")).waitFor(),
-    /** Opens a row's dialog and confirms the removal. */
+    /**
+     * Opens a row's dialog and confirms the removal. The row's button is pressed with Enter, as a
+     * keyboard user does, so the press does not depend on where the pointer lands: a click whose
+     * release lands off the button, because the page scrolled or moved after the press, activates
+     * nothing, and the dialog never opens.
+     */
     confirm: async (name: string) => {
-      await open(name).click()
+      await open(name).press("Enter")
       await dialog.locator(`[data-e2e="confirm-dialog-confirm"]`).click()
     },
     /** Waits for the dialog to be gone with its row, and for the focus to be on one element. */
