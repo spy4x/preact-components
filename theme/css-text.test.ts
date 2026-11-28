@@ -81,7 +81,8 @@ const EXPECTED_ROOT_TOKENS: Record<string, string> = {
   // and added the accent the components read: --color-primary, and step 900 of its scale.
   "--color-primary": "oklch(0.381 0.176 304.987)",
   "--color-primary-foreground": "oklch(0.977 0.014 308.299)",
-  "--color-primary-muted": "oklch(0.558 0.288 302.321)",
+  // #752: the link tone follows the accent; purple-600 is the fallback and the default's value.
+  "--color-primary-muted": "var(--accent-link-tone, oklch(0.558 0.288 302.321))",
   "--color-accent": "var(--color-primary)",
   "--color-accent-900": "var(--color-accent)",
   "--color-surface": "oklch(1 0 0)",
@@ -150,7 +151,8 @@ const EXPECTED_DARK_TOKENS: Record<string, string> = {
   // #380: the components' accent stays purple-900 where --color-primary is near-black chrome.
   "--color-accent": "oklch(0.381 0.176 304.987)",
   "--color-primary-foreground": "oklch(0.977 0.014 308.299)",
-  "--color-primary-muted": "oklch(0.714 0.203 305.504)",
+  // #752: step 400 of the accent, as ink drew it; purple-400 is the fallback.
+  "--color-primary-muted": "var(--color-accent-400, oklch(0.714 0.203 305.504))",
   "--color-surface": "oklch(0.278 0.033 256.848)",
   "--color-canvas": "oklch(0.21 0.034 264.665)",
   "--color-border-subtle": "oklch(0.373 0.034 259.733)",

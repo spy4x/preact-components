@@ -11,7 +11,7 @@
     color-scheme: light;
     --color-primary: oklch(0.381 0.176 304.987);
     --color-primary-foreground: oklch(0.977 0.014 308.299);
-    --color-primary-muted: oklch(0.558 0.288 302.321);
+    --color-primary-muted: var(--accent-link-tone, oklch(0.558 0.288 302.321));
     --color-accent: var(--color-primary);
     --color-accent-900: var(--color-accent);
     --color-accent-foreground: oklch(1 0 0);
@@ -66,7 +66,7 @@
     color-scheme: dark;
     --color-primary: oklch(0.381 0.176 304.987);
     --color-primary-foreground: oklch(0.977 0.014 308.299);
-    --color-primary-muted: oklch(0.558 0.288 302.321);
+    --color-primary-muted: var(--accent-link-tone, oklch(0.558 0.288 302.321));
     --color-accent: var(--color-primary);
     --color-accent-900: var(--color-accent);
     --color-accent-foreground: oklch(1 0 0);
@@ -118,7 +118,7 @@
     --color-primary: oklch(0.21 0.006 285.885);
     --color-accent: oklch(0.381 0.176 304.987);
     --color-primary-foreground: oklch(0.977 0.014 308.299);
-    --color-primary-muted: oklch(0.714 0.203 305.504);
+    --color-primary-muted: var(--color-accent-400, oklch(0.714 0.203 305.504));
     --color-surface: oklch(0.278 0.033 256.848);
     --color-canvas: oklch(0.21 0.034 264.665);
     --color-hover: oklch(0.373 0.034 259.733);
@@ -167,6 +167,7 @@
       --color-accent-700: oklch( from var(--accent-label-probe) calc((1 - alpha) * min(0.5, l * 0.496 / 0.381) + alpha * (l)) min( c * (1 + 0.505682 * max(0, (cos((h - 304.987) * 1deg) - 0.98) * 50)), (0.193 + 0.0403 * cos(h * 1deg) - 0.02 * sin(h * 1deg) - 0.0001 * cos(h * 2deg) - 0.0435 * sin(h * 2deg) + 0.0037 * cos(h * 3deg) + 0.019 * sin(h * 3deg)) * max(0, min(((1 - alpha) * min(0.5, l * 0.496 / 0.381) + alpha * (l)) / (0.7432 - 0.128 * cos(h * 1deg) + 0.1234 * sin(h * 1deg) + 0.0365 * cos(h * 2deg) - 0.0114 * sin(h * 2deg) + 0.0153 * cos(h * 3deg) - 0.0628 * sin(h * 3deg)), (1 - ((1 - alpha) * min(0.5, l * 0.496 / 0.381) + alpha * (l))) / (1 - (0.7432 - 0.128 * cos(h * 1deg) + 0.1234 * sin(h * 1deg) + 0.0365 * cos(h * 2deg) - 0.0114 * sin(h * 2deg) + 0.0153 * cos(h * 3deg) - 0.0628 * sin(h * 3deg))))) + 0.038 * max(0, (cos((h - 304.987) * 1deg) - 0.98) * 50) ) calc(h - 3.063) / 1 );
       --color-accent-800: oklch( from var(--accent-label-probe) calc((1 - alpha) * min(0.545, l * 0.438 / 0.381) + alpha * (l + 0.05)) min( c * (1 + 0.238636 * max(0, (cos((h - 304.987) * 1deg) - 0.98) * 50)), (0.193 + 0.0403 * cos(h * 1deg) - 0.02 * sin(h * 1deg) - 0.0001 * cos(h * 2deg) - 0.0435 * sin(h * 2deg) + 0.0037 * cos(h * 3deg) + 0.019 * sin(h * 3deg)) * max(0, min(((1 - alpha) * min(0.545, l * 0.438 / 0.381) + alpha * (l + 0.05)) / (0.7432 - 0.128 * cos(h * 1deg) + 0.1234 * sin(h * 1deg) + 0.0365 * cos(h * 2deg) - 0.0114 * sin(h * 2deg) + 0.0153 * cos(h * 3deg) - 0.0628 * sin(h * 3deg)), (1 - ((1 - alpha) * min(0.545, l * 0.438 / 0.381) + alpha * (l + 0.05))) / (1 - (0.7432 - 0.128 * cos(h * 1deg) + 0.1234 * sin(h * 1deg) + 0.0365 * cos(h * 2deg) - 0.0114 * sin(h * 2deg) + 0.0153 * cos(h * 3deg) - 0.0628 * sin(h * 3deg))))) + 0.018 * max(0, (cos((h - 304.987) * 1deg) - 0.98) * 50) ) calc(h - 1.263) / 1 );
       --color-accent-950: oklch( from var(--color-accent) calc(l * 0.291 / 0.381) min( c * 0.149 / 0.176, (0.193 + 0.0403 * cos(h * 1deg) - 0.02 * sin(h * 1deg) - 0.0001 * cos(h * 2deg) - 0.0435 * sin(h * 2deg) + 0.0037 * cos(h * 3deg) + 0.019 * sin(h * 3deg)) * max(0, min((l * 0.291 / 0.381) / (0.7432 - 0.128 * cos(h * 1deg) + 0.1234 * sin(h * 1deg) + 0.0365 * cos(h * 2deg) - 0.0114 * sin(h * 2deg) + 0.0153 * cos(h * 3deg) - 0.0628 * sin(h * 3deg)), (1 - (l * 0.291 / 0.381)) / (1 - (0.7432 - 0.128 * cos(h * 1deg) + 0.1234 * sin(h * 1deg) + 0.0365 * cos(h * 2deg) - 0.0114 * sin(h * 2deg) + 0.0153 * cos(h * 3deg) - 0.0628 * sin(h * 3deg))))) + 0.017 * max(0, (cos((h - 304.987) * 1deg) - 0.98) * 50) ) calc(h - 2.27) );
+      --accent-link-tone: oklch( from var(--color-accent) min(0.545 + 0.013 * max(0, (cos((h - 304.987) * 1deg) - 0.98) * 50), l * 0.558 / 0.381) min( c * (1 + 0.636364 * max(0, (cos((h - 304.987) * 1deg) - 0.98) * 50)), (0.193 + 0.0403 * cos(h * 1deg) - 0.02 * sin(h * 1deg) - 0.0001 * cos(h * 2deg) - 0.0435 * sin(h * 2deg) + 0.0037 * cos(h * 3deg) + 0.019 * sin(h * 3deg)) * max(0, min(min(0.545 + 0.013 * max(0, (cos((h - 304.987) * 1deg) - 0.98) * 50), l * 0.558 / 0.381) / (0.7432 - 0.128 * cos(h * 1deg) + 0.1234 * sin(h * 1deg) + 0.0365 * cos(h * 2deg) - 0.0114 * sin(h * 2deg) + 0.0153 * cos(h * 3deg) - 0.0628 * sin(h * 3deg)), (1 - min(0.545 + 0.013 * max(0, (cos((h - 304.987) * 1deg) - 0.98) * 50), l * 0.558 / 0.381)) / (1 - (0.7432 - 0.128 * cos(h * 1deg) + 0.1234 * sin(h * 1deg) + 0.0365 * cos(h * 2deg) - 0.0114 * sin(h * 2deg) + 0.0153 * cos(h * 3deg) - 0.0628 * sin(h * 3deg))))) + 0.032 * max(0, (cos((h - 304.987) * 1deg) - 0.98) * 50) ) calc(h - 2.666) );
     }
   }
 }

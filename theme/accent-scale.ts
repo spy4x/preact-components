@@ -27,6 +27,10 @@
  * the origin those steps and the label read. `pages/checks/theme.ts` sweeps accents of several hues
  * and lightnesses through it in a browser.
  *
+ * **The link tone.** {@link LINK_TONE}, the light palette's `--color-primary-muted`, is step 600
+ * with no label choice: always the white-label lightness, so it reads on a white page whatever the
+ * accent.
+ *
  * With no token set the accent is purple-900, the weight is exactly 1, and every step is Tailwind's
  * purple step; `pages/checks/theme.ts` measures that, the gamut and the white-label contrast in a
  * browser. `accent-scale.test.ts` fails when `tokens.css` differs from what this writes.
@@ -198,21 +202,34 @@ function css(series: Series): string {
 /** A number as the CSS writes it: rounded, with no trailing zeros. */
 const fixed = (value: number, digits: number) => `${Number(value.toFixed(digits))}`
 
+/** A capped step's lightness: the accent's scaled by the purple step's, at most the cap. */
+function cappedLightness(step: number): string {
+  const cap = step === 600
+    ? `${LIGHTNESS_CAPS[600]} + ${PURPLE_600_ALLOWANCE} * ${NEAR_PURPLE}`
+    : `${LIGHTNESS_CAPS[step]}`
+  return `min(${cap}, l * ${PURPLE[step][0]} / 0.381)`
+}
+
 /** The step's lightness expression. */
 function lightness(step: number): string {
   const [l] = PURPLE[step]
-  const scaled = `l * ${l} / 0.381`
   if (LABEL_STEPS.includes(step)) {
-    const cap = step === 600
-      ? `${LIGHTNESS_CAPS[600]} + ${PURPLE_600_ALLOWANCE} * ${NEAR_PURPLE}`
-      : `${LIGHTNESS_CAPS[step]}`
     // `alpha` is the probe's: 1 for an accent that takes a dark label, else 0.
-    return `calc((1 - alpha) * min(${cap}, ${scaled}) + alpha * (${DARK_LABEL_STEP[step]}))`
+    return `calc((1 - alpha) * ${cappedLightness(step)} + alpha * (${DARK_LABEL_STEP[step]}))`
   }
-  if (step in LIGHTNESS_CAPS) return `min(${LIGHTNESS_CAPS[step]}, ${scaled})`
-  if (step === 950) return `calc(${scaled})`
+  if (step in LIGHTNESS_CAPS) return cappedLightness(step)
+  if (step === 950) return `calc(l * ${l} / 0.381)`
   return `${l}`
 }
+
+/**
+ * The light palette's link and form-ring tone, which `tokens.css` reads as `--color-primary-muted`.
+ * It is step 600 as if the accent always took the white label: at or below step 600's cap, white
+ * clears 4.5:1, so this tone does on a white page too. Step 600 itself is no use here, because for
+ * an accent that takes the dark label it is the accent or lighter, unreadable as text on white.
+ * With no token set it is purple-600, as step 600 is.
+ */
+export const LINK_TONE = "--accent-link-tone"
 
 /** `channel` (0-1, sRGB) as linear light, clamped to the gamut the screen draws. */
 const linear = (channel: string) => `pow((clamp(0, ${channel}, 1) + 0.055) / 1.055, 2.4)`
@@ -241,20 +258,23 @@ export function accentScaleBlock(): string {
   const lc = css(cuspLightness)
   const cc = css(cuspChroma)
 
-  const declarations = STEPS.map((step) => {
+  /**
+   * `name` as purple step `step`'s chroma and hue at `stepLightness`, from the accent, or from the
+   * label probe when `label` is set.
+   */
+  const derived = (name: string, step: number, stepLightness: string, label: boolean) => {
     const [l, c, h] = PURPLE[step]
     const ratio = c / PURPLE[900][1]
     const grow = ratio > 1
       ? `c * (1 + ${fixed(ratio - 1, 6)} * ${NEAR_PURPLE})`
       : `c * ${c} / 0.176`
     const allowance = fixed(Math.max(0, c - triangle(l)) + ALLOWANCE_MARGIN, 3)
-    const stepLightness = lightness(step)
     const inner = stepLightness.replace(/^calc\(/, "(")
-    const origin = LABEL_STEPS.includes(step) ? "var(--accent-label-probe)" : "var(--color-accent)"
-    const alpha = LABEL_STEPS.includes(step) ? "\n      / 1" : ""
+    const origin = label ? "var(--accent-label-probe)" : "var(--color-accent)"
+    const alpha = label ? "\n      / 1" : ""
     const offset = Number((h - purpleHue).toFixed(3))
     const hue = `calc(h ${offset < 0 ? "-" : "+"} ${Math.abs(offset)})`
-    return `    --color-accent-${step}: oklch(
+    return `    ${name}: oklch(
       from ${origin}
       ${stepLightness}
       min(
@@ -263,7 +283,12 @@ export function accentScaleBlock(): string {
       )
       ${hue}${alpha}
     );`
-  })
+  }
+
+  const declarations = STEPS.map((step) =>
+    derived(`--color-accent-${step}`, step, lightness(step), LABEL_STEPS.includes(step))
+  )
+  declarations.push(derived(LINK_TONE, 600, cappedLightness(600), false))
 
   return `@supports (color: oklch(from red calc(pow(l, 2)) max(0, c * cos(h * 1deg)) calc(h + alpha))) {
   :root {

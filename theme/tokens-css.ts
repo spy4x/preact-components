@@ -45,7 +45,10 @@ export const TOKENS_CSS: string = `/*
        form fields, and of \`.btn\` under \`.dark\`; an app sets --color-focus-ring to move both off it. */
     --color-primary: oklch(0.381 0.176 304.987); /* purple-900 */
     --color-primary-foreground: oklch(0.977 0.014 308.299); /* purple-50 */
-    --color-primary-muted: oklch(0.558 0.288 302.321); /* purple-600 */
+    /* The link tone, from the accent (#752): step 600 at its white-label lightness, so it reads at
+       4.5:1 on white even for a light accent. Worked out in the block at the end of this file; a
+       browser that skips that block keeps this fallback, purple-600, the default accent's tone. */
+    --color-primary-muted: var(--accent-link-tone, oklch(0.558 0.288 302.321));
 
     /* Accent — the colour the components draw their fills, marks and focus rings in. Step 900 of the
        scale below is this colour, and in the light palette it is --color-primary: setting
@@ -161,7 +164,9 @@ export const TOKENS_CSS: string = `/*
        recolours the dark palette sets --color-accent here, or on \`:root\` for both palettes. */
     --color-accent: oklch(0.381 0.176 304.987); /* purple-900 */
     --color-primary-foreground: oklch(0.977 0.014 308.299);
-    --color-primary-muted: oklch(0.714 0.203 305.504); /* purple-400 */
+    /* Step 400 of the accent (#752), as the ring and the selected text below. A browser that skips
+       the accent scale keeps the fallback, purple-400. */
+    --color-primary-muted: var(--color-accent-400, oklch(0.714 0.203 305.504));
 
     --color-surface: oklch(0.278 0.033 256.848); /* gray-800 */
     --color-canvas: oklch(0.21 0.034 264.665); /* gray-900 */
@@ -222,7 +227,7 @@ export const TOKENS_CSS: string = `/*
       --color-primary: oklch(0.21 0.006 285.885);
       --color-accent: oklch(0.381 0.176 304.987);
       --color-primary-foreground: oklch(0.977 0.014 308.299);
-      --color-primary-muted: oklch(0.714 0.203 305.504);
+      --color-primary-muted: var(--color-accent-400, oklch(0.714 0.203 305.504));
       --color-surface: oklch(0.278 0.033 256.848);
       --color-canvas: oklch(0.21 0.034 264.665);
       --color-hover: oklch(0.373 0.034 259.733);
@@ -298,7 +303,9 @@ export const TOKENS_CSS: string = `/*
    * white or near-black, whichever has more contrast on the accent (its relative luminance, worked out
    * here with \`pow()\`, decides at 0.18). For an accent that takes the dark label, steps 600-800 are
    * the accent or lighter, so the hovers keep the label at 4.5:1; \`pages/checks/theme.ts\` sweeps
-   * seven hues and eight lightnesses through it. \`accent-scale.ts\` has the reasons.
+   * seven hues and eight lightnesses through it. \`accent-scale.ts\` has the reasons. The light
+   * palette's link tone, --accent-link-tone, is step 600 with the white-label lightness for every
+   * accent, so it reads on white where step 600 of a light accent would not.
    *
    * Declared on \`:root\` only, so the scale is worked out once from the root's --color-accent and
    * inherited as colours: set --color-primary or --color-accent on \`:root\`, not on a subtree. A
@@ -409,6 +416,15 @@ export const TOKENS_CSS: string = `/*
           (0.193 + 0.0403 * cos(h * 1deg) - 0.02 * sin(h * 1deg) - 0.0001 * cos(h * 2deg) - 0.0435 * sin(h * 2deg) + 0.0037 * cos(h * 3deg) + 0.019 * sin(h * 3deg)) * max(0, min((l * 0.291 / 0.381) / (0.7432 - 0.128 * cos(h * 1deg) + 0.1234 * sin(h * 1deg) + 0.0365 * cos(h * 2deg) - 0.0114 * sin(h * 2deg) + 0.0153 * cos(h * 3deg) - 0.0628 * sin(h * 3deg)), (1 - (l * 0.291 / 0.381)) / (1 - (0.7432 - 0.128 * cos(h * 1deg) + 0.1234 * sin(h * 1deg) + 0.0365 * cos(h * 2deg) - 0.0114 * sin(h * 2deg) + 0.0153 * cos(h * 3deg) - 0.0628 * sin(h * 3deg))))) + 0.017 * max(0, (cos((h - 304.987) * 1deg) - 0.98) * 50)
         )
         calc(h - 2.27)
+      );
+      --accent-link-tone: oklch(
+        from var(--color-accent)
+        min(0.545 + 0.013 * max(0, (cos((h - 304.987) * 1deg) - 0.98) * 50), l * 0.558 / 0.381)
+        min(
+          c * (1 + 0.636364 * max(0, (cos((h - 304.987) * 1deg) - 0.98) * 50)),
+          (0.193 + 0.0403 * cos(h * 1deg) - 0.02 * sin(h * 1deg) - 0.0001 * cos(h * 2deg) - 0.0435 * sin(h * 2deg) + 0.0037 * cos(h * 3deg) + 0.019 * sin(h * 3deg)) * max(0, min(min(0.545 + 0.013 * max(0, (cos((h - 304.987) * 1deg) - 0.98) * 50), l * 0.558 / 0.381) / (0.7432 - 0.128 * cos(h * 1deg) + 0.1234 * sin(h * 1deg) + 0.0365 * cos(h * 2deg) - 0.0114 * sin(h * 2deg) + 0.0153 * cos(h * 3deg) - 0.0628 * sin(h * 3deg)), (1 - min(0.545 + 0.013 * max(0, (cos((h - 304.987) * 1deg) - 0.98) * 50), l * 0.558 / 0.381)) / (1 - (0.7432 - 0.128 * cos(h * 1deg) + 0.1234 * sin(h * 1deg) + 0.0365 * cos(h * 2deg) - 0.0114 * sin(h * 2deg) + 0.0153 * cos(h * 3deg) - 0.0628 * sin(h * 3deg))))) + 0.032 * max(0, (cos((h - 304.987) * 1deg) - 0.98) * 50)
+        )
+        calc(h - 2.666)
       );
     }
   }

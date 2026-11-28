@@ -511,7 +511,250 @@ export const specs: readonly Spec[] = [
       return `face ${seen.arabicFace.join(", ")}, tracking ${seen.headingTracking}`
     },
   },
+  ...primaryMutedSpecs(),
 ]
+
+/** How a spec draws the root: the light palette, `.dark`, ink, or the auto-dark marker. */
+type Mode = "light" | "dark" | "ink" | "auto"
+
+/** A colour to read: a CSS colour expression, or a class and the property its element paints. */
+type Probe = string | [className: string, property: "color" | "background-color"]
+
+/** An app's accent on `:root`, unlayered, as the theme README tells an app to set it. */
+const brandOnRoot = (colour: string) =>
+  `:root { --color-primary: ${colour}; --color-accent: ${colour}; }`
+
+/** Purple-600 and purple-400: the default light and dark link tones. */
+const PURPLE_600 = "oklch(0.558 0.288 302.321)"
+const PURPLE_400 = "oklch(0.714 0.203 305.504)"
+
+/**
+ * Each probe's colour as sRGB bytes, painted on a canvas, with `css` added to the page and the
+ * root drawn in `mode`. Everything is put back before it returns.
+ */
+function coloursIn(
+  page: Page,
+  mode: Mode,
+  css: string,
+  probes: Record<string, Probe>,
+): Promise<Record<string, number[]>> {
+  return page.evaluate(({ mode, css, probes, auto }) => {
+    const root = document.documentElement
+    const saved = { dark: root.classList.contains("dark"), theme: root.getAttribute("data-theme") }
+    const style = document.createElement("style")
+    style.textContent = css
+    document.head.append(style)
+    root.classList.toggle("dark", mode === "dark" || mode === "ink")
+    if (mode === "ink") root.setAttribute("data-theme", "ink")
+    else root.removeAttribute("data-theme")
+    if (mode === "auto") root.setAttribute(auto, "")
+
+    const canvas = document.createElement("canvas")
+    canvas.width = canvas.height = 1
+    const context = canvas.getContext("2d", { willReadFrequently: true })
+    if (!context) throw new Error("no 2D canvas to resolve colours with")
+    const result: Record<string, number[]> = {}
+    for (const [name, probe] of Object.entries(probes)) {
+      const element = document.createElement("a")
+      if (typeof probe === "string") element.style.color = probe
+      else element.className = probe[0]
+      document.body.append(element)
+      const colour = getComputedStyle(element)
+        .getPropertyValue(typeof probe === "string" ? "color" : probe[1])
+      element.remove()
+      context.clearRect(0, 0, 1, 1)
+      context.fillStyle = colour
+      context.fillRect(0, 0, 1, 1)
+      result[name] = [...context.getImageData(0, 0, 1, 1).data]
+    }
+
+    style.remove()
+    root.removeAttribute(auto)
+    root.classList.toggle("dark", saved.dark)
+    if (saved.theme === null) root.removeAttribute("data-theme")
+    else root.setAttribute("data-theme", saved.theme)
+    return result
+  }, { mode, css, probes, auto: THEME_AUTO_ATTRIBUTE })
+}
+
+/** The WCAG contrast of sRGB bytes against white. */
+function contrastOnWhite([r, g, b]: number[]): number {
+  const linear = (byte: number) => {
+    const v = byte / 255
+    return v <= 0.04045 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4
+  }
+  return 1.05 / (0.2126 * linear(r) + 0.7152 * linear(g) + 0.0722 * linear(b) + 0.05)
+}
+
+/** The OKLCH hue, in degrees, of sRGB bytes (Björn Ottosson's OKLab matrices). */
+function hueOf([r, g, b]: number[]): number {
+  const linear = [r, g, b].map((byte) => {
+    const v = byte / 255
+    return v <= 0.04045 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4
+  })
+  const [l, m, s] = [
+    [0.4122214708, 0.5363325363, 0.0514459929],
+    [0.2119034982, 0.6806995451, 0.1073969566],
+    [0.0883024619, 0.2817188376, 0.6299787005],
+  ].map((row) => Math.cbrt(row[0] * linear[0] + row[1] * linear[1] + row[2] * linear[2]))
+  const a = 1.9779984951 * l - 2.428592205 * m + 0.4505937099 * s
+  const bb = 0.0259040371 * l + 0.7827717662 * m - 0.808675766 * s
+  return (Math.atan2(bb, a) * 180 / Math.PI + 360) % 360
+}
+
+/** How far apart two hues are, in degrees, the short way round. */
+const hueGap = (a: number, b: number) => Math.min(Math.abs(a - b), 360 - Math.abs(a - b))
+
+/** `rgb(…)` of sRGB bytes, for a message. */
+const rgb = (bytes: number[]) => `rgb(${bytes.slice(0, 3).join(" ")})`
+
+/**
+ * `--color-primary-muted`, the link and form-ring tone, follows the app's accent in every palette
+ * (#752): one spec per state, each reading the computed colour in Chromium.
+ */
+function primaryMutedSpecs(): Spec[] {
+  const muted = "var(--color-primary-muted)"
+  const equal = (a: number[], b: number[]) => a.join() === b.join()
+  return [
+    {
+      name: "primary-muted: with no accent set, the light link tone is purple-600",
+      pageId: "theme",
+      run: async (page) => {
+        const seen = await coloursIn(page, "light", "", { muted, want: PURPLE_600 })
+        if (!equal(seen.muted, seen.want)) {
+          throw new Error(`the link tone is ${rgb(seen.muted)}, not ${rgb(seen.want)}`)
+        }
+        return rgb(seen.muted)
+      },
+    },
+    {
+      name: "primary-muted: a green accent on :root gives a green light link tone, 4.5:1 on white",
+      pageId: "theme",
+      run: async (page) => {
+        const green = "oklch(0.5 0.15 150)"
+        const seen = await coloursIn(page, "light", brandOnRoot(green), { muted, accent: green })
+        const gap = hueGap(hueOf(seen.muted), hueOf(seen.accent))
+        const contrast = contrastOnWhite(seen.muted)
+        const wrong = [
+          gap > 10 && `its hue is ${gap.toFixed(1)} degrees off the accent's`,
+          contrast < 4.5 && `it reads ${contrast.toFixed(2)}:1 on white`,
+        ].filter(Boolean)
+        if (wrong.length > 0) {
+          throw new Error(`the link tone ${rgb(seen.muted)}: ${wrong.join("; ")}`)
+        }
+        return `${rgb(seen.muted)}, ${contrast.toFixed(2)}:1, hue ${gap.toFixed(1)} degrees off`
+      },
+    },
+    {
+      name: "primary-muted: a light yellow accent on :root still gives a light link tone that " +
+        "reads 4.5:1 on white",
+      pageId: "theme",
+      run: async (page) => {
+        const yellow = "oklch(0.9 0.18 100)"
+        const seen = await coloursIn(page, "light", brandOnRoot(yellow), { muted, accent: yellow })
+        const contrast = contrastOnWhite(seen.muted)
+        const gap = hueGap(hueOf(seen.muted), hueOf(seen.accent))
+        const wrong = [
+          contrast < 4.5 && `it reads ${contrast.toFixed(2)}:1 on white`,
+          gap > 15 && `its hue is ${gap.toFixed(1)} degrees off the accent's`,
+        ].filter(Boolean)
+        if (wrong.length > 0) {
+          throw new Error(`the link tone ${rgb(seen.muted)}: ${wrong.join("; ")}`)
+        }
+        return `${rgb(seen.muted)}, ${contrast.toFixed(2)}:1, hue ${gap.toFixed(1)} degrees off`
+      },
+    },
+    {
+      name: "primary-muted: an app's own unlayered --color-primary-muted on :root wins over the " +
+        "derived one",
+      pageId: "theme",
+      run: async (page) => {
+        const own = "oklch(0.5 0.2 30)"
+        const css = `${brandOnRoot("oklch(0.5 0.15 150)")} :root { --color-primary-muted: ${own}; }`
+        const seen = await coloursIn(page, "light", css, { muted, own })
+        if (!equal(seen.muted, seen.own)) {
+          throw new Error(`the link tone is ${rgb(seen.muted)}, not the app's ${rgb(seen.own)}`)
+        }
+        return rgb(seen.muted)
+      },
+    },
+    {
+      name: "primary-muted: with no accent set, the .dark link tone is purple-400",
+      pageId: "theme",
+      colorScheme: "dark",
+      run: async (page) => {
+        const seen = await coloursIn(page, "dark", "", { muted, want: PURPLE_400 })
+        if (!equal(seen.muted, seen.want)) {
+          throw new Error(`the link tone is ${rgb(seen.muted)}, not ${rgb(seen.want)}`)
+        }
+        return rgb(seen.muted)
+      },
+    },
+    {
+      name:
+        "primary-muted: a green accent on :root gives a .dark link tone of the accent's step 400",
+      pageId: "theme",
+      colorScheme: "dark",
+      run: async (page) => {
+        const green = "oklch(0.5 0.15 150)"
+        const seen = await coloursIn(page, "dark", brandOnRoot(green), {
+          muted,
+          step400: "var(--color-accent-400)",
+          purple: PURPLE_400,
+        })
+        if (!equal(seen.muted, seen.step400) || equal(seen.muted, seen.purple)) {
+          throw new Error(`the link tone is ${rgb(seen.muted)}, not ${rgb(seen.step400)}`)
+        }
+        return rgb(seen.muted)
+      },
+    },
+    {
+      name: `primary-muted: under .dark and data-theme="ink" with a purple accent, a .btn-link ` +
+        `and a .btn-primary render in the same hue`,
+      pageId: "theme",
+      colorScheme: "dark",
+      run: async (page) => {
+        const purple = "oklch(0.381 0.176 304.987)"
+        const seen = await coloursIn(page, "ink", brandOnRoot(purple), {
+          link: ["btn-link", "color"],
+          button: ["btn-primary", "background-color"],
+          muted,
+          primary: "var(--color-primary)",
+        })
+        // The elements must be styled by the classes, or the hues compare unstyled defaults.
+        if (!equal(seen.link, seen.muted) || !equal(seen.button, seen.primary)) {
+          throw new Error(`the classes are not styled: ${JSON.stringify(seen)}`)
+        }
+        const gap = hueGap(hueOf(seen.link), hueOf(seen.button))
+        if (gap > 5) {
+          throw new Error(
+            `the link ${rgb(seen.link)} is ${gap.toFixed(1)} degrees of hue off the button ` +
+              rgb(seen.button),
+          )
+        }
+        return `link ${rgb(seen.link)}, button ${rgb(seen.button)}, ${gap.toFixed(1)} degrees apart`
+      },
+    },
+    {
+      name: `primary-muted: under ${THEME_AUTO_ATTRIBUTE} on a dark system, a green accent on ` +
+        `:root gives a link tone of the accent's step 400`,
+      pageId: "theme",
+      colorScheme: "dark",
+      run: async (page) => {
+        const green = "oklch(0.5 0.15 150)"
+        const seen = await coloursIn(page, "auto", brandOnRoot(green), {
+          muted,
+          step400: "var(--color-accent-400)",
+          light: "var(--accent-link-tone)",
+        })
+        if (!equal(seen.muted, seen.step400) || equal(seen.muted, seen.light)) {
+          throw new Error(`the link tone is ${rgb(seen.muted)}, not ${rgb(seen.step400)}`)
+        }
+        return rgb(seen.muted)
+      },
+    },
+  ]
+}
 
 /**
  * `.btn-input-icon`, the icon button inside an input, paints the `--color-hover` fill under the

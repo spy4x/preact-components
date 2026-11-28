@@ -49,19 +49,14 @@ describe("the auto-dark regions", () => {
     expect(css.indexOf(REGION_END)).toBeLessThan(css.lastIndexOf("}"))
   })
 
-  it("copy both of ink's blocks, the layered one inside the tokens layer again", async () => {
+  it("copy ink's one block, unlayered, with no accent token since #752", async () => {
     const css = await Deno.readTextFile(new URL("./ink.css", import.meta.url))
     const region = css.slice(css.indexOf(REGION_START), css.indexOf(REGION_END))
     const selector = `[${AUTO_DARK_ATTRIBUTE}][data-theme="ink"]`
-    expect(region.split(`${selector} {`).length).toBe(3)
+    expect(region.split(`${selector} {`).length).toBe(2)
     expect(region).toContain("--color-canvas: oklch(0.15 0.012 260);")
-    expect(region).toMatch(
-      new RegExp(
-        String.raw`@layer theme\.preact-tokens \{\s*@media \(prefers-color-scheme: dark\) \{\s*` +
-          String.raw`\[data-theme-auto\]\[data-theme="ink"\] \{\s*` +
-          String.raw`--color-primary-muted: var\(--color-accent-400\);`,
-      ),
-    )
+    expect(region).not.toContain("@layer")
+    expect(region).not.toContain("--color-primary")
   })
 })
 
