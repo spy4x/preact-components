@@ -199,7 +199,8 @@ export interface RailProps {
   children: ComponentChildren
   /**
    * Drawn after `<main>` and outside it, under the page in the content column, such as a site's
-   * `<footer>`, which keeps its `contentinfo` landmark there.
+   * `<footer>`, which keeps its `contentinfo` landmark there. One that renders nothing (`null`, a
+   * boolean, `""`) draws nothing, as with `top` and `bottom`.
    */
   footer?: ComponentChildren
   labels?: RailLabels
@@ -229,6 +230,9 @@ export interface TabBarSplit {
  *
  * `reserveMore` keeps the last slot for the sheet whatever the count, for a sheet that holds more
  * than entries (`Rail`'s `top` and `bottom` slots): then at most four entries are tabs.
+ *
+ * It knows nothing of `sheetOnly`: a caller using it directly filters sheet-only items out first
+ * and passes `reserveMore` when there were any, as `Rail` does.
  */
 export function tabBarSlots(
   items: readonly RailItem[],
@@ -536,7 +540,7 @@ export function Rail(props: RailProps): JSX.Element {
         </div>
       </aside>
 
-      {footer === undefined ? page : (
+      {isEmptySlot(footer) ? page : (
         // The page and the footer share the content column, so the footer sits under the page on
         // every width instead of becoming a third column beside it.
         <div class="flex min-w-0 flex-1 flex-col" data-e2e="rail-shell-page">
