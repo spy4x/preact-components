@@ -47,14 +47,15 @@ const variantClasses: Record<ButtonVariant, string> = {
 const sizeClasses: Record<ButtonSize | "none", string> = {
   none: "",
   sm: "px-2 py-2 text-xs",
-  md: "px-3 py-2 text-sm",
+  // 44 px tall on a phone, 36 px from `sm` up: the tap target of the house design language.
+  md: "min-h-11 px-3 py-2 text-sm sm:min-h-9",
   lg: "px-4 py-2 text-base",
 }
 
 const iconSizeClasses: Record<ButtonSize | "none", string> = {
   none: "",
   sm: "size-8",
-  md: "size-9",
+  md: "size-11 sm:size-9",
   lg: "size-10",
 }
 
@@ -67,8 +68,9 @@ const iconSizeClasses: Record<ButtonSize | "none", string> = {
  * `buttonClasses` from `./button.tsx` when the caller's class must win.
  *
  * @param variant Visual role, defaults to `"primary"`.
- * @param size Control height, defaults to `"md"`. The `icon` variant maps it to a square box.
- *   `"none"` adds no padding, gap, text size or box size.
+ * @param size Control height, defaults to `"md"`, which is at least 44 px on a phone and 36 px
+ *   from `sm` up. The `icon` variant maps it to a square box. `"none"` adds no padding, gap, text
+ *   size or box size.
  * @param className Extra utilities supplied by the caller, appended last.
  * @returns The `class` attribute value.
  */

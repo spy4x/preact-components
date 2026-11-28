@@ -105,7 +105,7 @@ describe("Button", () => {
         "font-medium transition-colors cursor-pointer focus-visible:ring-2 focus-visible:ring-focus " +
         "focus-visible:ring-offset-2 focus-visible:ring-offset-focus focus-visible:outline-hidden " +
         "disabled:pointer-events-none disabled:opacity-50 bg-accent-900 text-accent-foreground " +
-        "hover:bg-accent-800 dark:bg-accent-600 dark:hover:bg-accent-700 px-3 py-2 text-sm" +
+        "hover:bg-accent-800 dark:bg-accent-600 dark:hover:bg-accent-700 min-h-11 px-3 py-2 text-sm sm:min-h-9" +
         '">Save</button>',
     )
   })

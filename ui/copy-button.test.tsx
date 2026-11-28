@@ -14,7 +14,7 @@ describe("CopyButton", () => {
   it("renders an icon-only button when no label is given", () => {
     const html = render(<CopyButton textToCopy="abc" />)
 
-    expect(html).toContain("size-9")
+    expect(html).toContain("size-11 sm:size-9")
     expect(html).toContain('aria-label="Copy"')
   })
 
@@ -44,7 +44,7 @@ describe("CopyButton", () => {
   it("stays icon-only without text, whatever look is asked for", () => {
     const html = render(<CopyButton textToCopy="abc" variant="primary" />)
 
-    expect(html).toContain("size-9")
+    expect(html).toContain("size-11 sm:size-9")
     expect(html).not.toContain("bg-accent-900")
   })
 

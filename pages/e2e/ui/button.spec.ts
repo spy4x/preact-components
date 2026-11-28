@@ -1,3 +1,4 @@
+import type { Page } from "playwright-core"
 import type { Spec } from "../runner.ts"
 import { RING_PALETTES } from "./shared.ts"
 
@@ -96,6 +97,71 @@ function secondaryEdgeSpecs(): Spec[] {
   }))
 }
 
+/**
+ * Specs proving the `md` size is a 44 px tap target on a phone and 36 px from `sm` up, as the
+ * guide's text and icon buttons draw it (#757).
+ *
+ * @returns One spec per kind and width.
+ */
+function mdHeightSpecs(): Spec[] {
+  const box = async (page: Page, title: string) => {
+    const box = await page.locator(`#demo-Button button[title="${title}"]`).boundingBox()
+    if (box === null) throw new Error(`the "${title}" button is not drawn`)
+    return box
+  }
+  return [
+    {
+      name: "Button md at 390 px: a text button is at least 44 px tall",
+      pageId: "ui",
+      run: async (page) => {
+        await page.setViewportSize({ width: 390, height: 900 })
+        const heights = []
+        for (const title of ["primary md", "secondary md"]) {
+          const { height } = await box(page, title)
+          if (height < 44) throw new Error(`"${title}" is ${height} px tall; wanted 44 or more`)
+          heights.push(`${title} ${height} px`)
+        }
+        return heights.join(", ")
+      },
+    },
+    {
+      name: "Button md at 1024 px: a text button is 36 px tall, 38 with the secondary's border",
+      pageId: "ui",
+      run: async (page) => {
+        await page.setViewportSize({ width: 1024, height: 900 })
+        const heights = []
+        for (const [title, wanted] of [["primary md", 36], ["secondary md", 38]] as const) {
+          const { height } = await box(page, title)
+          if (height !== wanted) throw new Error(`"${title}" is ${height} px; wanted ${wanted}`)
+          heights.push(`${title} ${height} px`)
+        }
+        return heights.join(", ")
+      },
+    },
+    {
+      name: "Button md at 390 px: an icon button is at least 44 by 44 px",
+      pageId: "ui",
+      run: async (page) => {
+        await page.setViewportSize({ width: 390, height: 900 })
+        const { width, height } = await box(page, "icon md")
+        if (width < 44 || height < 44) throw new Error(`"icon md" is ${width} by ${height} px`)
+        return `icon md ${width} by ${height} px`
+      },
+    },
+    {
+      name: "Button md at 1024 px: an icon button is 36 by 36 px",
+      pageId: "ui",
+      run: async (page) => {
+        await page.setViewportSize({ width: 1024, height: 900 })
+        const { width, height } = await box(page, "icon md")
+        if (width !== 36 || height !== 36) throw new Error(`"icon md" is ${width} by ${height} px`)
+        return `icon md ${width} by ${height} px`
+      },
+    },
+  ]
+}
+
 export const specs: readonly Spec[] = [
   ...secondaryEdgeSpecs(),
+  ...mdHeightSpecs(),
 ]

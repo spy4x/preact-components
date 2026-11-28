@@ -474,7 +474,7 @@ export const buttonDemos = {
         type: `"sm" | "md" | "lg" | "none"`,
         default: `"md"`,
         description:
-          'The button\'s height and padding. `"none"` sets no padding, gap or text size; size it with `class`.',
+          'The button\'s height and padding. `"md"` is at least 44 px tall on a phone and 36 px from `sm` up. `"none"` sets no padding, gap or text size; size it with `class`.',
       },
       {
         name: "href",

@@ -93,7 +93,7 @@ describe("ThemeToggle", () => {
     const html = render(<ThemeToggle store={storeOn("light")} />)
 
     expect(html).toContain('type="button"')
-    expect(html).toContain("size-9")
+    expect(html).toContain("size-11 sm:size-9")
   })
 
   it("appends a caller class to the wrapper", () => {

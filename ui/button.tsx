@@ -19,14 +19,18 @@ export interface ButtonProps
   extends Omit<JSX.ButtonHTMLAttributes<HTMLButtonElement>, "class">, HotkeyProps {
   variant?: ButtonVariant
   /**
-   * `"none"` sets no padding, gap or text size (and, on the `icon` variant, no box size), so the
-   * caller sizes the button with its own `class`.
+   * Control height, defaults to `"md"`: at least 44 px tall on a phone (the `icon` variant a
+   * 44 px square) and 36 px from the `sm` breakpoint up. `"none"` sets no padding, gap or text
+   * size (and, on the `icon` variant, no box size), so the caller sizes the button with its own
+   * `class`.
    */
   size?: ButtonSize | "none"
   /**
    * Utilities merged into the button's own through `cn`: a caller's `px-8` replaces the size's
-   * padding (#861). Narrowed from Preact's `Signalish<string>`: this package never renders a signal
-   * in `class`.
+   * padding (#861). Only a utility of the same breakpoint is replaced: on the `md` size a caller's
+   * `size-12` or `min-h-8` replaces the phone value and leaves `sm:size-9` or `sm:min-h-9`, so pass
+   * the `sm:` value too, or use `size="none"`. Narrowed from Preact's `Signalish<string>`: this
+   * package never renders a signal in `class`.
    */
   class?: string
   children?: ComponentChildren
@@ -85,8 +89,10 @@ export interface ButtonLinkProps extends
   disabled?: boolean
   variant?: ButtonVariant
   /**
-   * `"none"` sets no padding, gap or text size (and, on the `icon` variant, no box size), so the
-   * caller sizes the button with its own `class`.
+   * Control height, defaults to `"md"`: at least 44 px tall on a phone (the `icon` variant a
+   * 44 px square) and 36 px from the `sm` breakpoint up. `"none"` sets no padding, gap or text
+   * size (and, on the `icon` variant, no box size), so the caller sizes the button with its own
+   * `class`.
    */
   size?: ButtonSize | "none"
   /** Utilities merged into the button's own; see {@link ButtonProps.class}. */
@@ -105,8 +111,9 @@ export interface ButtonLinkProps extends
  * `tailwind-merge` uses `buttonClassesJoined` from `./button-classes.ts` instead.
  *
  * @param variant Visual role, defaults to `"primary"`.
- * @param size Control height, defaults to `"md"`. The `icon` variant maps it to a square box.
- *   `"none"` adds no padding, gap, text size or box size.
+ * @param size Control height, defaults to `"md"`, which is at least 44 px on a phone and 36 px
+ *   from `sm` up. The `icon` variant maps it to a square box. `"none"` adds no padding, gap, text
+ *   size or box size.
  * @param className Extra utilities supplied by the caller.
  * @returns The `class` attribute value.
  */
