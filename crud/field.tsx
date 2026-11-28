@@ -138,6 +138,7 @@ function FieldCell<M extends object>(
         {(wiring) =>
           control({
             id: wiring.id,
+            name,
             "aria-describedby": [invalid ? issuesId : undefined, wiring["aria-describedby"]]
               .filter(Boolean).join(" ") || undefined,
             "aria-invalid": invalid ? true : undefined,
@@ -153,13 +154,15 @@ function FieldCell<M extends object>(
 }
 
 /**
- * The attributes {@link FieldCell} puts on a control: `Field`'s id and hint, plus the issues.
+ * The attributes {@link FieldCell} puts on a control: `Field`'s id and hint, the issues, and the
+ * model key as its `name`, so autofill and password managers can tell the fields apart.
  *
  * Built through `Field`'s function child rather than its cloning form, because the clone sets
  * `aria-invalid` from `Field`'s own `error` and would overwrite the one the issues ask for.
  */
 interface ControlWiring {
   id: string
+  name: string
   "aria-describedby": string | undefined
   "aria-invalid": true | undefined
 }
