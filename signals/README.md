@@ -343,9 +343,11 @@ failures, and input validation (`Provided data doesn't seem valid…`, from `@sp
   `context.generation()` before the request, and write nothing when
   `context.isCurrentGeneration(captured)` comes back false. That is also how an app-owned collection
   loader should be written — the store has no `fetch` of its own for the list, so `listOp` is
-  resolved either by a remote event or by such a loader. And the clock: a domain operation that
-  writes a row into the list through `patch` writes it whatever the list is holding, so compare the
-  two yourself — with the same `isNewer` you gave the store — before you do.
+  resolved either by a remote event or by such a loader. Nothing else sets `listOp.inProgress`, so
+  before the first list arrives it reads `false` with a `null` result: read `result`, not
+  `inProgress`, to tell a list still loading from an empty one. And the clock: a domain operation
+  that writes a row into the list through `patch` writes it whatever the list is holding, so compare
+  the two yourself — with the same `isNewer` you gave the store — before you do.
 - `selectors(context)` — derived signals, merged the same way. `extraOps` wins a key collision.
 - `session` — a signal or getter. `init()` watches it: when it goes falsy after having been truthy,
   the store resets (and `onReset` runs, for state the app owns). It calls `reset()` rather than
@@ -484,8 +486,21 @@ client entry point: the event can fire before the app renders. `isIosDevice(navi
 ```ts
 const install = createInstallPrompt({
   dismissed: {
-    read: () => localStorage.getItem("install-dismissed") === "1",
-    write: (value) => localStorage.setItem("install-dismissed", value ? "1" : "0"),
+    // Storage throws in some private windows and when the person blocks it: guard both calls.
+    read: () => {
+      try {
+        return localStorage.getItem("install-dismissed") === "1"
+      } catch {
+        return false
+      }
+    },
+    write: (value) => {
+      try {
+        localStorage.setItem("install-dismissed", value ? "1" : "0")
+      } catch {
+        // Not kept: the offer stays hidden until the page is loaded again.
+      }
+    },
   },
 })
 install.watch()

@@ -92,7 +92,14 @@ export interface ModelStoreState<
 > {
   /** Rows as received. Never reordered, never spliced by a read. */
   list: M[]
-  /** Status of the collection load. `onWs` resolves it; an app-owned loader may too. */
+  /**
+   * Status of the collection load. `onWs` resolves it; an app-owned loader may too.
+   *
+   * The store fetches no list, so it never sets `inProgress` itself: only an app-owned loader can.
+   * Before the first list arrives, `inProgress` is `false` and `result` is `null`, as after
+   * `reset()`; a loaded list, even an empty one, has a `result`. Read `result` to tell "not loaded
+   * yet" from "loaded and empty".
+   */
   listOp: OperationState<M[], RequestError>
   /** Status of the last create. */
   createOp: OperationState<M, CreateError>
