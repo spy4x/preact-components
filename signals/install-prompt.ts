@@ -8,9 +8,11 @@ import type { OnboardingDismissedPort } from "./onboarding.ts"
  *
  * Chromium browsers fire `beforeinstallprompt` when an app may be installed, and the page keeps
  * that event to call `prompt()` later, from a button. Safari on iPhone and iPad fires nothing: the
- * person installs through Share, then Add to Home Screen, so the page can only explain that. An app
- * that already runs installed (standalone) offers neither. This store tells the three apart and
- * keeps one stored "dismissed" flag, so a person who said "not now" is not asked again.
+ * person installs through Share, then Add to Home Screen, so the page can only explain that. An
+ * in-app browser on iOS (a link opened from Instagram or Gmail) has no such menu, so the page asks
+ * the person to open it in Safari first. An app that already runs installed (standalone) offers
+ * nothing. This store tells these apart and keeps one stored "dismissed" flag, so a person who said
+ * "not now" is not asked again.
  *
  * The window, the navigator, `matchMedia` and the flag's storage arrive as ports, so a test needs
  * no browser. {@link createStoredInstallPrompt} is the same store with the flag kept in the
@@ -71,10 +73,12 @@ export interface InstallPromptPorts {
  *
  * - `prompt`: the browser offered an install dialog; {@link InstallPromptStore.install} opens it.
  * - `ios`: iPhone or iPad, which has no dialog; show the Share, then Add to Home Screen steps.
+ * - `ios-in-app`: an in-app browser on iPhone or iPad ({@link isIosInAppBrowser}), which has no Add
+ *   to Home Screen; ask the person to open the page in Safari first.
  * - `installed`: the app runs standalone, or was just installed.
  * - `unavailable`: nothing to offer, such as a desktop browser that has not fired the event yet.
  */
-export type InstallPromptMode = "prompt" | "ios" | "installed" | "unavailable"
+export type InstallPromptMode = "prompt" | "ios" | "ios-in-app" | "installed" | "unavailable"
 
 /** What the install dialog came to. `unavailable` means there was no dialog to open. */
 export type InstallOutcome = "accepted" | "dismissed" | "unavailable"
@@ -85,7 +89,10 @@ export interface InstallPromptStore {
   mode: ReadonlySignal<InstallPromptMode>
   /** The stored flag: `true` once the person said "not now". */
   dismissed: ReadonlySignal<boolean>
-  /** `true` when there is something to offer (`prompt` or `ios`) and it was not dismissed. */
+  /**
+   * `true` when there is something to offer (`prompt`, `ios` or `ios-in-app`) and it was not
+   * dismissed.
+   */
   visible: ReadonlySignal<boolean>
   /**
    * Open the browser's install dialog and wait for the answer. The event can be used once, so the
@@ -112,14 +119,31 @@ export interface InstallPromptStore {
  * Share menu, so this checks the device, not the browser. iPadOS asks for desktop pages and calls
  * itself a Mac; a Mac with touch points is an iPad.
  *
- * In-app browsers on iOS, such as the web views inside Instagram or Gmail, also count as iOS here,
- * though they have no Add to Home Screen. Their user agents differ per app, so this does not try to
- * tell them apart; the steps then name a menu the person cannot find, and "Not now" hides them.
+ * In-app browsers on iOS, such as the web views inside Instagram or Gmail, count as iOS here too;
+ * {@link isIosInAppBrowser} tells them apart.
  */
 export function isIosDevice(navigator: InstallPromptNavigator | null | undefined): boolean {
   const agent = navigator?.userAgent ?? ""
   if (/iPhone|iPad|iPod/.test(agent)) return true
   return agent.includes("Macintosh") && (navigator?.maxTouchPoints ?? 0) > 1
+}
+
+/** Apps whose in-app browser names itself in the user agent, even beside a `Safari/` token. */
+const IN_APP_AGENT = /FBAN|FBAV|Instagram|Line\/|GSA\/|MicroMessenger|Twitter|Telegram/
+
+/**
+ * Whether this is an in-app browser on an iPhone or iPad, such as the web view inside Instagram,
+ * Facebook or Gmail, which has no Add to Home Screen.
+ *
+ * A user-agent guess: on an iOS device ({@link isIosDevice}), a user agent with no `Safari/` token
+ * is a bare web view, and one that names a known app (Facebook, Instagram, Line, the Google app,
+ * WeChat, X, Telegram) is that app's browser. Chrome, Firefox and Edge on iOS carry `Safari/` and
+ * can add to the home screen, so they are not in-app. Anything else returns `false`.
+ */
+export function isIosInAppBrowser(navigator: InstallPromptNavigator | null | undefined): boolean {
+  if (!isIosDevice(navigator)) return false
+  const agent = navigator?.userAgent ?? ""
+  return !agent.includes("Safari/") || IN_APP_AGENT.test(agent)
 }
 
 /**
@@ -173,6 +197,8 @@ export function createInstallPrompt(ports: InstallPromptPorts = {}): InstallProm
 
   const initial: InstallPromptMode = isStandalone(navigator, matchMedia)
     ? "installed"
+    : isIosInAppBrowser(navigator)
+    ? "ios-in-app"
     : isIosDevice(navigator)
     ? "ios"
     : "unavailable"
@@ -238,7 +264,10 @@ export function createInstallPrompt(ports: InstallPromptPorts = {}): InstallProm
   return {
     mode,
     dismissed,
-    visible: computed(() => !dismissed.value && (mode.value === "prompt" || mode.value === "ios")),
+    visible: computed(() =>
+      !dismissed.value &&
+      (mode.value === "prompt" || mode.value === "ios" || mode.value === "ios-in-app")
+    ),
     install,
     dismiss,
     watch,
