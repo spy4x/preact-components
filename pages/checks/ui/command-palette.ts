@@ -192,7 +192,7 @@ export async function commandPaletteChecks(devtools: Devtools): Promise<void> {
       devtools.evaluate<boolean>(`(() => {
         const field = document.querySelector('[data-e2e="${GUIDE}"] [role="combobox"]')
         const option = document.getElementById(field.getAttribute("aria-activedescendant"))
-        const list = document.querySelector('[data-e2e="${GUIDE}"] [role="listbox"]').parentElement
+        const list = document.querySelector('[data-e2e="${GUIDE}"] [role="listbox"]')
         const row = option.getBoundingClientRect()
         const box = list.getBoundingClientRect()
         return option === [...list.querySelectorAll('[role="option"]')].at(-1) &&
