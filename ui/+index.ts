@@ -571,6 +571,7 @@ export {
   type ShortcutsDialogProps,
 } from "./shortcuts-dialog.tsx"
 export {
+  addCommandPaletteRecent,
   clearCommandPaletteRecent,
   CommandPalette,
   type CommandPaletteBaseProps,

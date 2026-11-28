@@ -1,6 +1,6 @@
 // Package-internal: the rows `CommandPalette` pins above the rest, Recent and Best match, and the
-// storage of the recent picks. Only `clearCommandPaletteRecent` is public, re-exported by
-// `command-palette.tsx`.
+// storage of the recent picks. Only `addCommandPaletteRecent` and `clearCommandPaletteRecent` are
+// public, re-exported by `command-palette.tsx`.
 
 import type { KeyValueStore } from "@spy4x/platform/universal/key-value-store"
 import { fold } from "./combobox.tsx"
@@ -119,6 +119,25 @@ export function writeRecent(
   } catch (_error) {
     // Recent picks are a convenience: losing them must not break a pick.
   }
+}
+
+/**
+ * Adds `id` to the recent picks a `CommandPalette` keeps under `storageKey`, such as for a record
+ * opened from a list outside the palette. On its next open the palette lists it under "Recent" once
+ * an option with that id is in its answer. It goes first, an earlier copy of it is moved there, and
+ * the last ten are kept. Pass the palette's own `recent` settings. Never throws, also where storage
+ * is blocked or refuses the write.
+ *
+ * @param storageKey The palette's `recent.storageKey`.
+ * @param storage The palette's `recent.storage`, such as `() => localStorage`.
+ * @param id The option id to list under "Recent".
+ */
+export function addCommandPaletteRecent(
+  storageKey: string,
+  storage: () => KeyValueStore,
+  id: string,
+): void {
+  writeRecent(storageKey, addRecent(readRecent(storageKey, storage), id), storage)
 }
 
 /**

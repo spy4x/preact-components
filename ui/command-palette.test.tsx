@@ -4,6 +4,7 @@ import { render } from "preact-render-to-string"
 import { IconMoon, IconPlus } from "@spy4x/preact-icons"
 import type { KeyValueStore } from "@spy4x/platform/universal/key-value-store"
 import {
+  addCommandPaletteRecent,
   CommandPalette,
   type CommandPaletteOption,
   defaultCommandPaletteLabels,
@@ -492,6 +493,37 @@ describe("CommandPalette recent picks", () => {
     expect(readRecent("palette", open)).toEqual([])
   })
 
+  it("adds an outside pick first, moves an earlier copy of it to the front and keeps ten", () => {
+    const storage = fakeStorage()
+    const open = () => storage
+    addCommandPaletteRecent("palette", open, "a")
+    addCommandPaletteRecent("palette", open, "b")
+    addCommandPaletteRecent("palette", open, "a")
+    expect(readRecent("palette", open)).toEqual(["a", "b"])
+    for (const id of ids(11)) addCommandPaletteRecent("palette", open, id)
+    expect(readRecent("palette", open)).toEqual(ids(11).reverse().slice(0, 10))
+  })
+
+  it("adds over a corrupt stored value as if nothing were stored", () => {
+    const storage = fakeStorage()
+    const open = () => storage
+    storage.map.set("palette", `{"0":"a"}`)
+    addCommandPaletteRecent("palette", open, "b")
+    expect(storage.map.get("palette")).toBe(`["b"]`)
+  })
+
+  it("lists an outside pick under Recent on the next open, before an earlier pick", () => {
+    // The palette reads the ids on open (`readRecent`) and lists them with `recentOptions`.
+    const storage = fakeStorage()
+    const open = () => storage
+    const options = ["Home", "Ann", "Bob"].map((label) => option(label))
+    writeRecent("palette", addRecent(readRecent("palette", open), "Home"), open)
+    addCommandPaletteRecent("palette", open, "Bob")
+    addCommandPaletteRecent("palette", open, "gone")
+    expect(recentOptions(readRecent("palette", open), options).map((found) => found.id))
+      .toEqual(["Bob", "Home"])
+  })
+
   it("reads nothing and throws nowhere where storage is blocked or refuses every call", () => {
     const blocked = (): KeyValueStore => {
       throw new DOMException("The operation is insecure.", "SecurityError")
@@ -499,6 +531,7 @@ describe("CommandPalette recent picks", () => {
     const refusing = fakeStorage(true)
     for (const open of [blocked, () => refusing]) {
       expect(() => writeRecent("palette", ["a"], open)).not.toThrow()
+      expect(() => addCommandPaletteRecent("palette", open, "a")).not.toThrow()
       expect(readRecent("palette", open)).toEqual([])
       expect(() => clearCommandPaletteRecent("palette", open)).not.toThrow()
     }
