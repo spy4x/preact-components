@@ -720,6 +720,124 @@ function remotePaletteSpecs(): Spec[] {
       },
     },
     {
+      name: "CommandPalette at 1280 px: Home after End scrolls the listbox to its top, so the " +
+        "first group's heading shows above the first row",
+      pageId: "ui",
+      run: async (page) => {
+        const palette = await openRemotePalette(page)
+        const list = palette.dialog.getByRole("listbox")
+        /** Waits up to 2 s until the list is at its top, or away from it, else throws `what`. */
+        const scrolled = (top: boolean, what: string) =>
+          page.waitForFunction(
+            (atTop) => {
+              const box = document.querySelector(`[data-e2e="palette-remote"] [role="listbox"]`)
+              return box !== null && (box.scrollTop === 0) === atTop
+            },
+            top,
+            { timeout: 2_000 },
+          ).catch(async () => {
+            throw new Error(
+              `${what}: the list is at ${await list.evaluate((box) => box.scrollTop)}`,
+            )
+          })
+        await palette.field.press("End")
+        await scrolled(false, "End did not scroll the list")
+        await palette.field.press("Home")
+        await scrolled(true, "Home did not scroll the list to its top")
+        const heading = await list.evaluate((box) => {
+          const group = box.querySelector(`[role="group"]`)
+          const label = document.getElementById(group?.getAttribute("aria-labelledby") ?? "")
+          const own = label?.getBoundingClientRect()
+          const edge = box.getBoundingClientRect()
+          return {
+            text: label?.textContent,
+            shown: own !== undefined && own.top >= edge.top && own.bottom <= edge.bottom,
+          }
+        })
+        if (heading.text !== "Fruit with A" || !heading.shown) {
+          throw new Error(`the first heading "${heading.text}" shown ${heading.shown}`)
+        }
+        await palette.field.and(page.locator(":focus")).waitFor()
+        return `Home showed "${heading.text}"`
+      },
+    },
+    {
+      name: "CommandPalette remote: arrow keys, End and PageDown do nothing while an Enter waits " +
+        "for a search, and its answer's first row is picked with the highlight never moved",
+      pageId: "ui",
+      run: async (page) => {
+        const palette = await openRemotePalette(page)
+        const picked = page.locator(`[data-e2e="palette-remote-picked"]`)
+        const highlight = () => palette.field.getAttribute("aria-activedescendant")
+        await page.keyboard.type("b")
+        await page.keyboard.press("Enter")
+        const before = await highlight()
+        await page.keyboard.press("ArrowDown")
+        await page.keyboard.press("End")
+        await page.keyboard.press("PageDown")
+        const after = await highlight()
+        // "b" answers 1.1 s after the keystroke: the keys above land while the Enter waits.
+        const midLoad = await page.evaluate(() => ({
+          open: document.querySelector<HTMLDialogElement>(`[data-e2e="palette-remote"]`)?.open,
+          picked: document.querySelector(`[data-e2e="palette-remote-picked"]`)?.textContent,
+        }))
+        if (!midLoad.open || midLoad.picked !== "nothing yet") {
+          throw new Error(`after the keys: open ${midLoad.open}, picked "${midLoad.picked}"`)
+        }
+        if (before === null || after !== before) {
+          throw new Error(`while the Enter waited the highlight moved from ${before} to ${after}`)
+        }
+        await picked.filter({ hasText: /^Banana$/ }).waitFor()
+        await palette.dialog.waitFor({ state: "hidden" })
+      },
+    },
+    {
+      name: "CommandPalette at 390 px: Searching… shows on the field's lower edge, so the field " +
+        "keeps its width and the rows do not move",
+      pageId: "ui",
+      run: async (page) => {
+        const palette = await openRemotePalette(page, 390)
+        const firstRow = palette.dialog.getByRole("option").first()
+        const field = await palette.field.boundingBox()
+        const row = await firstRow.boundingBox()
+        // "slow" never answers: the last rows and Searching… stay.
+        await palette.field.fill("slow")
+        const label = palette.dialog.locator(`[data-e2e="palette-remote-searching"]`)
+        await label.waitFor()
+        const during = await palette.field.boundingBox()
+        const rowDuring = await firstRow.boundingBox()
+        const shown = await label.boundingBox()
+        const close = await palette.dialog.locator(`[data-e2e="palette-remote-close"]`)
+          .boundingBox()
+        if (field === null || during === null || row === null || rowDuring === null) {
+          throw new Error("the field or the first row has no box")
+        }
+        if (Math.abs(during.width - field.width) > 0.5) {
+          throw new Error(
+            `the field is ${during.width} px wide while searching, ${field.width} before`,
+          )
+        }
+        if (Math.abs(rowDuring.y - row.y) > 0.5) {
+          throw new Error(`the first row moved from ${row.y} to ${rowDuring.y}`)
+        }
+        // Below the typed text, which a 24 px line centres in the 48 px field, and clear of the
+        // close button.
+        if (
+          shown === null || close === null || shown.y < during.y + during.height * 0.75 ||
+          shown.x + shown.width > close.x
+        ) {
+          throw new Error(
+            `Searching… at ${JSON.stringify(shown)}, field at ${JSON.stringify(during)}`,
+          )
+        }
+        if (await label.getAttribute("aria-hidden") !== "true") {
+          throw new Error("Searching… is not hidden from screen readers")
+        }
+        await palette.status.filter({ hasText: "Searching…" }).waitFor({ state: "attached" })
+        return `field ${during.width} px wide before and while searching`
+      },
+    },
+    {
       name: "CommandPalette at 390 px: the close button is a 44 px square, and the field is a " +
         "text combobox, so the browser draws no clear button of its own beside it",
       pageId: "ui",

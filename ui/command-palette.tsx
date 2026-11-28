@@ -132,7 +132,8 @@ export interface CommandPaletteLabels {
   empty: string
   /**
    * What the palette says while a `search` call runs, once the reader has waited 300 ms for it:
-   * beside the field while earlier results are listed, in the list when it is empty.
+   * beside the field (on a phone, on its lower edge) while earlier results are listed, in the list
+   * when it is empty.
    */
   loading: string
   /** What the list says when a `search` call failed. */
@@ -197,6 +198,17 @@ const SLOW_SEARCH_MS = 300
 
 /** How long, in milliseconds, typing has to pause before the palette announces the result count. */
 const COUNT_PAUSE_MS = 250
+
+/**
+ * "Searching…" or the error label: beside the field, and on a phone on the field's lower edge,
+ * clear of the close button, where it takes no width from the field. Typed text sits in the
+ * field's middle, above the label, and the label's background covers the list's top padding.
+ */
+const SIDE_LABEL =
+  "shrink-0 text-xs max-sm:absolute max-sm:end-16 max-sm:bottom-0 max-sm:translate-y-1/2 max-sm:bg-surface max-sm:px-1"
+
+/** The keys that move the highlight, which do nothing while an Enter waits for an answer. */
+const MOVEMENT_KEY = /^(Arrow(Up|Down)|Home|End|Page(Up|Down))$/
 
 /** Where a {@link CommandPalette} keeps its recent picks: its `recent` prop. */
 export interface CommandPaletteRecent {
@@ -342,9 +354,10 @@ export interface CommandPaletteRemoteProps<T extends CommandPaletteOption>
    * pause in typing. `signal` aborts when a newer query or a close makes the answer stale; a stale
    * answer is ignored even when the function does not listen to `signal`. A rejection shows the
    * error label. While the next answer loads, the previous results stay listed as they are; past
-   * 300 ms the loading label shows beside the field and is announced. Enter pressed
-   * while it loads, before any answer for the query is listed, waits for one and picks its first
-   * row.
+   * 300 ms the loading label shows beside the field (on a phone, on its lower edge) and is
+   * announced. Enter pressed while it loads, before any answer for the query is listed, waits for
+   * one and picks its first row; until then the arrow keys, Home, End, PageUp and PageDown do
+   * nothing.
    *
    * `show` lists an early answer for the same query at once, such as the commands that match
    * before a server's results arrive; it can be called more than once, and the promise's answer
@@ -352,7 +365,8 @@ export interface CommandPaletteRemoteProps<T extends CommandPaletteOption>
    * and a later answer for the same query keeps the highlighted option, found by its `id`, rather
    * than moving the highlight to the first row. A call after the promise settled, or from a stale
    * call, is ignored. A rejection after an early answer keeps its rows and shows the error label
-   * beside the field. The palette does not read a ">" itself in this mode: listing only the
+   * beside the field (on a phone, on its lower edge). The palette does not read a ">" itself in
+   * this mode: listing only the
    * commands for a query that starts with ">" is `search`'s job. The "> for commands" hint shows on
    * the empty query while the listed answer holds a command (an option with `run`) and nothing
    * shows beside the field.
@@ -912,6 +926,12 @@ export function CommandPalette<T extends CommandPaletteOption>(
       event.preventDefault()
       return enter(highlighted)
     }
+    if (pickWhenAnswered.current !== null && MOVEMENT_KEY.test(event.key)) {
+      // An Enter waits for this query's answer and picks its first row; the rows listed meanwhile
+      // are the previous query's, so a highlight moved over them would not be the row picked.
+      event.preventDefault()
+      return
+    }
     if ((event.key === "PageUp" || event.key === "PageDown") && !modified) {
       // The first row of the previous or next group, the unheaded rows counting as one; the ends
       // stop at the first and the last group.
@@ -969,10 +989,13 @@ export function CommandPalette<T extends CommandPaletteOption>(
   const active = flat.length === 0 ? -1 : Math.min(activeIndex.value, flat.length - 1)
 
   // Keep the highlighted result on screen, as `Combobox` does: the list scrolls by just the row
-  // that went past its edge, and a row already in view does not move it.
+  // that went past its edge, and a row already in view does not move it. The first row scrolls
+  // the list to its top instead, so the first group's heading above it shows too.
   useEffect(() => {
     if (active < 0 || !dialog.current?.open) return
-    document.getElementById(optionId(flat[active]))?.scrollIntoView({ block: "nearest" })
+    const box = document.getElementById(listbox)
+    if (active === 0 && box !== null) box.scrollTop = 0
+    else document.getElementById(optionId(flat[active]))?.scrollIntoView({ block: "nearest" })
   }, [active, flat.length, flat[active]?.id])
   // A kept-open command's caller re-renders with its new state: announce it once it shows.
   useEffect(() => {
@@ -1291,7 +1314,7 @@ export function CommandPalette<T extends CommandPaletteOption>(
           "max-sm:inset-0 max-sm:m-0 max-sm:h-dvh max-sm:max-h-none max-sm:w-full max-sm:rounded-none max-sm:border-0 max-sm:open:flex max-sm:open:flex-col",
         )}
       >
-        <div class="flex items-center gap-2 border-b border-subtle px-4">
+        <div class="relative flex items-center gap-2 border-b border-subtle px-4">
           {
             /* Inside a submenu or a text mode the back button takes the search icon's place. */
           }
@@ -1353,14 +1376,15 @@ export function CommandPalette<T extends CommandPaletteOption>(
             class="h-12 min-w-0 flex-1 bg-transparent text-base outline-none placeholder:text-placeholder"
           />
           {
-            /* A slow search over results still listed says so here, beside the field, so the rows
+            /* A slow search over results still listed says so here, beside the field (on a phone,
+            on its lower edge), so the rows
             neither move nor fade. Hidden from screen readers: the status line below tells them. */
           }
           {remote.value.status === Status.SLOW && flat.length > 0 && (
             <span
               aria-hidden="true"
               data-e2e={dataE2E === undefined ? undefined : `${dataE2E}-searching`}
-              class="shrink-0 text-xs text-muted"
+              class={join(SIDE_LABEL, "text-muted")}
             >
               {labels.loading}
             </span>
@@ -1372,7 +1396,7 @@ export function CommandPalette<T extends CommandPaletteOption>(
             <span
               aria-hidden="true"
               data-e2e={dataE2E === undefined ? undefined : `${dataE2E}-failed`}
-              class="shrink-0 text-xs text-danger"
+              class={join(SIDE_LABEL, "text-danger")}
             >
               {labels.error}
             </span>
