@@ -64,6 +64,9 @@ running against: `build.ts` writes a fingerprint of every source the build reads
 touches anything. A missing or mismatched fingerprint fails as one named check and exits — run
 `deno task --cwd pages build` and try again. This is what catches a `dist/` left over from before a
 rebase or a branch switch (#280); `pages/build-fingerprint.ts` documents exactly what is hashed.
+The files `verify` reads straight from source and the build never does — `pages/e2e/`,
+`pages/checks/`, `pages/verify.ts` and `playwright/` — are left out, so editing one needs no
+rebuild.
 
 `verify` needs a Chromium binary (it looks for `chromium-browser`, `chromium`, `google-chrome`,
 `google-chrome-stable`, `chrome`, or `$CHROME_PATH`). **Not finding one is a failure:** the run
@@ -376,10 +379,13 @@ to understand one of them; a new check does not use these helpers.
 - **Coverage is the files.** No document lists which components are covered: read the names
   passed to `check(...)` in the package's file, and the spec names in `e2e/`. A component with no
   check in either is unproven.
-- **Build first.** Run `deno task --cwd pages build` before every `verify`; `verify` refuses a stale
-  `dist/` (see "Commands").
+- **Build first.** Run `deno task --cwd pages build` before `verify` after any change to a file the
+  build reads; `verify` refuses a stale `dist/` (see "Commands"). A change only to `e2e/`,
+  `checks/`, `verify.ts` or `playwright/` needs no rebuild.
 - **Mutations.** Prove a mutation in its own throwaway worktree, at a path no other run uses, and
-  never rebuild a worktree while a `verify` is still running against it.
+  never rebuild a worktree while a `verify` is still running against it. Use the narrowest run:
+  one `build` per mutated source file (none for a mutation in a spec or a check), then
+  `verify --grep="<spec name>"` or `--component=<name>`, never the full `verify`.
 
 ### Keys and focus
 

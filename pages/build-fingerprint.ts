@@ -18,7 +18,7 @@
  *
  * **What is covered, and why a walk rather than the bundler's own input list.** Every workspace
  * package's source the demo can import (`ui/`, `system/`, `charts/`, …), `pages/` itself — which
- * covers `pages/src` and every other file the build or the browser checks read — the config files
+ * covers `pages/src` and every other file the build reads — the config files
  * that change how a specifier resolves (the root `deno.jsonc`, `deno.lock`, and each package's own
  * `deno.json`, picked up by the walk since it lives inside that package's directory), and the five
  * static fixture directories `build.ts` copies into the artefact verbatim and the browser checks
@@ -30,6 +30,11 @@
  * would mean re-parsing the output to recover what went in; a walk of the workspace, filtered by
  * {@link isCovered}, is direct and does not depend on a bundler internal that the pin in
  * `deno.jsonc` could change out from under it.
+ *
+ * **What is not covered.** The files `verify` alone reads, straight from source — the specs in
+ * `pages/e2e/`, the checks in `pages/checks/`, `pages/verify.ts` and the `playwright/` helpers
+ * ({@link VERIFY_ONLY_PATHS}) — so editing one, a mutation included, needs no rebuild.
+ * `pages/build-fingerprint.test.ts` fails when the build's module graph reaches one of them.
  */
 
 import { join, relative } from "node:path"
@@ -79,6 +84,26 @@ const STATIC_FIXTURE_DIRECTORIES = [
   "pages/fonts",
 ] as const
 
+/**
+ * Paths `verify` reads straight from source at run time, never part of the build: no build entry's
+ * module graph reaches them and no Tailwind `@source` in `pages/styles.css` scans them. A directory
+ * ends in `/`; anything else is one file. Tests (`*.test.tsx`) stay covered on purpose: Tailwind
+ * scans the packages' directories whole, so a class in a test can change the CSS.
+ */
+export const VERIFY_ONLY_PATHS = [
+  "pages/e2e/",
+  "pages/checks/",
+  "pages/verify.ts",
+  "playwright/",
+] as const
+
+/** Whether a repository-relative path is one of {@link VERIFY_ONLY_PATHS}. */
+export function isVerifyOnly(relativePath: string): boolean {
+  return VERIFY_ONLY_PATHS.some((path) =>
+    path.endsWith("/") ? relativePath.startsWith(path) : relativePath === path
+  )
+}
+
 /** Directory names walked past without descending — build output and caches, never a source. */
 const IGNORED_DIRECTORY_NAMES = new Set([".git", ".volumes", "coverage", "dist", "node_modules"])
 
@@ -99,6 +124,8 @@ const INCLUDED_EXTENSIONS = [".ts", ".tsx", ".css", ".json", ".jsonc"]
 export function isCovered(relativePath: string): boolean {
   const segments = relativePath.split("/")
   if (segments.some((segment) => IGNORED_DIRECTORY_NAMES.has(segment))) return false
+
+  if (isVerifyOnly(relativePath)) return false
 
   if ((ROOT_FILES as readonly string[]).includes(relativePath)) return true
 
