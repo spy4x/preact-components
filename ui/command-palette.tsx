@@ -25,7 +25,7 @@ import { useBackdropPress } from "./backdrop-press.ts"
 import type { KeyValueStore } from "@spy4x/platform/universal/key-value-store"
 import { addRecent, bestMatch, readRecent, recentOptions, writeRecent } from "./palette-pins.ts"
 
-export { clearCommandPaletteRecent } from "./palette-pins.ts"
+export { addCommandPaletteRecent, clearCommandPaletteRecent } from "./palette-pins.ts"
 
 /** One result the palette lists. Extend it with whatever `onSelect` needs, such as an `href`. */
 export interface CommandPaletteOption {
@@ -206,7 +206,8 @@ export interface CommandPaletteRecent {
    * Where they are kept: pass `() => localStorage`, since reading `localStorage` itself throws
    * where a browser blocks site data. Called when the palette opens and on a pick, never during a
    * render, and always inside a guard: storage that throws, or holds something else, only means
-   * nothing is remembered. On sign-out call {@link clearCommandPaletteRecent} with the same two.
+   * nothing is remembered. On sign-out call {@link clearCommandPaletteRecent} with the same two;
+   * {@link addCommandPaletteRecent} adds a pick made outside the palette.
    */
   storage: () => KeyValueStore
 }
