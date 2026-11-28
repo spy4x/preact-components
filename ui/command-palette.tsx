@@ -132,7 +132,8 @@ export interface CommandPaletteLabels {
   empty: string
   /**
    * What the palette says while a `search` call runs, once the reader has waited 300 ms for it:
-   * beside the field while earlier results are listed, in the list when it is empty.
+   * beside the field (on a phone, on its lower edge) while earlier results are listed, in the list
+   * when it is empty.
    */
   loading: string
   /** What the list says when a `search` call failed. */
@@ -364,7 +365,8 @@ export interface CommandPaletteRemoteProps<T extends CommandPaletteOption>
    * and a later answer for the same query keeps the highlighted option, found by its `id`, rather
    * than moving the highlight to the first row. A call after the promise settled, or from a stale
    * call, is ignored. A rejection after an early answer keeps its rows and shows the error label
-   * beside the field. The palette does not read a ">" itself in this mode: listing only the
+   * beside the field (on a phone, on its lower edge). The palette does not read a ">" itself in
+   * this mode: listing only the
    * commands for a query that starts with ">" is `search`'s job. The "> for commands" hint shows on
    * the empty query while the listed answer holds a command (an option with `run`) and nothing
    * shows beside the field.
@@ -1374,7 +1376,8 @@ export function CommandPalette<T extends CommandPaletteOption>(
             class="h-12 min-w-0 flex-1 bg-transparent text-base outline-none placeholder:text-placeholder"
           />
           {
-            /* A slow search over results still listed says so here, beside the field, so the rows
+            /* A slow search over results still listed says so here, beside the field (on a phone,
+            on its lower edge), so the rows
             neither move nor fade. Hidden from screen readers: the status line below tells them. */
           }
           {remote.value.status === Status.SLOW && flat.length > 0 && (
