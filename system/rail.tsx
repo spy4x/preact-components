@@ -230,6 +230,9 @@ export interface TabBarSplit {
  *
  * `reserveMore` keeps the last slot for the sheet whatever the count, for a sheet that holds more
  * than entries (`Rail`'s `top` and `bottom` slots): then at most four entries are tabs.
+ *
+ * It knows nothing of `sheetOnly`: a caller using it directly filters sheet-only items out first
+ * and passes `reserveMore` when there were any, as `Rail` does.
  */
 export function tabBarSlots(
   items: readonly RailItem[],

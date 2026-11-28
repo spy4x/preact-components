@@ -1484,7 +1484,9 @@ five or fewer and there is nothing else for the sheet. Past five, or with `top` 
 given, the last slot opens the sheet, and the first items fill the rest. The sheet then
 holds `top("sheet")`, the items that did not fit and `bottom("sheet")`, with a hairline between
 them. `moreTab` sets the last slot's `icon` and `counter`; its words are `labels.more`.
-`tabBarSlots(items, primary, reserveMore)` is that rule as a pure function.
+`tabBarSlots(items, primary, reserveMore)` is that rule as a pure function. It knows nothing of
+`sheetOnly`: filter sheet-only items out first and pass `reserveMore` when there were any, as
+`Rail` does.
 
 **The sheet is a modal `<dialog>`,** for Escape, an inert page and the top layer from the browser.
 `showModal()` moves focus to the close button. Escape closes it natively. A backdrop click closes
