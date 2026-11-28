@@ -82,7 +82,8 @@ const KNOWN_INCOMPLETE: Record<GuidePageId, Readonly<Record<string, KnownCount>>
     [OBSCURED]: [9, 9],
     // Key symbols in `Kbd` (Command, Shift, Option, the arrows) and five disclosure chevrons.
     [GLYPH]: [11, 11],
-    // A one-character `Kbd` key that axe measured below the ratio and left undecided.
+    // A one-character `Kbd` key that axe leaves undecided for its short text, with no ratio
+    // measured (#776). Its colours read 18.3:1 in light, 17.0:1 in dark and 16.0:1 in ink.
     [SHORT]: [1, 1],
     // The `LoopVideo` card's silent loop, which has no `<track kind="captions">`: a clip with no
     // sound has nothing to caption, and its `aria-label` is its text alternative.
