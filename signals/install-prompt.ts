@@ -156,8 +156,21 @@ function memoryFlag(): OnboardingDismissedPort {
  * ```ts
  * export const install = createInstallPrompt({
  *   dismissed: {
- *     read: () => localStorage.getItem("install-dismissed") === "1",
- *     write: (value) => localStorage.setItem("install-dismissed", value ? "1" : "0"),
+ *     // Storage throws in some private windows and when the person blocks it: guard both calls.
+ *     read: () => {
+ *       try {
+ *         return localStorage.getItem("install-dismissed") === "1"
+ *       } catch {
+ *         return false
+ *       }
+ *     },
+ *     write: (value) => {
+ *       try {
+ *         localStorage.setItem("install-dismissed", value ? "1" : "0")
+ *       } catch {
+ *         // Not kept: the offer stays hidden until the page is loaded again.
+ *       }
+ *     },
  *   },
  * })
  * // in the client entry point, as early as possible: the event can fire before the app renders.
