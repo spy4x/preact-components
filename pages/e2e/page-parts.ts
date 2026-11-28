@@ -9,8 +9,20 @@
  * @module
  */
 
-/** How many elements one rule fails, or leaves undecided, on one page: `[light, dark]`. */
-export type KnownCount = readonly [light: number, dark: number]
+/**
+ * How many elements one rule fails, or leaves undecided, on one page: `[light, dark, ink]`. Ink is
+ * the opt-in dark palette; left out, it is the dark count.
+ */
+export type KnownCount = readonly [light: number, dark: number, ink?: number]
+
+/** A palette a page is scanned in: the two defaults, and ink drawn on the dark page. */
+export type Palette = "light" | "dark" | "ink"
+
+/** One palette's number in a known count. */
+export function knownIn(count: KnownCount | undefined, palette: Palette): number {
+  if (!count) return 0
+  return palette === "light" ? count[0] : palette === "dark" ? count[1] : count[2] ?? count[1]
+}
 
 /** A run of one section's cards, in the order the page draws them. */
 export interface CardRun {
@@ -71,15 +83,19 @@ export function restKnown(
   page: Readonly<Record<string, KnownCount>>,
   parts: readonly PagePart[],
 ): Record<string, KnownCount> {
-  const rest: Record<string, [number, number]> = Object.fromEntries(
-    Object.entries(page).map(([key, [light, dark]]) => [key, [light, dark]]),
+  const inEach = (count: KnownCount): [number, number, number] => [
+    knownIn(count, "light"),
+    knownIn(count, "dark"),
+    knownIn(count, "ink"),
+  ]
+  const rest: Record<string, [number, number, number]> = Object.fromEntries(
+    Object.entries(page).map(([key, count]) => [key, inEach(count)]),
   )
   for (const part of parts) {
-    for (const [key, [light, dark]] of Object.entries(part.known ?? {})) {
-      const left = rest[key] ?? [0, 0]
-      left[0] -= light
-      left[1] -= dark
-      if (left[0] < 0 || left[1] < 0) {
+    for (const [key, count] of Object.entries(part.known ?? {})) {
+      const left = rest[key] ?? [0, 0, 0]
+      inEach(count).forEach((taken, at) => left[at] -= taken)
+      if (left.some((n) => n < 0)) {
         throw new Error(`the parts take more "${key}" than the page's ${page[key] ?? [0, 0]}`)
       }
       rest[key] = left
