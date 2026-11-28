@@ -72,6 +72,11 @@
   --color-surface-card: var(--color-surface);
   --color-surface-active: oklch(0.3 0.016 260);
 
+  /* A plain `<thead>` under `.theme-base` takes the active row's surface too. On
+     --color-border-subtle (0.34), its default dark fill, muted header text read 4.08:1; on this one
+     it reads 4.73:1, and the header still sits a step above the card. */
+  --color-table-header: var(--color-surface-active);
+
   /* Hairline rule colour — one step, not the two-step border scale above, for a 1px divider
      that should read as a seam rather than a bordered box. */
   --color-hairline: oklch(0.3 0.014 260);
@@ -115,6 +120,7 @@
     --color-surface-rail: oklch(0.19 0.013 260);
     --color-surface-card: var(--color-surface);
     --color-surface-active: oklch(0.3 0.016 260);
+    --color-table-header: var(--color-surface-active);
     --color-hairline: oklch(0.3 0.014 260);
     --color-text: var(--color-foreground);
     --color-text-muted: var(--color-muted-foreground);
