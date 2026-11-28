@@ -287,6 +287,10 @@ describe("every field row", () => {
       expect(attributes(control, "aria-describedby")).toEqual([`${id}-hint`])
       expect(html).not.toContain(`${id}-issues`)
     })
+
+    it(`${row} names its control by the model key, so autofill can tell the fields apart`, () => {
+      expect(attributes(controlTag(render(renderRow(noIssues))), "name")).toEqual([field])
+    })
   }
 })
 

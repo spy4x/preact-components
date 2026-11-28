@@ -20,7 +20,7 @@ import { search } from "@spy4x/platform/universal/text"
 | `CheckboxField`      | `field`               | `vm`, `vl`, `name`, `label`, `hint?`, `span?`, `renderIssue?`                   |
 | `CrudEditor`         | `crud-editor`         | `mode`, `store`, `editId?`, `validate?`, `archive?`, `canChange?`, `onCreated?` |
 | `CrudList`           | `crud-list`           | `store` or `rows`, `title`, `match`, `header`, `row`, `actions?`, `addHref?`    |
-| `DeletionValidation` | `deletion-validation` | `dependencies`, `model`, `label?` — the entities that block an archive          |
+| `DeletionValidation` | `deletion-validation` | `dependencies`, `model`, `label?`, `headingLevel?` — what blocks an archive     |
 | `FieldIssues`        | `field`               | `vl`, `name`, `renderIssue?` — one field's issues                               |
 | `NumberField`        | `field`               | as `TextField`; commits `0` for an empty box                                    |
 | `SelectField`        | `field`               | as `TextField`, plus `options`                                                  |
@@ -238,7 +238,9 @@ The harness is the six parts, once:
    throws, is shown above Save in an `ErrorState` (a `role="alert"`) as `Couldn't save: <the store's message>`
    (`saveErrorLabel` replaces the first part) and stays until the next save.
 6. **Chrome**: page title, error line, card, footer with the archive toggle, Cancel and Save, and the
-   dependency block. A viewer `canChange` refuses gets the fields disabled and a footer with Cancel
+   dependency block. The error line is an `ErrorState` (a `role="alert"`) saying `notFoundLabel`
+   when `editId` names a row the store does not hold; the card then gives way to Cancel alone, so
+   there is no empty form under the message and still a way back. A viewer `canChange` refuses gets the fields disabled and a footer with Cancel
    alone, so there is still a way back. Save is live only when the form is initialised, valid, idle and unblocked. Any
    `FORM_FIELD` message from part 2 renders as a live region above Save — present on every
    render, empty until such an issue arrives, and named by Save's `aria-describedby` at all times, so
@@ -280,7 +282,8 @@ The harness is the six parts, once:
 A row is `@spy4x/preact-ui`'s `Field` around `ui`'s own control — `Input`, `Textarea`, `Select` or
 `Checkbox` — so the label, the hint and their id wiring are `Field`'s, and a fix there reaches every
 editor. What a row adds is the validation model: it binds the control to one field of `vm`, commits
-as you type (trimmed on blur), and renders that field's issues under `Field`, where the control's `aria-describedby`
+as you type (trimmed on blur), names the control by the model key (`name`, so autofill and password
+managers can tell the fields apart), and renders that field's issues under `Field`, where the control's `aria-describedby`
 points at them and `aria-invalid` is set while there are any. `CheckboxField`'s label is the
 `Checkbox`'s own, after the box, so `Field` renders none of its own there.
 
@@ -318,7 +321,8 @@ Four behaviours the copies got wrong, now in one place:
 
 `DeletionValidation` renders the entities that block an archive, under the heading
 `Archive these first, then you can archive this <model>:`, which `label` replaces (`archive.blockedLabel` on
-`CrudEditor`). It lives here rather than in `ui/`
+`CrudEditor`). The heading is an `<h3>` unless `headingLevel` (2 to 6) names another level;
+`CrudEditor` passes one level under its own title. It lives here rather than in `ui/`
 because only the CRUD scaffold produces a `DeletionDependency`. Its `role="alert"` region is on the
 page on every render — even with an empty list, as a zero-height node rather than nothing at all —
 empty until `dependencies` is non-empty, the pattern `ui/`'s toasts and combobox use, so a screen

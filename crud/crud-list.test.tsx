@@ -355,6 +355,18 @@ describe("CrudList", () => {
     expect(html).not.toContain(`role="status"`)
   })
 
+  it("keeps the table, and no empty state, for an idle store whose load result is undefined", () => {
+    const unanswered: CrudListStore<Region> = {
+      list: { nonDeleted: signal([]), deleted: signal([]) },
+      op: { list: signal({ inProgress: false, result: undefined, error: null }) },
+    }
+    const html = storeList({ store: unanswered })
+
+    expect(html).toContain("<table")
+    expect(html).not.toContain(`role="status"`)
+    expect(html).not.toContain("Nothing here yet")
+  })
+
   it("says the search matched nothing over rows a store holds before any load settled", () => {
     const html = storeList({ store: unsettledStore(liveRows), query: signal("west") })
 

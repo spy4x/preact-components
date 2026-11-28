@@ -11,6 +11,11 @@ export interface DeletionValidationProps {
   model: string
   /** Heading above the list. Defaults to `Archive these first, then you can archive this <model>:`. */
   label?: string
+  /**
+   * Level of the heading above the list, `3` by default. Pick the level under the section the block
+   * sits in, so the page's heading order skips none: `CrudEditor` passes one below its own title.
+   */
+  headingLevel?: 2 | 3 | 4 | 5 | 6
 }
 
 /**
@@ -43,8 +48,9 @@ export interface DeletionValidationProps {
  * wraps it to take it out of the flow while it is empty — `CrudEditor` does, see #279.
  */
 export function DeletionValidation(
-  { dependencies, model, label }: DeletionValidationProps,
+  { dependencies, model, label, headingLevel = 3 }: DeletionValidationProps,
 ): JSX.Element {
+  const Heading = `h${headingLevel}` as const
   const { heading } = useLabels(
     "DeletionValidation",
     {
@@ -86,9 +92,9 @@ export function DeletionValidation(
             <IconAlertTriangle class="size-5" />
           </div>
           <div class="ms-3">
-            <h3 class="text-sm font-medium">
+            <Heading class="text-sm font-medium">
               {label ?? heading(model)}
-            </h3>
+            </Heading>
             <div class="mt-2 text-sm max-w-xl">
               <ul role="list" class="list-disc space-y-1 ps-4">
                 {dependencies.map((dependency) => (
