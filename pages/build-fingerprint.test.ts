@@ -1,6 +1,6 @@
 import { assertEquals, assertNotEquals } from "@std/assert"
 import { workspaceMembers } from "../infra/scripts/workspace.ts"
-import { hashEntries, isCovered, WORKSPACE_DIRECTORIES } from "./build-fingerprint.ts"
+import { hashEntries, isCovered, isVerifyOnly, WORKSPACE_DIRECTORIES } from "./build-fingerprint.ts"
 
 const encoder = new TextEncoder()
 
@@ -66,4 +66,56 @@ Deno.test("isCovered rejects anything under a dist/ directory", () => {
 Deno.test("isCovered rejects a Markdown file", () => {
   assertEquals(isCovered("README.md"), false)
   assertEquals(isCovered("ui/README.md"), false)
+})
+
+Deno.test("isCovered rejects a Playwright spec under pages/e2e", () => {
+  assertEquals(isCovered("pages/e2e/x.spec.ts"), false)
+})
+
+Deno.test("isCovered rejects a browser check under pages/checks", () => {
+  assertEquals(isCovered("pages/checks/ui.ts"), false)
+})
+
+Deno.test("isCovered rejects pages/verify.ts", () => {
+  assertEquals(isCovered("pages/verify.ts"), false)
+})
+
+Deno.test("isCovered rejects the playwright helper package", () => {
+  assertEquals(isCovered("playwright/+index.ts"), false)
+})
+
+Deno.test("isCovered still accepts the build's own sources and package tests", () => {
+  assertEquals(isCovered("pages/src/document.tsx"), true)
+  assertEquals(isCovered("pages/build.ts"), true)
+  assertEquals(isCovered("ui/button.test.tsx"), true)
+})
+
+/** The modules `build.ts` bundles, prerenders or runs, relative to `pages/`. */
+const BUILD_ENTRIES = ["build.ts", "src/+main.tsx", "src/map-page/+main.tsx", "src/prerender.tsx"]
+
+Deno.test("no file the build reads is excluded from the fingerprint as verify-only", async () => {
+  const repoRoot = new URL("../", import.meta.url).href
+  const pagesDirectory = new URL("./", import.meta.url)
+  const reached = new Set<string>()
+
+  for (const entry of BUILD_ENTRIES) {
+    const { success, stdout, stderr } = await new Deno.Command(Deno.execPath(), {
+      args: ["info", "--json", entry],
+      cwd: pagesDirectory,
+      stdout: "piped",
+      stderr: "piped",
+    }).output()
+    if (!success) throw new Error(`deno info ${entry} failed: ${new TextDecoder().decode(stderr)}`)
+
+    const { modules } = JSON.parse(new TextDecoder().decode(stdout)) as {
+      modules: { specifier: string }[]
+    }
+    for (const { specifier } of modules) {
+      if (specifier.startsWith(repoRoot)) reached.add(specifier.slice(repoRoot.length))
+    }
+  }
+
+  // An empty graph would pass the check below without proving anything.
+  assertEquals(reached.has("pages/src/document.tsx"), true)
+  assertEquals([...reached].filter(isVerifyOnly), [])
 })
