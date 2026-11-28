@@ -2530,6 +2530,10 @@ function UnsentChangesDialogDemo() {
 const IPHONE = {
   userAgent: "Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) Version/18.0 Safari/604.1",
 }
+/** Instagram's browser on an iPhone: it names the app, and has no Add to Home Screen. */
+const IPHONE_IN_APP = {
+  userAgent: "Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) Mobile/15E148 Instagram 309.0",
+}
 const DESKTOP = { userAgent: "Mozilla/5.0 (X11; Linux x86_64) Chrome/130.0 Safari/537.36" }
 
 /**
@@ -2701,7 +2705,7 @@ function InstallCase(
   )
 }
 
-/** The three cases `createInstallPrompt` tells apart, each on its own fake browser. */
+/** The four cases `createInstallPrompt` tells apart, each on its own fake browser. */
 function InstallPromptDemo() {
   return (
     <Stack gap="xl">
@@ -2710,6 +2714,11 @@ function InstallPromptDemo() {
       </Part>
       <Part title="iPhone: no dialog, so the steps">
         <InstallCase name="ios" navigator={IPHONE} standalone={false} failToggle />
+      </Part>
+      <Part title="iPhone, in an app's own browser: open Safari first">
+        <ArabicSwitch name="install-ios-in-app">
+          <InstallCase name="ios-in-app" navigator={IPHONE_IN_APP} standalone={false} />
+        </ArabicSwitch>
       </Part>
       <Part title="Already running installed: nothing to offer">
         <InstallCase name="installed" navigator={IPHONE} standalone />
@@ -3842,12 +3851,12 @@ const tags = seoHeadTags(head)`,
   },
   InstallPrompt: {
     summary:
-      "A dismissible offer to install the app: an Install button where the browser has a dialog, and the Share steps on iPhone and iPad.",
+      'A dismissible offer to install the app: an Install button where the browser has a dialog, the Share steps on iPhone and iPad, and "open in Safari first" in an iOS in-app browser.',
     wide: true,
     props: [
       {
         name: "mode",
-        type: '"prompt" | "ios" | "installed" | "unavailable"',
+        type: '"prompt" | "ios" | "ios-in-app" | "installed" | "unavailable"',
         description: "What to offer; `createInstallPrompt().mode` from preact-signals fits.",
       },
       {

@@ -45,6 +45,7 @@ export {
   type InstallPromptStore,
   type InstallPromptTarget,
   isIosDevice,
+  isIosInAppBrowser,
   isStandalone,
   type StoredInstallPromptOptions,
 } from "./install-prompt.ts"

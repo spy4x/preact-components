@@ -66,6 +66,8 @@ export default {
   "InstallPrompt.install": "Installer",
   "InstallPrompt.iosAfter": "puis « Sur l’écran d’accueil ».",
   "InstallPrompt.iosBefore": "Touchez",
+  "InstallPrompt.iosInApp":
+    "Ouvrez d’abord cette page dans Safari, puis touchez « Partager » et « Sur l’écran d’accueil ».",
   "InstallPrompt.iosShare": "Partager",
   "InstallPrompt.title": "Installer cette application",
   "MailedCodeStep.changeEmail": "En utiliser une autre",

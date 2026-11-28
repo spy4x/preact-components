@@ -52,6 +52,7 @@ InstallPrompt.failed	d010a8621f3358d1
 InstallPrompt.install	569ca49f4aaf7846
 InstallPrompt.iosAfter	33d5944f308359cb
 InstallPrompt.iosBefore	464d23b54f26916c
+InstallPrompt.iosInApp	3b5421d398870735
 InstallPrompt.iosShare	29887a5ff9846ccc
 InstallPrompt.title	fa3d4cbc5818c4e3
 MailedCodeStep.changeEmail	959fefbaafb2c2e6

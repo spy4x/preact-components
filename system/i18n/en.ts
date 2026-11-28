@@ -63,6 +63,8 @@ export default {
   "InstallPrompt.install": "Install",
   "InstallPrompt.iosAfter": "then Add to Home Screen.",
   "InstallPrompt.iosBefore": "Tap",
+  "InstallPrompt.iosInApp":
+    "Open this page in Safari first, then tap Share and Add to Home Screen.",
   "InstallPrompt.iosShare": "Share",
   "InstallPrompt.title": "Install this app",
   "MailedCodeStep.changeEmail": "Use a different one",

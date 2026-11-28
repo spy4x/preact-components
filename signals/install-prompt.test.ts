@@ -7,6 +7,7 @@ import {
   type InstallPromptEvent,
   type InstallPromptTarget,
   isIosDevice,
+  isIosInAppBrowser,
   isStandalone,
 } from "./install-prompt.ts"
 
@@ -53,6 +54,108 @@ const IPAD_AS_MAC = {
   maxTouchPoints: 5,
 }
 const notStandalone = () => ({ matches: false })
+
+const IOS_AGENT = "Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15"
+/** A bare WKWebView, as an app that opens links in its own view reports itself: no `Safari/`. */
+const WEB_VIEW = { userAgent: `${IOS_AGENT} (KHTML, like Gecko) Mobile/15E148` }
+const INSTAGRAM = {
+  userAgent: `${IOS_AGENT} (KHTML, like Gecko) Mobile/15E148 Instagram 309.0.0.40.113 (iPhone14,5)`,
+}
+const FACEBOOK = {
+  userAgent: `${IOS_AGENT} (KHTML, like Gecko) Mobile/15E148 [FBAN/FBIOS;FBAV/440.0.0.33.116]`,
+}
+/** The Google app, which keeps a `Safari/` token and still has no Add to Home Screen. */
+const GOOGLE_APP = {
+  userAgent: `${IOS_AGENT} (KHTML, like Gecko) GSA/300.0.598994205 Mobile/15E148 Safari/604.1`,
+}
+const IOS_BROWSERS = {
+  CriOS: `${IOS_AGENT} (KHTML, like Gecko) CriOS/130.0.6723.90 Mobile/15E148 Safari/604.1`,
+  FxiOS: `${IOS_AGENT} (KHTML, like Gecko) FxiOS/132.0 Mobile/15E148 Safari/605.1.15`,
+  EdgiOS:
+    `${IOS_AGENT} (KHTML, like Gecko) EdgiOS/130.0.2849.80 Version/17.0 Mobile/15E148 Safari/604.1`,
+}
+const MAC_AGENT = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15"
+
+/** The mode a fresh store picks for `navigator`, outside an installed app. */
+const modeFor = (navigator: { userAgent: string; maxTouchPoints?: number } | null) =>
+  createInstallPrompt({ target: null, navigator, matchMedia: notStandalone }).mode.value
+
+describe("in-app browsers on iOS", () => {
+  it("keeps Safari on an iPhone on the Share steps", () => {
+    expect(modeFor(IPHONE)).toBe("ios")
+    expect(isIosInAppBrowser(IPHONE)).toBe(false)
+  })
+
+  it("keeps Chrome, Firefox and Edge on an iPhone on the Share steps", () => {
+    for (const userAgent of Object.values(IOS_BROWSERS)) {
+      expect(modeFor({ userAgent })).toBe("ios")
+      expect(isIosInAppBrowser({ userAgent })).toBe(false)
+    }
+  })
+
+  it("takes a bare web view with no Safari token for an in-app browser", () => {
+    expect(modeFor(WEB_VIEW)).toBe("ios-in-app")
+    expect(isIosInAppBrowser(WEB_VIEW)).toBe(true)
+  })
+
+  it("knows Instagram, Facebook and the Google app by name, even beside a Safari token", () => {
+    for (const navigator of [INSTAGRAM, FACEBOOK, GOOGLE_APP]) {
+      expect(modeFor(navigator)).toBe("ios-in-app")
+      expect(isIosInAppBrowser(navigator)).toBe(true)
+    }
+  })
+
+  it("takes a web view on an iPad that calls itself a Mac for an in-app browser", () => {
+    const ipadWebView = { userAgent: `${MAC_AGENT} (KHTML, like Gecko)`, maxTouchPoints: 5 }
+    expect(modeFor(ipadWebView)).toBe("ios-in-app")
+    expect(isIosInAppBrowser(ipadWebView)).toBe(true)
+  })
+
+  it("does not take a desktop Mac with no Safari token for an in-app browser", () => {
+    const desktopMac = { userAgent: `${MAC_AGENT} (KHTML, like Gecko)`, maxTouchPoints: 0 }
+    expect(modeFor(desktopMac)).toBe("unavailable")
+    expect(isIosInAppBrowser(desktopMac)).toBe(false)
+  })
+
+  it("does not take a desktop Chrome for an in-app browser", () => {
+    expect(modeFor(CHROME)).toBe("unavailable")
+    expect(isIosInAppBrowser(CHROME)).toBe(false)
+  })
+
+  it("does not take a missing navigator for an in-app browser", () => {
+    expect(modeFor(null)).toBe("unavailable")
+    expect(isIosInAppBrowser(null)).toBe(false)
+  })
+
+  it("offers nothing in an in-app browser when the app already runs standalone", () => {
+    const store = createInstallPrompt({
+      target: null,
+      navigator: { ...WEB_VIEW, standalone: true },
+      matchMedia: notStandalone,
+    })
+    expect(store.mode.value).toBe("installed")
+  })
+
+  it("shows the in-app offer until it is dismissed, and not when dismissed before", () => {
+    const store = createInstallPrompt({
+      target: null,
+      navigator: WEB_VIEW,
+      matchMedia: notStandalone,
+    })
+    expect(store.visible.value).toBe(true)
+    store.dismiss()
+    expect(store.visible.value).toBe(false)
+
+    const before = createInstallPrompt({
+      target: null,
+      navigator: WEB_VIEW,
+      matchMedia: notStandalone,
+      dismissed: { read: () => true, write: () => {} },
+    })
+    expect(before.mode.value).toBe("ios-in-app")
+    expect(before.visible.value).toBe(false)
+  })
+})
 
 describe("createInstallPrompt", () => {
   it("offers the browser's dialog once beforeinstallprompt fires", () => {
