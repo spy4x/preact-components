@@ -8098,9 +8098,12 @@ What it cannot do:
 - It needs the Navigation API (`window.navigation`), whose `currententrychange` event comes before
   the router's `popstate`. In a browser without it (Safari before 26.2, Firefox before 147), Back
   and Forward leave at once and the changes are lost.
-- The toolbar's Back button pressed again right after a held step, with no click or key in
-  between, is not verified. Chromium may then skip the entries the app added, the guard's included,
-  and leave the app.
+- After "Stay" chosen with Escape, the toolbar's Back pressed again before any click in the page
+  skips, in Chromium, the entries the page added without a click, the guard's included, and goes
+  to the page the tab showed before the app: only the browser's own `beforeunload` question asks
+  then. After a click on "Stay", the second Back is held and asked again. Cancelling the step with
+  the `navigate` event would not help: Chromium makes the second Back not cancelable, and it would
+  reach the router's page with no question at all.
 - Two forms with changes on one page must share one `leaveGuard`: then one dialog asks for both.
   Without it each guard holds the step on its own, and "Leave" in the first dialog is asked again
   by the second.

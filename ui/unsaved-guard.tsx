@@ -163,9 +163,10 @@ export interface UnsavedGuardProps {
  * - It needs the Navigation API (`window.navigation`) to hear of the step before the router does.
  *   In a browser without it (Safari before 26.2, Firefox before 147), Back and Forward leave at
  *   once and the changes are lost.
- * - The toolbar's Back button pressed again right after a held step, with no click or key in
- *   between, is not verified. Chromium may then skip the entries the app added, the guard's
- *   included, and leave the app.
+ * - After "Stay" chosen with Escape, the toolbar's Back pressed again before any click in the
+ *   page skips, in Chromium, the entries the page added without a click, the guard's included,
+ *   and goes to the page the tab showed before the app: only `beforeunload` asks then. After a
+ *   click on "Stay", the second Back is held and asked again.
  * - Two forms with changes on one page must share one `leaveGuard`: then one dialog asks for
  *   both. Without it each guard holds the step on its own, and "Leave" in the first dialog is
  *   asked again by the second.
