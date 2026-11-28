@@ -2,6 +2,7 @@ import { type Signal, useSignal } from "@preact/signals"
 import type { JSX } from "preact"
 import { useEffect, useId, useLayoutEffect, useRef } from "preact/hooks"
 import { hintBubbleClasses, shiftIntoView } from "./hint-bubble.ts"
+import { isImeKeyPress } from "./ime.ts"
 import type { TooltipPlacement, TooltipProps } from "./tooltip.tsx"
 
 const triggerBase =
@@ -57,6 +58,21 @@ const placementClasses: Record<TooltipPlacement, string> = {
 }
 
 /**
+ * Whether a key press hides the hint: an Escape the input method did not take, while it is shown.
+ *
+ * The press that does is the trigger's to claim: it is stopped there, so one Escape does one thing.
+ *
+ * @param event The key press.
+ * @param visible Whether the hint is up: the trigger is hovered or focused and not dismissed.
+ */
+export function hidesHint(
+  event: Pick<KeyboardEvent, "key" | "isComposing" | "keyCode">,
+  visible: boolean,
+): boolean {
+  return visible && event.key === "Escape" && !isImeKeyPress(event)
+}
+
+/**
  * `Tooltip`'s whole behaviour, with the function that joins its classes passed in as `merge`.
  *
  * A module of its own, not exported from the package: `Tooltip` passes `cn`, so a caller's `class`
@@ -87,19 +103,24 @@ export function TooltipCore(
   // have just un-hidden a dismissed surface.
   const engagements = useSignal(0)
 
+  // The Escape press that hid this hint, so the wrapper can claim that press and no other.
+  const hidingPress = useRef<KeyboardEvent | null>(null)
+
   // Empty dependency array, deliberately: this attaches once on mount rather than reacting to
-  // whether the trigger is engaged, and reads `hovered.value`/`focused.value` straight off the
-  // signals at press time instead of closing over a render's value of that condition. See
-  // `Tooltip`'s "Dismissible" bullet.
+  // whether the trigger is engaged, and reads the signals straight off at press time instead of
+  // closing over a render's value of that condition. The capture phase runs before any control
+  // inside the trigger can stop the press, so a Combobox closing its list still hides the hint.
+  // See `Tooltip`'s "Dismissible" bullet.
   useEffect(() => {
     const dismiss = (event: KeyboardEvent) => {
-      if (event.key !== "Escape") return
-      if (!hovered.value && !focused.value) return
+      const visible = (hovered.value || focused.value) && !dismissed.value
+      if (!hidesHint(event, visible)) return
       dismissed.value = true
+      hidingPress.current = event
     }
-    document.addEventListener("keydown", dismiss)
+    document.addEventListener("keydown", dismiss, true)
 
-    return () => document.removeEventListener("keydown", dismiss)
+    return () => document.removeEventListener("keydown", dismiss, true)
   }, [])
 
   /**
@@ -168,6 +189,13 @@ export function TooltipCore(
     onPointerLeave: () => hovered.value = false,
     onFocusIn: () => engage(focused),
     onFocusOut: () => focused.value = false,
+    // Bubble phase, so it runs before a `Modal` or `Drawer` around the trigger hears the press.
+    onKeyDown: (event: KeyboardEvent) => {
+      if (event !== hidingPress.current) return
+      hidingPress.current = null
+      event.preventDefault()
+      event.stopPropagation()
+    },
   }
 
   if (!focusable) {
