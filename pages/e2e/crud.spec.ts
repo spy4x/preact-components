@@ -480,6 +480,36 @@ export const specs: readonly Spec[] = [
   },
   {
     name:
+      "AssociationEditor: the Delete and the Restore dialogs both name their cancel and corner " +
+      "close actions in the app's words",
+    pageId: "crud",
+    run: async (page) => {
+      const card = page.locator("#demo-AssociationEditor")
+      const restore = card.getByRole("button", { name: "Restore", exact: true })
+
+      await card.locator(`[data-e2e="edit-association"]`).click()
+      for (
+        const [action, title] of [
+          ["Delete", "Detach this supplier?"],
+          ["Restore", "Attach this supplier again?"],
+        ]
+      ) {
+        if (action === "Restore") {
+          // The Restore dialog belongs to a removed row: remove it first.
+          await card.getByRole("button", { name: "Delete", exact: true }).click()
+          await page.locator(`[data-e2e="confirm-dialog-confirm"]`).click()
+          await restore.waitFor()
+        }
+        await card.getByRole("button", { name: action, exact: true }).click()
+        const dialog = page.getByRole("alertdialog", { name: title })
+        await dialog.getByRole("button", { name: "Keep it as it is", exact: true }).waitFor()
+        await dialog.getByRole("button", { name: "Close the question", exact: true }).click()
+        await dialog.waitFor({ state: "detached" })
+      }
+    },
+  },
+  {
+    name:
       "AssociationEditor: a Restore the store refuses is shown in its dialog in the app's words",
     pageId: "crud",
     run: async (page) => {
@@ -689,15 +719,19 @@ export const specs: readonly Spec[] = [
   },
   {
     name:
-      "CrudEditor: the sentence above what blocks an archive is the app's own when it gives one",
+      "CrudEditor: the sentence above what blocks an archive is the app's own when it gives one, " +
+      "and heads the block one level under the editor's title",
     pageId: "crud",
     run: async (page) => {
       const demo = page.locator(`#demo-CrudEditor [data-e2e="archive-demo"]`)
       const block = demo.getByRole("alert")
 
       await demo.getByRole("checkbox").check()
-      await block.filter({ hasText: "Archive these first, then you can archive this Team:" })
-        .waitFor()
+      // The demo heads the editor at level 4.
+      await block.getByRole("heading", {
+        name: "Archive these first, then you can archive this Team:",
+        level: 5,
+      }).waitFor()
 
       await demo.locator(`[data-e2e="word-block"]`).click()
       await block.filter({ hasText: "Move these out of the team first:" }).waitFor()
@@ -849,7 +883,7 @@ export const specs: readonly Spec[] = [
 
 /**
  * A `CrudEditor` whose list is still loading shows a skeleton and takes no input, one whose row is
- * missing takes no input either, and a `CrudList` toolbar rendered without JavaScript on a 390 px
+ * missing shows an alert and Cancel in place of the form, and a `CrudList` toolbar rendered without JavaScript on a 390 px
  * screen keeps its Status select readable (#874).
  */
 function loadingAndNarrowSpecs(): Spec[] {
@@ -892,21 +926,28 @@ function loadingAndNarrowSpecs(): Spec[] {
       },
     },
     {
-      name: "CrudEditor: a row the store does not hold shows its fields disabled, not busy",
+      name:
+        "CrudEditor at 390 px: a row the store does not hold is announced in an alert, with no " +
+        "form under it, and Cancel on screen as the way back",
       pageId: "crud",
       run: async (page) => {
+        await page.setViewportSize({ width: 390, height: 844 })
         const demo = page.locator(`#demo-CrudEditor [data-e2e="archive-demo"]`)
-        const form = demo.locator("form").first()
         const name = demo.getByLabel("Name", { exact: true })
 
         await waitForValue(page, name, "Design")
         await demo.locator(`[data-e2e="missing-row"]`).click()
         // The demo words "not found" through `notFoundLabel`.
-        await demo.getByText("That team is no longer here").waitFor()
-        await form.locator("fieldset[disabled]").first().waitFor()
-        if (await name.isEditable()) throw new Error("the missing row's Name field takes input")
-        const busy = await form.getAttribute("aria-busy")
-        if (busy !== null) throw new Error(`the settled form is aria-busy="${busy}"`)
+        await demo.getByRole("alert").filter({ hasText: "That team is no longer here" }).waitFor()
+        await demo.locator("form").waitFor({ state: "detached" })
+        const cancel = demo.getByRole("link", { name: "Cancel", exact: true })
+        if (await cancel.getAttribute("href") !== "#crud") {
+          throw new Error("Cancel does not lead back to where the demo's cancelHref points")
+        }
+        const box = await cancel.boundingBox()
+        if (box === null || box.x < 0 || box.x + box.width > 390) {
+          throw new Error(`Cancel is not on the 390 px screen: ${JSON.stringify(box)}`)
+        }
       },
     },
     {

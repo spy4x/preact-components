@@ -341,6 +341,9 @@ const CRUD_EDITOR_LABELS = {
  * A save the store refuses, or one that throws, is shown above Save too, in the library's
  * `ErrorState` (a `role="alert"`, the same panel `CrudList` shows a failed load in), and stays
  * until the next save.
+ *
+ * An edit whose row the store does not hold shows `notFoundLabel` in the same `ErrorState`, and in
+ * place of the form only Cancel, so there is no empty form to type into and still a way back.
  */
 export function CrudEditor<M extends CrudRow>(props: CrudEditorProps<M>): JSX.Element {
   const {
@@ -474,6 +477,8 @@ export function CrudEditor<M extends CrudRow>(props: CrudEditorProps<M>): JSX.El
   // An edit form with no row in it yet — the list is loading, or the row was not found — takes no
   // input: whatever was typed into the blank form would be thrown away when the row arrives.
   const rowless = props.mode === "edit" && !initialized.value
+  // Rowless because the row is not there: the message stands alone, with no form under it.
+  const notFound = rowless && error.value !== ""
   // Rowless because the row has not arrived, rather than because it is not there: the fields give
   // way to a skeleton. A row the store already holds is copied in by the effect above before the
   // next paint, so it never flashes the skeleton.
@@ -562,29 +567,38 @@ export function CrudEditor<M extends CrudRow>(props: CrudEditorProps<M>): JSX.El
       <PageTitle headingLevel={headingLevel}>
         {title ?? (props.mode === "add" ? words.addTitle(entity) : words.editTitle(entity))}
       </PageTitle>
-      {error.value !== "" && <p class="text-danger">{error.value}</p>}
-
-      <form
-        class="pc-card"
-        aria-busy={waiting || undefined}
-        onSubmit={submit}
-      >
-        <fieldset disabled={state.busy || rowless}>
-          <div class="pc-card-body">
-            {waiting
-              ? skeletonShown.value && (
-                <LoadingSkeleton fields={fieldCount(props.children({ vm, vl }))} />
-              )
-              : (
-                <>
-                  <div class="grid grid-cols-1 gap-x-6 gap-y-8 sm:grid-cols-6">
-                    {props.children({ vm, vl })}
-                  </div>
-                  {props.notice?.({ vm, vl })}
-                </>
-              )}
-            {
-              /*
+      {
+        /*
+        "Not found" is an assertive region added to the page together with its text, like the failed
+        save below. An edit with no row to show renders no empty form under it, only Cancel, which
+        otherwise lives in the form's footer and is the way back.
+      */
+      }
+      <ErrorState message={error.value} class="mx-0 max-w-none text-start" />
+      {notFound
+        ? <a href={cancelHref} class="btn btn-link self-start">{words.cancelLabel}</a>
+        : (
+          <form
+            class="pc-card"
+            aria-busy={waiting || undefined}
+            onSubmit={submit}
+          >
+            <fieldset disabled={state.busy || rowless}>
+              <div class="pc-card-body">
+                {waiting
+                  ? skeletonShown.value && (
+                    <LoadingSkeleton fields={fieldCount(props.children({ vm, vl }))} />
+                  )
+                  : (
+                    <>
+                      <div class="grid grid-cols-1 gap-x-6 gap-y-8 sm:grid-cols-6">
+                        {props.children({ vm, vl })}
+                      </div>
+                      {props.notice?.({ vm, vl })}
+                    </>
+                  )}
+                {
+                  /*
               The form-level live region, rendered on every render and empty until an issue with no
               field of its own arrives — the same shape `Combobox` and `Toastr` use: a region created
               together with its text announces nothing, because assistive technology announces a
@@ -592,68 +606,69 @@ export function CrudEditor<M extends CrudRow>(props: CrudEditorProps<M>): JSX.El
               and gain its text on a later render. `aria-describedby` on Save points here always, not
               only while a message is present, so the association never has to be added and removed.
             */
-            }
-            <div id={formIssueId} role="status" aria-live="polite" aria-atomic="true">
-              {formMessages.map((issue, index) => (
-                <p key={index} class="text-sm text-danger mt-2">{issue.message}</p>
-              ))}
-            </div>
-            {
-              /*
+                }
+                <div id={formIssueId} role="status" aria-live="polite" aria-atomic="true">
+                  {formMessages.map((issue, index) => (
+                    <p key={index} class="text-sm text-danger mt-2">{issue.message}</p>
+                  ))}
+                </div>
+                {
+                  /*
               The failed save is the other kind of region. A `role="alert"` is announced when it is
               added to the page with its text, so this one is rendered only while there is a
               failure; the rule above is for polite `role="status"` regions.
             */
-            }
-            <ErrorState message={saveError.value} class="mx-0 mt-4 max-w-none text-start" />
-          </div>
-          {
-            /*
+                }
+                <ErrorState message={saveError.value} class="mx-0 mt-4 max-w-none text-start" />
+              </div>
+              {
+                /*
             The footer stays for a read-only viewer, with Cancel alone: it is their only way back.
             A link is not a form control, so the disabled fieldset around it does not switch it off.
           */
-          }
-          <div class="pc-card-footer">
-            {editable && props.footerSlot?.({ vm, vl })}
-            {editable && props.mode === "edit" && archive !== undefined && (
-              <div class="flex gap-2 items-center">
-                <input
-                  type="checkbox"
-                  id={archiveId}
-                  class="pc-checkbox"
-                  checked={Boolean(vm.value.deletedAt)}
-                  onChange={toggleArchive}
-                />
-                <label for={archiveId} class="pc-label">
-                  {words.archiveLabel} {vm.value.deletedAt
-                    ? (
-                      <span
-                        title={formatTime(vm.value.deletedAt, { full: true })}
-                        class="text-danger"
-                      >
-                        ({agoIn(translator, vm.value.deletedAt)})
-                      </span>
-                    )
-                    : ""}
-                </label>
-              </div>
-            )}
+              }
+              <div class="pc-card-footer">
+                {editable && props.footerSlot?.({ vm, vl })}
+                {editable && props.mode === "edit" && archive !== undefined && (
+                  <div class="flex gap-2 items-center">
+                    <input
+                      type="checkbox"
+                      id={archiveId}
+                      class="pc-checkbox"
+                      checked={Boolean(vm.value.deletedAt)}
+                      onChange={toggleArchive}
+                    />
+                    <label for={archiveId} class="pc-label">
+                      {words.archiveLabel} {vm.value.deletedAt
+                        ? (
+                          <span
+                            title={formatTime(vm.value.deletedAt, { full: true })}
+                            class="text-danger"
+                          >
+                            ({agoIn(translator, vm.value.deletedAt)})
+                          </span>
+                        )
+                        : ""}
+                    </label>
+                  </div>
+                )}
 
-            <a href={cancelHref} class="btn btn-link ms-auto">{words.cancelLabel}</a>
-            {editable && (
-              <button
-                type="submit"
-                class="btn btn-primary"
-                aria-describedby={formIssueId}
-                disabled={!state.saveEnabled}
-              >
-                {state.busy && <IconLoading />}
-                {words.saveLabel}
-              </button>
-            )}
-          </div>
-        </fieldset>
-      </form>
+                <a href={cancelHref} class="btn btn-link ms-auto">{words.cancelLabel}</a>
+                {editable && (
+                  <button
+                    type="submit"
+                    class="btn btn-primary"
+                    aria-describedby={formIssueId}
+                    disabled={!state.saveEnabled}
+                  >
+                    {state.busy && <IconLoading />}
+                    {words.saveLabel}
+                  </button>
+                )}
+              </div>
+            </fieldset>
+          </form>
+        )}
 
       {
         /*
@@ -670,6 +685,8 @@ export function CrudEditor<M extends CrudRow>(props: CrudEditorProps<M>): JSX.El
           dependencies={blocked.value}
           model={entity}
           label={archive?.blockedLabel}
+          // One level under the editor's title, so the page's heading order skips none.
+          headingLevel={Math.min((headingLevel ?? 1) + 1, 6) as 2 | 3 | 4 | 5 | 6}
         />
       </div>
     </Stack>

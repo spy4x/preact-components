@@ -669,6 +669,7 @@ function AssociationEditorDemo() {
               confirmRestoreTitle="Attach this supplier again?"
               confirmRestore="It comes back as it was."
               confirmCancelLabel="Keep it as it is"
+              confirmCloseLabel="Close the question"
               restoreErrorLabel="The supplier was not attached again"
               removedLabel={(ago) => `Detached ${ago}`}
             />
@@ -735,6 +736,8 @@ function DeletionValidationDemo() {
         dependencies={blocked.value ? dependencies : []}
         model="Team"
         label={worded.value ? "This team is still used by:" : undefined}
+        // Under this card's own `<h3>`.
+        headingLevel={4}
       />
       <Caption>
         {blocked.value ? "" : "An empty list shows nothing. "}Re-rendered {renders.value}{" "}
@@ -1231,6 +1234,7 @@ export const crudDemos = {
   confirmDeleteTitle="Detach this supplier?"
   confirmDelete="It can be attached again later."
   confirmCancelLabel="Keep it as it is"
+  confirmCloseLabel="Close the question"
   deleteErrorLabel="The supplier was not detached"
   conflictField="supplierId"
   conflict={(row, all) => all.find((entry) => entry.supplierId === row.supplierId)}
@@ -1323,6 +1327,13 @@ export const crudDemos = {
         default: "`Archive these first, then you can archive this <model>:`",
         description: "The sentence above the list, in the app's own words.",
       },
+      {
+        name: "headingLevel",
+        type: "2 | 3 | 4 | 5 | 6",
+        default: "`3`",
+        description:
+          "The level of the sentence's heading; one under the section it sits in. `CrudEditor` passes one under its title.",
+      },
     ],
     snippet: `<DeletionValidation
   dependencies={[
@@ -1330,6 +1341,7 @@ export const crudDemos = {
   ]}
   model="Team"
   label="This team is still used by:"
+  headingLevel={4}
 />`,
     render: () => (
       <ArabicSwitch name="deletion-validation">
