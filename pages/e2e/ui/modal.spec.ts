@@ -58,9 +58,10 @@ async function openFormDialog(page: Page): Promise<Locator> {
  * has had its render.
  */
 async function expectStillOpen(dialog: Locator, cause: string): Promise<void> {
-  const open = await dialog.evaluate(async (element) => {
+  // Read off the page, not the locator: a locator would wait for a dialog that has already gone.
+  const open = await dialog.page().evaluate(async () => {
     for (let k = 0; k < 2; k++) await new Promise((resolve) => requestAnimationFrame(resolve))
-    return element.isConnected && element.matches(":modal")
+    return document.querySelector(`dialog[data-e2e="guide-modal-form"]`)?.matches(":modal")
   })
   if (!open) throw new Error(`${cause} closed the dialog`)
 }
@@ -146,8 +147,8 @@ function focusedHintSpecs(): Spec[] {
       await hintSurface(trigger, true).waitFor()
 
       await page.keyboard.press("Escape")
-      await hintSurface(trigger, false).waitFor({ state: "attached" })
       await expectStillOpen(dialog, "the Escape that hid the hint")
+      await hintSurface(trigger, false).waitFor({ state: "attached" })
 
       await page.keyboard.press("Escape")
       await dialog.waitFor({ state: "detached" })
