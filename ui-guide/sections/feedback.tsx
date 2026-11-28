@@ -44,6 +44,7 @@ import {
   type ToastCorner,
   Toastr,
   type ToastVariant,
+  Tooltip,
   UnsavedGuard,
   useFocusAfterRemoval,
   useFreshError,
@@ -53,7 +54,13 @@ import type { DateRange } from "@spy4x/time/date"
 import { useSignal } from "@preact/signals"
 import { render } from "preact"
 import { useEffect, useMemo, useRef, useState } from "preact/hooks"
-import { IconChevronRight, IconFolder, IconPlus, IconTrashBin } from "@spy4x/preact-icons"
+import {
+  IconChevronRight,
+  IconFolder,
+  IconInformationCircle,
+  IconPlus,
+  IconTrashBin,
+} from "@spy4x/preact-icons"
 import { entries } from "../record.ts"
 import { decisionCardDemos } from "./decision-card.tsx"
 import { dockDemos } from "./dock.tsx"
@@ -586,7 +593,8 @@ function HelpPopoverDemo() {
 /**
  * A dialog around a form whose fields each open a popup: a `Combobox` list, a `TagInput` suggestion
  * list and a `DateRangePicker` panel. Escape with one of them open closes only that popup, so the
- * form's draft survives; the next Escape closes the dialog.
+ * form's draft survives; the next Escape closes the dialog. The City and Tags fields and an info
+ * button carry a `Tooltip`, whose shown hint takes one Escape of its own before the dialog's.
  */
 function ModalFormDialog({ onClose }: { onClose: () => void }) {
   const city = useSignal<string | null>(null)
@@ -603,22 +611,47 @@ function ModalFormDialog({ onClose }: { onClose: () => void }) {
       footer={<Button onClick={onClose}>Save</Button>}
     >
       <Stack gap="sm">
-        <p class="text-sm text-muted">
-          Open a list or the date panel, then press Escape: only that closes. Press it again to
-          close the dialog.
-        </p>
-        <Combobox
-          items={formCities}
-          value={city.value}
-          onChange={(next) => city.value = next}
+        <div class="flex items-start gap-2">
+          <p class="flex-1 text-sm text-muted">
+            Open a list or the date panel, then press Escape: only that closes. A hint shown on a
+            field or the info button goes the same way. Press Escape again to close the dialog.
+          </p>
+          <Tooltip
+            ariaLabel="About Escape"
+            content="Escape hides this hint first; the next Escape closes the dialog"
+            placement="start"
+            class="min-h-11 min-w-11 shrink-0 items-center justify-center text-muted sm:min-h-9 sm:min-w-9"
+            contentClass="max-w-48"
+          >
+            <IconInformationCircle class="size-5" />
+          </Tooltip>
+        </div>
+        <Tooltip
           ariaLabel="City"
-        />
-        <TagInput
-          label="Tags"
-          value={tags.value}
-          onChange={(next) => tags.value = next}
-          suggestions={formTags}
-        />
+          content="Where the trip starts"
+          focusable={false}
+          class="flex w-full flex-col"
+        >
+          <Combobox
+            items={formCities}
+            value={city.value}
+            onChange={(next) => city.value = next}
+            ariaLabel="City"
+          />
+        </Tooltip>
+        <Tooltip
+          ariaLabel="Tags"
+          content="Pick from the list or type your own"
+          focusable={false}
+          class="flex w-full flex-col"
+        >
+          <TagInput
+            label="Tags"
+            value={tags.value}
+            onChange={(next) => tags.value = next}
+            suggestions={formTags}
+          />
+        </Tooltip>
         <DateRangePicker
           range={range.value}
           onChange={(next) => range.value = next}
