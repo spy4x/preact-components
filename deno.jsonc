@@ -68,6 +68,9 @@
     // run against uncommitted work.
     // The CI checkout is clean, so the step there runs this task bare, with no `--allow-dirty`.
     "publish:dry": "deno publish --dry-run",
+    // Sets the version given as the next argument in every published package's `deno.json`,
+    // e.g. `deno task release:bump 16.7.0` (`infra/scripts/release-bump.ts`, docs/publishing.md).
+    "release:bump": "deno run --allow-read --allow-write infra/scripts/release-bump.ts",
     // Whole-word search for private application names across every file each published package
     // would upload to JSR. Not part of `check`: it needs a names file the owner keeps outside
     // this repository, given as the next argument, e.g. `deno task private-names /path/to/names.txt`.
