@@ -246,6 +246,20 @@ describe("Rail", () => {
     expect(region(html, "rail-shell-dialog", "dialog")).not.toContain("href=")
   })
 
+  it("draws five phone slots, not six, for five items and a slot", () => {
+    const html = render(<Rail items={itemsOf(5)} top={() => <span>portrait</span>}>page</Rail>)
+    expect(tabLabels(html)).toEqual(["Item 1", "Item 2", "Item 3", "Item 4", "More"])
+  })
+
+  it("draws five phone slots, not six, for five column items and a sheet-only one", () => {
+    const items: RailItem[] = [
+      ...itemsOf(5),
+      { key: "about", label: "About", href: "/about", sheetOnly: true },
+    ]
+    const html = render(<Rail items={items}>page</Rail>)
+    expect(tabLabels(html)).toEqual(["Item 1", "Item 2", "Item 3", "Item 4", "More"])
+  })
+
   it("draws an item's counter as a hidden badge and speaks it in the entry's name", () => {
     const items: RailItem[] = [
       { key: "inbox", label: "Inbox", href: "/inbox", Icon: IconHome, counter: 3 },
@@ -308,6 +322,19 @@ describe("Rail", () => {
     const inTag = render(<Rail items={items} currentPath="/notes/tags/7">page</Rail>)
     for (const tag of linkTags(inTag, "/notes/tags")) expect(tag).toContain('aria-current="true"')
     for (const tag of linkTags(inTag, "/notes")) expect(tag).toContain(`aria-current="false"`)
+  })
+
+  it("never lets / claim a section, even for a path no other entry holds", () => {
+    const items: RailItem[] = [
+      { key: "home", label: "Home", href: "/" },
+      { key: "notes", label: "Notes", href: "/notes" },
+    ]
+    // `/` plus `/` prefixes only a path like `//x`, which a URL such as `http://h//x` yields.
+    for (const path of ["/settings/x", "//x"]) {
+      const html = render(<Rail items={items} currentPath={path}>page</Rail>)
+      expect(linkTags(html, "/")).not.toEqual([])
+      for (const tag of linkTags(html, "/")) expect(tag).toContain(`aria-current="false"`)
+    }
   })
 
   it("lets an exact match be the only current entry", () => {
@@ -662,6 +689,17 @@ describe("Rail for a site: RailEntry, sheet-only items, footer", () => {
     expect(moreTag("/about")).toContain("bg-[var(--color-surface-active")
     expect(moreTag("/work")).not.toContain("bg-[var(--color-surface-active")
     expect(moreTag("/work")).not.toBe("")
+  })
+
+  it("marks a sheet-only row as the current page in the sheet", () => {
+    const items: RailItem[] = [
+      { key: "work", label: "Work", href: "/work" },
+      { key: "about", label: "About", href: "/about", sheetOnly: true },
+    ]
+    const html = render(<Rail variant="labels" items={items} currentPath="/about">page</Rail>)
+    const rows = linkTags(region(html, "rail-shell-dialog", "dialog"), "/about")
+    expect(rows).toHaveLength(1)
+    expect(rows[0]).toContain(`aria-current="page"`)
   })
 
   it("draws no tooltip on a RailCell in the labels variant, and keeps it in the icons variant", () => {
