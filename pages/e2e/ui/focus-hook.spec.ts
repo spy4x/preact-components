@@ -68,7 +68,12 @@ function focusHookSpecs(): Spec[] {
         await settledIs("step ask · submits 0")
         await lineIsNotFocused("on mount")
         await email.fill("ada@example.com")
-        await submit.click()
+        if (await email.inputValue() !== "ada@example.com") {
+          throw new Error(`the field holds "${await email.inputValue()}" after typing`)
+        }
+        // Enter, not a click: a click whose release lands off the button, because the page scrolled
+        // or moved after the press, submits nothing.
+        await submit.press("Enter")
         await settledIs("step sent · submits 1")
         await focusIsOn(line.filter({ hasText: "a link is on its way to ada@example.com" }))
         await startOver.click()
