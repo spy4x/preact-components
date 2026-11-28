@@ -79,9 +79,17 @@ export type TooltipProps =
  * - **Dismissible.** One `keydown` listener sits on `document` for the component's whole life, and
  *   while the trigger is hovered or focused, Escape hides the surface and drops
  *   `aria-describedby` without moving focus. The listener belongs on `document` because the hint
- *   can be up while focus is elsewhere entirely — that is what hovering means. The key is neither
- *   consumed nor stopped, so whatever else Escape does on that page still happens. The hint
- *   returns on the next fresh hover or focus, not during the one it was dismissed in.
+ *   can be up while focus is elsewhere entirely — that is what hovering means. The hint returns
+ *   on the next fresh hover or focus, not during the one it was dismissed in.
+ *
+ *   One Escape does one thing, the innermost. The listener runs in the capture phase, so a
+ *   control inside the trigger that stops the press (a `Combobox` closing its list) still hides
+ *   the hint along with it. A press that hid the hint and reaches the trigger is stopped there,
+ *   default prevented, so a `Modal` or `Drawer` around it stays open; the next Escape, with the
+ *   hint already gone, closes it. An Escape an input method takes does nothing here. The limit:
+ *   when focus sits on another control and only the pointer holds the hint, the press belongs to
+ *   that control, so the hint hides and the press goes on to whatever it does there, closing a
+ *   dialog included.
  *
  *   Attached once on mount rather than only while engaged, and reading `hovered`/`focused` at
  *   press time rather than closing over `engaged`: an effect that (re)attaches only once

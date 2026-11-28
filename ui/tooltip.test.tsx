@@ -2,6 +2,7 @@ import { expect } from "@std/expect"
 import { describe, it } from "@std/testing/bdd"
 import { render } from "preact-render-to-string"
 import { Tooltip, type TooltipPlacement } from "./tooltip.tsx"
+import { hidesHint } from "./tooltip-core.tsx"
 
 /**
  * What a rendered string can and cannot say about this component.
@@ -229,5 +230,31 @@ describe("Tooltip", () => {
 
     expect(html).toContain("ml-2")
     expect(html).toContain("max-w-sm")
+  })
+})
+
+/**
+ * The decision behind each Escape: whether this press hides the hint, which is also whether the
+ * trigger stops it. Whether the stop keeps a real `Modal` open is proven in
+ * `pages/e2e/ui/modal.spec.ts`.
+ */
+describe("hidesHint", () => {
+  const escape = { key: "Escape", isComposing: false, keyCode: 27 }
+
+  it("hides a shown hint on Escape, so the trigger claims that press", () => {
+    expect(hidesHint(escape, true)).toBe(true)
+  })
+
+  it("leaves an Escape alone once the hint is already gone, so it reaches the dialog", () => {
+    expect(hidesHint(escape, false)).toBe(false)
+  })
+
+  it("leaves an Escape the input method takes alone, however the hint stands", () => {
+    expect(hidesHint({ ...escape, isComposing: true }, true)).toBe(false)
+    expect(hidesHint({ ...escape, keyCode: 229 }, true)).toBe(false)
+  })
+
+  it("ignores every key but Escape", () => {
+    expect(hidesHint({ key: "Enter", isComposing: false, keyCode: 13 }, true)).toBe(false)
   })
 })
