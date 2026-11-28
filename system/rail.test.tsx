@@ -730,6 +730,14 @@ describe("Rail for a site: RailEntry, sheet-only items, footer", () => {
     expect(render(<Rail items={itemsOf(2)}>page</Rail>)).not.toContain("rail-shell-page")
   })
 
+  it("draws no page wrapper for a footer that renders nothing", () => {
+    for (const footer of [null, false, ""]) {
+      const html = render(<Rail items={itemsOf(2)} footer={footer}>page</Rail>)
+      expect(html).toContain("</main>")
+      expect(html).not.toContain("rail-shell-page")
+    }
+  })
+
   it("opens the dock with a 24 px fade band above the notice and the tab bar", () => {
     const html = render(
       <Rail items={itemsOf(2)} tabBarNotice={<p data-e2e="notice">offline</p>}>page</Rail>,

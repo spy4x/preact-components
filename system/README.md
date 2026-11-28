@@ -1465,7 +1465,8 @@ sheet, so no empty `<div>` takes a margin. A component that renders `null` is no
 
 **`footer`** is drawn after `<main>` and outside it, under the page in the content column at every
 width, such as a site's `<footer>`, which keeps its `contentinfo` landmark there. With a footer,
-`<main>` and the footer share one column wrapper (`data-e2e="rail-shell-page"`).
+`<main>` and the footer share one column wrapper (`data-e2e="rail-shell-page"`). A footer that
+renders nothing, as a slot can, draws no wrapper.
 
 **The current entry is a filled cell.** It is tinted with the accent and drawn in the selected text
 colour; there is no bar on its edge. Under forced colours, where a fill disappears, a 2 px outline
@@ -1532,7 +1533,8 @@ key, by exact path and by section, the fill and the forced-colours outline, the 
 tooltip beside the cell, both variants' cells, the column's width and inset, the attributes, the
 labels and their overrides, the counter's badge and name, `RailEntry` matching an entry's cell and
 sheet row, sheet-only items and the current More slot, `RailCell` without a tooltip in the labels
-variant, the footer after `<main>`, `closedby` on the sheet and no wrapper for an empty slot. A
+variant, the footer after `<main>`, `closedby` on the sheet and no wrapper for an empty slot or
+footer. A
 backdrop tap closing the sheet with no script is proven in `pages/e2e/system.spec.ts`. The
 tooltip's delay, focus and
 Escape, the sheet's focus return, the centre slot on a phone and axe in light and dark at 390 and
